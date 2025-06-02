@@ -11,6 +11,7 @@ interface PlatformData {
   messageCount?: number;
   tokenCount?: number;
   url?: string;
+  messages?: Array<{ role: string; content: string }>;
 }
 
 export default function ThreadLinkPopup() {
@@ -27,7 +28,6 @@ export default function ThreadLinkPopup() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Detect platform on component mount
   useEffect(() => {
     detectCurrentPlatform();
   }, []);
@@ -39,7 +39,6 @@ export default function ThreadLinkPopup() {
     }
     
     try {
-      // Get current active tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
       if (!tab.id || !tab.url) {
@@ -51,7 +50,6 @@ export default function ThreadLinkPopup() {
         return;
       }
 
-      // Check URL first
       const url = tab.url;
       let expectedPlatform = 'unknown';
       
@@ -63,7 +61,6 @@ export default function ThreadLinkPopup() {
         expectedPlatform = 'gemini';
       }
 
-      // Try to communicate with content script
       try {
         const response = await chrome.tabs.sendMessage(tab.id, { action: 'detectPlatform' });
         
@@ -73,7 +70,8 @@ export default function ThreadLinkPopup() {
             detected: true,
             messageCount: response.messageCount || 0,
             tokenCount: response.tokenCount || 0,
-            url: response.url
+            url: response.url,
+            messages: response.messages || []
           });
         } else {
           setPlatformData({
@@ -83,7 +81,6 @@ export default function ThreadLinkPopup() {
           });
         }
       } catch (contentScriptError) {
-        // Only set as detected if we're actually on a supported platform
         if (expectedPlatform !== 'unknown') {
           setPlatformData({
             platform: expectedPlatform as Platform,
@@ -118,17 +115,28 @@ export default function ThreadLinkPopup() {
     setState('extracting');
     setProgress(0);
     
-    // Simulate extraction process
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          setState('condensing');
-          return 0;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab.id) return;
+
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractConversation' });
+      
+      if (response && response.success && response.data) {
+        setPlatformData(prevData => ({
+          ...prevData,
+          messageCount: response.data.messageCount,
+          tokenCount: response.data.tokenCount,
+          messages: response.data.messages
+        }));
+        setState('success');
+      } else {
+        setState('error');
+        setError('Failed to extract conversation');
+      }
+    } catch (error) {
+      setState('error');
+      setError('Error communicating with page');
+    }
   };
 
   useEffect(() => {
@@ -148,12 +156,24 @@ export default function ThreadLinkPopup() {
   }, [state]);
 
   const handleDownload = () => {
-    const content = `# ThreadLink Export - ${platformData.platform}\n\nExtracted from: ${platformData.url}\nMessages: ${platformData.messageCount}\nTokens: ${platformData.tokenCount}\n\n[Conversation content would go here]`;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const messages = platformData.messages || [];
+    
+    let content = `# ThreadLink Export - ${platformData.platform}\n\n`;
+    content += `Extracted from: ${platformData.url}\n`;
+    content += `Messages: ${platformData.messageCount}\n`;
+    content += `Tokens: ${platformData.tokenCount}\n\n`;
+    
+    // Add each message with proper markdown formatting
+    messages.forEach(msg => {
+      content += `**${msg.role}:** ${msg.content}\n\n`;
+    });
+
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `threadlink-${platformData.platform}-${Date.now()}.md`;
+    a.download = `threadlink-${platformData.platform}-${timestamp}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -161,7 +181,16 @@ export default function ThreadLinkPopup() {
   };
 
   const handleCopy = () => {
-    const content = `ThreadLink Export - ${platformData.platform}\n\nExtracted from: ${platformData.url}\nMessages: ${platformData.messageCount}\nTokens: ${platformData.tokenCount}`;
+    const messages = platformData.messages || [];
+    let content = `ThreadLink Export - ${platformData.platform}\n\n`;
+    content += `Extracted from: ${platformData.url}\n`;
+    content += `Messages: ${platformData.messageCount}\n`;
+    content += `Tokens: ${platformData.tokenCount}\n\n`;
+    
+    messages.forEach(msg => {
+      content += `${msg.role}: ${msg.content}\n\n`;
+    });
+
     navigator.clipboard.writeText(content);
   };
 
@@ -189,7 +218,6 @@ export default function ThreadLinkPopup() {
 
   return (
     <div className="w-80 bg-[#0D0D12] overflow-hidden rounded-xl">
-      {/* Header */}
       <div className="bg-[#2E3053] p-4 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-bold text-[#C7D0FF]">ThreadLink</h1>
@@ -203,9 +231,7 @@ export default function ThreadLinkPopup() {
         </button>
       </div>
 
-      {/* Content */}
       <div className="p-4">
-        {/* Platform Detection */}
         <div className="bg-[#1C1E2B] border border-[#181920] rounded-lg p-3 mb-4">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -240,7 +266,6 @@ export default function ThreadLinkPopup() {
           </div>
         </div>
 
-        {/* Message Stats */}
         {platformData.detected && (
           <div className="bg-[#1C1E2B] border border-[#181920] rounded-lg p-4 mb-4">
             <div className="grid grid-cols-2 text-center gap-4">
@@ -261,7 +286,6 @@ export default function ThreadLinkPopup() {
           </div>
         )}
 
-        {/* Target Tokens */}
         <div className="flex items-center gap-2 mb-4 px-3">
           <span className="text-sm text-[#C7D0FF]">Target:</span>
           <input
@@ -273,7 +297,6 @@ export default function ThreadLinkPopup() {
           <span className="text-sm text-[#C7D0FF]">tokens</span>
         </div>
 
-        {/* Status */}
         <div className="flex items-center gap-3 mb-4 px-3">
           <div 
             className="w-3 h-3 rounded-full"
@@ -282,7 +305,6 @@ export default function ThreadLinkPopup() {
           <span className="text-sm text-[#C7D0FF]">{statusContent[state].text}</span>
         </div>
 
-        {/* Scroll Warning for Chat Platforms */}
         {platformData.detected && ['chatgpt', 'claude', 'gemini'].includes(platformData.platform) && (
           <div className="bg-[#2A2F5A] border border-[#3A4178] rounded-lg p-3 mb-4">
             <div className="flex items-start gap-2">
@@ -290,14 +312,13 @@ export default function ThreadLinkPopup() {
               <div>
                 <p className="text-xs text-[#C7D0FF] font-medium mb-1">Scroll to load all messages</p>
                 <p className="text-xs text-[#7D87AD]">
-                  Chat platforms lazy-load messages. Scroll through your entire conversation first to ensure all messages are detected.
+                  Chat platforms lazy-load messages.
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Progress Bar */}
         {(state === 'extracting' || state === 'condensing') && (
           <div className="mb-4">
             <div className="h-1.5 bg-[#1C1E2B] rounded-full overflow-hidden">
@@ -313,7 +334,6 @@ export default function ThreadLinkPopup() {
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="space-y-2">
           {state === 'ready' && (
             <button
@@ -353,7 +373,6 @@ export default function ThreadLinkPopup() {
           )}
         </div>
 
-        {/* Footer */}
         <div className="border-t border-[#181920] pt-3 mt-4">
           <p className="text-xs text-center text-[#7D87AD]">
             Open source • BYOK • Privacy-first

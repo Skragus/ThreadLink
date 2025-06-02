@@ -1,6 +1,8 @@
 // ChatGPT Platform Detection & Data Extraction
 console.log('ThreadLink content script loaded on:', window.location.hostname);
 
+
+
 // Detect platform and conversation data
 function detectPlatform() {
   const hostname = window.location.hostname;
@@ -47,6 +49,36 @@ function detectPlatform() {
     detected: false,
     url: window.location.href
   };
+}
+
+function isActualConversationMessage(text, platform) {
+  if (!text || text.trim().length < 3) return false;
+  
+  const trimmedText = text.trim();
+  
+  // ChatGPT welcome/interface text patterns to ignore
+  const chatgptIgnorePatterns = [
+    /^What's on the agenda today\?$/i,
+    /^Ask anything$/i,
+    /^How can I help you today\?$/i,
+    /^Tools$/i,
+    /^Welcome back$/i,
+    /^Start a new chat$/i,
+    /^ChatGPT can make mistakes$/i,
+    /^What's on the agenda today\? Tools$/i
+  ];
+  
+  if (platform === 'chatgpt') {
+    // Check if it matches any ignore pattern exactly
+    const shouldIgnore = chatgptIgnorePatterns.some(pattern => pattern.test(trimmedText));
+    if (shouldIgnore) {
+      console.log(`🚫 Ignoring welcome text: "${trimmedText}"`);
+      return false;
+    }
+  }
+  
+  // Accept messages that are actual conversation content
+  return trimmedText.length > 3;
 }
 
 // Extract ChatGPT conversation data
@@ -113,15 +145,39 @@ function extractChatGPTData() {
       }
     }
     
-    // Final fallback - if we're definitely on a ChatGPT conversation page
-    if (messageElements.length === 0) {
+    // Extract message content using our new function
+    const messages = extractMessageContent(messageElements, 'chatgpt');
+    
+    // Filter out welcome screen messages but keep real conversation
+    const filteredMessages = messages.filter(msg => {
+      const isReal = isActualConversationMessage(msg.content, 'chatgpt');
+      console.log(`🔍 Message check: "${msg.content.slice(0, 50)}..." → ${isReal ? 'KEEP' : 'FILTER'}`);
+      return isReal;
+    });
+    
+    console.log(`📊 Filtering: ${messages.length} raw → ${filteredMessages.length} filtered messages`);
+    
+    // If we filtered everything out but we're clearly on a conversation page, 
+    // it might be a welcome screen - return 0 messages
+    if (filteredMessages.length === 0) {
       const isConversationPage = window.location.pathname.includes('/c/') || 
                                 document.querySelector('textarea[placeholder*="message"]') ||
                                 document.querySelector('textarea[placeholder*="Message"]') ||
                                 document.title.includes('ChatGPT');
       
-      console.log('Is conversation page?', isConversationPage);
+      console.log('Is conversation page after filtering?', isConversationPage);
       
+      if (isConversationPage && messages.length > 0) {
+        console.log('🎯 Detected welcome screen - returning 0 messages');
+        return {
+          messageCount: 0,
+          tokenCount: 0,
+          messages: [],
+          extractionMethod: 'welcome-screen-filtered'
+        };
+      }
+      
+      // If no conversation page detected either, try fallback
       if (isConversationPage) {
         console.log('📝 On conversation page but no messages detected - returning fallback');
         return {
@@ -133,7 +189,7 @@ function extractChatGPTData() {
       }
     }
     
-    if (messageElements.length === 0) {
+    if (filteredMessages.length === 0) {
       console.log('❌ No messages found with any method');
       return {
         messageCount: 0,
@@ -143,50 +199,15 @@ function extractChatGPTData() {
       };
     }
     
-    // Process found messages
-    const messages = Array.from(messageElements).map((el, index) => {
-      const text = el.innerText || el.textContent || '';
-      return {
-        role: el.getAttribute('data-message-author-role') || (index % 2 === 0 ? 'user' : 'assistant'),
-        content: text.slice(0, 100) + (text.length > 100 ? '...' : ''),
-        length: text.length,
-        element: el // Keep reference for debugging
-      };
-    });
-    
-    // Debug: Log all messages before filtering
-    console.log('🔍 All messages before filtering:', messages.map(m => ({ 
-      role: m.role, 
-      length: m.length, 
-      content: m.content.slice(0, 50) + '...' 
-    })));
-    
-    // Filter out empty messages but log what we're removing
-    const filteredMessages = messages.filter(msg => {
-      const isEmpty = msg.content.trim().length === 0;
-      if (isEmpty) {
-        console.log('🚫 Found message with no text (likely image/file):', { 
-          role: msg.role, 
-          rawText: msg.element.innerText?.slice(0, 100) || '[no text]',
-          element: msg.element 
-        });
-        // Don't filter it out - keep it but mark as non-text
-        msg.content = msg.role === 'assistant' ? '[Image/Media Response]' : '[Media Upload]';
-        msg.isMediaOnly = true;
-        return true; // Keep the message
-      }
-      return true;
-    });
-    
+    // Calculate token count
     const tokenCount = estimateTokens(messageElements);
     
-    console.log(`📊 Extracted: ${filteredMessages.length} messages (${messages.length} total elements), ~${tokenCount} tokens`);
-    console.log('Sample messages:', filteredMessages.slice(0, 2));
+    console.log(`📊 Final extraction: ${filteredMessages.length} messages, ~${tokenCount} tokens`);
     
     return {
-      messageCount: filteredMessages.length, // Now should be 12
+      messageCount: filteredMessages.length,
       tokenCount: tokenCount,
-      messages: filteredMessages.slice(0, 5),
+      messages: filteredMessages,
       extractionMethod: usedSelector
     };
     
@@ -201,7 +222,564 @@ function extractChatGPTData() {
   }
 }
 
-// Extract Claude conversation data
+function isActualConversationMessage(text, platform) {
+  if (!text || text.trim().length < 3) return false;
+  
+  const trimmedText = text.trim();
+  
+  // ChatGPT welcome/interface text patterns to ignore
+  const chatgptIgnorePatterns = [
+    /^What's on the agenda today\?$/i,
+    /^Ask anything$/i,
+    /^How can I help you today\?$/i,
+    /^Tools$/i,
+    /^Welcome back$/i,
+    /^Start a new chat$/i,
+    /^ChatGPT can make mistakes$/i,
+    /^What's on the agenda today\? Tools$/i
+  ];
+  
+  // Claude welcome/interface text patterns to ignore
+  const claudeIgnorePatterns = [
+    /^Hello! I'm Claude$/i,
+    /^How can I help you today\?$/i,
+    /^I'm Claude, an AI assistant$/i,
+    /^What would you like to work on\?$/i,
+    /^Start a new chat$/i,
+    /^Claude can make mistakes$/i
+  ];
+  
+  if (platform === 'chatgpt') {
+    const shouldIgnore = chatgptIgnorePatterns.some(pattern => pattern.test(trimmedText));
+    if (shouldIgnore) {
+      console.log(`🚫 Ignoring ChatGPT welcome text: "${trimmedText}"`);
+      return false;
+    }
+  } else if (platform === 'claude') {
+    const shouldIgnore = claudeIgnorePatterns.some(pattern => pattern.test(trimmedText));
+    if (shouldIgnore) {
+      console.log(`🚫 Ignoring Claude welcome text: "${trimmedText}"`);
+      return false;
+    }
+  }
+  
+  return trimmedText.length > 3;
+}
+// Helper function to generate artifact summaries
+function generateArtifactSummary(artifactElement) {
+  try {
+    const content = artifactElement.textContent || artifactElement.innerText || '';
+    
+    if (content.length < 50) {
+      return null; // Too small to be significant
+    }
+    
+    // Try to get artifact title/type from attributes or content
+    let title = 'Artifact';
+    let type = 'Content';
+    
+    // Check for title in attributes
+    const titleAttr = artifactElement.getAttribute('data-title') || 
+                     artifactElement.getAttribute('title') ||
+                     artifactElement.getAttribute('aria-label');
+    
+    if (titleAttr) {
+      title = titleAttr;
+    }
+    
+    // Detect type from content
+    if (content.includes('function') || content.includes('const') || content.includes('let')) {
+      type = 'JavaScript Code';
+    } else if (content.includes('<div') || content.includes('<component')) {
+      type = 'React Component';
+    } else if (content.includes('<html') || content.includes('<!DOCTYPE')) {
+      type = 'HTML Document';
+    } else if (content.includes('def ') || content.includes('import ')) {
+      type = 'Python Code';
+    } else if (content.includes('{') && content.includes('"')) {
+      type = 'JSON/Config';
+    } else if (content.includes('#') && content.includes('\n')) {
+      type = 'Markdown';
+    } else {
+      type = 'Code';
+    }
+    
+    const lines = content.split('\n').length;
+    const chars = content.length;
+    
+    return `[Artifact: "${title}" - ${type} (${chars} chars, ${lines} lines)]`;
+    
+  } catch (error) {
+    console.error('Error generating artifact summary:', error);
+    return '[Artifact: Content]';
+  }
+}
+
+// Helper function to detect code language
+function detectCodeLanguage(code) {
+  if (code.includes('function') || code.includes('const') || code.includes('=>')) {
+    return 'JavaScript';
+  }
+  if (code.includes('def ') || code.includes('import ')) {
+    return 'Python';
+  }
+  if (code.includes('<div') || code.includes('jsx')) {
+    return 'React/JSX';
+  }
+  if (code.includes('<html') || code.includes('<!DOCTYPE')) {
+    return 'HTML';
+  }
+  if (code.includes('SELECT') || code.includes('FROM')) {
+    return 'SQL';
+  }
+  if (code.includes('```')) {
+    return 'Markdown';
+  }
+  
+  return 'Code';
+}
+
+// Helper function to get all text nodes
+function getTextNodes(element) {
+  const textNodes = [];
+  const walker = document.createTreeWalker(
+    element,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    textNodes.push(node);
+  }
+  
+  return textNodes;
+}
+
+// REPLACE: extractMessageContent function with this cleaner version
+function extractMessageContent(messageElements, platform) {
+  try {
+    console.log(`🔍 Extracting messages for platform: ${platform}`);
+    console.log(`📊 Starting with ${messageElements.length} message elements`);
+    
+    const messages = Array.from(messageElements).map((el, index) => {
+      let rawText = '';
+      
+      // Platform-specific processing
+      if (platform === 'claude') {
+        rawText = processClaudeMessage(el);
+      } else {
+        rawText = el.innerText || el.textContent || '';
+      }
+      
+      // Common text cleaning for all platforms
+      let cleanText = rawText
+        .replace(/Copy code|Copy|Regenerate|Edit|Share|Save|Like|Dislike/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+        
+      // Handle empty or media-only messages
+      if (!cleanText) {
+        cleanText = index % 2 === 0 ? '[Media Upload]' : '[Media Response]';
+      }
+      
+      // Determine message role
+      const role = determineMessageRole(el, platform, index, cleanText);
+      
+      console.log(`📝 Message ${index}: ${role} - "${cleanText.slice(0, 100)}..."`);
+      
+      return {
+        role,
+        content: cleanText,
+        index
+      };
+    });
+    
+    console.log(`✅ Successfully extracted ${messages.length} messages`);
+    return messages;
+    
+  } catch (error) {
+    console.error('💥 Error extracting message content:', error);
+    return [];
+  }
+}
+
+// ADD: Dedicated Claude message processing function
+function processClaudeMessage(element) {
+  try {
+    console.log('🎯 Processing Claude message...');
+    console.log('📍 Original element:', element);
+    
+    // Clone element to avoid modifying original DOM
+    const messageClone = element.cloneNode(true);
+    
+    // Debug: Check what we're working with
+    console.log('🔍 Cloned element classes:', messageClone.className);
+    console.log('🔍 Cloned element HTML preview:', messageClone.innerHTML.slice(0, 200) + '...');
+    
+    // STEP 1: REMOVE THINKING PROCESS BUTTONS
+    // Target buttons with the specific class pattern you showed
+    const thinkingSelectors = [
+      'button.group\\/row',  // Escaped forward slash
+      'button[class*="group/row"]',  // Alternative selector
+      'button:has(.text-text-300)',  // If :has() is supported
+      'button',  // Fallback to all buttons
+      '.text-text-300'  // Direct text class
+    ];
+    
+    let totalRemoved = 0;
+    
+    thinkingSelectors.forEach(selector => {
+      try {
+        const elements = messageClone.querySelectorAll(selector);
+        console.log(`🔍 Selector "${selector}" found ${elements.length} elements`);
+        
+        elements.forEach(el => {
+          const text = el.textContent?.trim() || '';
+          
+          // Check if this is thinking text (starts with time marker or thinking patterns)
+          if (/^\d+s/.test(text) || text.includes('The user is asking') || text.includes('Looking at')) {
+            console.log(`🗑️ Removing thinking element: "${text.slice(0, 50)}..."`);
+            el.remove();
+            totalRemoved++;
+          } else if (selector === 'button' && text.length > 100) {
+            // For generic button selector, remove long text that looks like thinking
+            console.log(`🗑️ Removing suspicious button: "${text.slice(0, 50)}..."`);
+            el.remove();
+            totalRemoved++;
+          }
+        });
+      } catch (e) {
+        console.warn(`Selector ${selector} failed:`, e);
+      }
+    });
+    
+    console.log(`✅ Removed ${totalRemoved} thinking elements total`);
+    
+    // STEP 2: ADDITIONAL CLEANUP - Remove any remaining thinking text patterns
+    const allTextNodes = getTextNodes(messageClone);
+    allTextNodes.forEach(node => {
+      const text = node.textContent || '';
+      if (/^\d+s\s+The user/.test(text) || /^\d+s\s+Looking at/.test(text)) {
+        console.log(`🗑️ Removing text node: "${text.slice(0, 50)}..."`);
+        node.textContent = '';
+      }
+    });
+    
+    // STEP 3: REPLACE ARTIFACTS WITH SUMMARIES
+    replaceClaudeArtifacts(messageClone);
+    
+    // STEP 4: HANDLE REMAINING CODE BLOCKS
+    replaceCodeBlocks(messageClone);
+    
+    // STEP 5: POST-PROCESS THE TEXT
+    let cleanedText = messageClone.innerText || messageClone.textContent || '';
+    
+    // Final cleanup - remove any thinking patterns that leaked through
+    const thinkingPatterns = [
+      /^\d+s\s+The user is asking.*$/gm,          // Time + "The user is asking"
+      /^\d+s\s+Looking at the current.*$/gm,     // Time + "Looking at the current"  
+      /^\d+s\s+I should point out.*$/gm,         // Time + "I should point out"
+      /^\d+s\s+Let me think.*$/gm,               // Time + "Let me think"
+      /^\d+s\s+I need to consider.*$/gm,         // Time + "I need to consider"
+    ];
+    
+    thinkingPatterns.forEach(pattern => {
+      cleanedText = cleanedText.replace(pattern, '');
+    });
+    
+    // Remove excessive newlines
+    cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
+    
+    console.log(`🧹 Claude processing complete: ${element.innerText?.length || 0} → ${cleanedText.length} chars`);
+    
+    return cleanedText;
+    
+  } catch (error) {
+    console.error('💥 Error processing Claude message:', error);
+    return element.innerText || element.textContent || '';
+  }
+}
+
+// REPLACE: removeClaudeThinkingProcess function with this much simpler version
+function removeClaudeThinkingProcess(messageClone) {
+  console.log('🗑️ Removing Claude thinking process (button blacklist approach)...');
+  
+  // SIMPLE APPROACH: Remove all button elements
+  // Since thinking process lives in buttons, just nuke all buttons
+  const buttons = messageClone.querySelectorAll('button');
+  buttons.forEach(button => {
+    const buttonText = button.textContent?.trim() || '';
+    
+    // Log what we're removing for debugging
+    if (buttonText.length > 10) {
+      console.log(`🗑️ Removing button content: "${buttonText.slice(0, 50)}..."`);
+    }
+    
+    // Remove the button entirely
+    button.remove();
+  });
+  
+  console.log(`✅ Removed ${buttons.length} buttons from Claude message`);
+  
+  // Optional: Clean up any remaining thinking text patterns as backup
+  const textNodes = getTextNodes(messageClone);
+  textNodes.forEach(textNode => {
+    const text = textNode.textContent || '';
+    if (/^\d+s\s+/.test(text) && text.length < 500) {
+      console.log(`🗑️ Removing remaining thinking text: "${text.slice(0, 50)}..."`);
+      textNode.remove();
+    }
+  });
+}
+
+// ADD: Replace Claude artifacts with summaries
+function replaceClaudeArtifacts(messageClone) {
+  console.log('🔧 Replacing Claude artifacts with summaries...');
+  
+  const artifactSelectors = [
+    '[data-testid*="artifact"]',
+    '.artifact-container', 
+    '[class*="artifact"]',
+    '.code-editor',
+    '[data-type="artifact"]',
+    '[class*="code-block"]',
+    '.prose-code',
+    '[data-artifact-id]',
+    '.artifact-window',
+    '.artifact-panel'
+  ];
+  
+  artifactSelectors.forEach(selector => {
+    try {
+      messageClone.querySelectorAll(selector).forEach(artifact => {
+        const artifactSummary = generateArtifactSummary(artifact);
+        
+        if (artifactSummary) {
+          console.log(`🔧 Replacing artifact: ${artifactSummary}`);
+          const summaryNode = document.createTextNode(artifactSummary);
+          artifact.parentNode.replaceChild(summaryNode, artifact);
+        } else {
+          console.log(`🗑️ Removing empty artifact: ${selector}`);
+          artifact.remove();
+        }
+      });
+    } catch (e) {
+      console.warn(`Artifact selector error for ${selector}:`, e);
+    }
+  });
+}
+
+// ADD: Replace large code blocks with summaries
+function replaceCodeBlocks(messageClone) {
+  console.log('📄 Processing code blocks...');
+  
+  const codeBlocks = messageClone.querySelectorAll('pre, code, .code-block, [class*="code"]');
+  codeBlocks.forEach(codeBlock => {
+    const codeText = codeBlock.textContent || '';
+    
+    if (codeText.length > 200) { // Substantial code
+      const lines = codeText.split('\n').length;
+      const language = detectCodeLanguage(codeText);
+      const summary = `[Artifact: "${language} Code" (${codeText.length} chars, ${lines} lines)]`;
+      
+      console.log(`🔧 Replacing code block: ${summary}`);
+      
+      const summaryNode = document.createTextNode(summary);
+      codeBlock.parentNode.replaceChild(summaryNode, codeBlock);
+    }
+  });
+}
+
+// ADD: Improved role detection
+function determineMessageRole(element, platform, index, content) {
+  if (platform === 'claude') {
+    // Try multiple Claude-specific detection methods
+    const isHuman = element.getAttribute('data-testid')?.includes('human-message') ||
+                   element.getAttribute('data-testid')?.includes('user-message') ||
+                   element.querySelector('[data-testid*="human"]') ||
+                   element.closest('[data-testid*="human"]') ||
+                   element.getAttribute('data-message-role') === 'user' ||
+                   element.getAttribute('data-role') === 'user';
+    
+    const isAssistant = element.getAttribute('data-testid')?.includes('ai-message') ||
+                       element.getAttribute('data-testid')?.includes('assistant-message') ||
+                       element.querySelector('[data-testid*="ai"]') ||
+                       element.closest('[data-testid*="ai"]') ||
+                       element.getAttribute('data-message-role') === 'assistant' ||
+                       element.getAttribute('data-role') === 'assistant';
+    
+    if (isHuman) {
+      return 'user';
+    } else if (isAssistant) {
+      return 'assistant';
+    } else {
+      // Content-based detection as fallback
+      const startsLikeUserMessage = /^(can you|could you|please|how do i|what|why|when|where|fix|help|create|make|show me|i need|i want|implement|okay|alright|yeah|nah|now|also)/i;
+      const startsLikeAssistantMessage = /^(i'll|i can|here's|looking at|based on|let me|i've|certainly|of course|sure|absolutely)/i;
+      
+      if (startsLikeUserMessage.test(content)) {
+        return 'user';
+      } else if (startsLikeAssistantMessage.test(content)) {
+        return 'assistant';
+      } else {
+        // Final fallback - alternating pattern
+        return index % 2 === 0 ? 'user' : 'assistant';
+      }
+    }
+  } else if (platform === 'chatgpt') {
+    return element.getAttribute('data-message-author-role') || 
+           (index % 2 === 0 ? 'user' : 'assistant');
+  } else {
+    // Default platforms
+    return index % 2 === 0 ? 'user' : 'assistant';
+  }
+}
+
+// ADD: Generate artifact summary from DOM element
+function generateArtifactSummary(artifactElement) {
+  try {
+    const content = artifactElement.textContent || artifactElement.innerText || '';
+    
+    if (content.length < 50) {
+      return null; // Too small to be significant
+    }
+    
+    // Try to get artifact title/type from attributes
+    let title = 'Content';
+    let type = 'Artifact';
+    
+    const titleAttr = artifactElement.getAttribute('data-title') || 
+                     artifactElement.getAttribute('title') ||
+                     artifactElement.getAttribute('aria-label');
+    
+    if (titleAttr) {
+      title = titleAttr;
+    }
+    
+    // Detect type from content
+    type = detectContentType(content);
+    
+    const lines = content.split('\n').length;
+    const chars = content.length;
+    
+    return `[Artifact: "${title}" - ${type} (${chars} chars, ${lines} lines)]`;
+    
+  } catch (error) {
+    console.error('Error generating artifact summary:', error);
+    return '[Artifact: Content]';
+  }
+}
+
+// ADD: Detect content type
+function detectContentType(content) {
+  if (content.includes('function') || content.includes('const') || content.includes('let')) {
+    return 'JavaScript';
+  }
+  if (content.includes('<div') || content.includes('<component')) {
+    return 'React/JSX';
+  }
+  if (content.includes('<html') || content.includes('<!DOCTYPE')) {
+    return 'HTML';
+  }
+  if (content.includes('def ') || content.includes('import ')) {
+    return 'Python';
+  }
+  if (content.includes('{') && content.includes('"')) {
+    return 'JSON/Config';
+  }
+  if (content.includes('#') && content.includes('\n')) {
+    return 'Markdown';
+  }
+  
+  return 'Code';
+}
+
+// ADD: Detect programming language
+function detectCodeLanguage(code) {
+  if (code.includes('function') || code.includes('const') || code.includes('=>')) {
+    return 'JavaScript';
+  }
+  if (code.includes('def ') || code.includes('import ')) {
+    return 'Python';
+  }
+  if (code.includes('<div') || code.includes('jsx')) {
+    return 'React/JSX';
+  }
+  if (code.includes('<html') || code.includes('<!DOCTYPE')) {
+    return 'HTML';
+  }
+  if (code.includes('SELECT') || code.includes('FROM')) {
+    return 'SQL';
+  }
+  if (code.includes('```')) {
+    return 'Markdown';
+  }
+  
+  return 'Code';
+}
+
+// ADD: Get all text nodes from element
+function getTextNodes(element) {
+  const textNodes = [];
+  const walker = document.createTreeWalker(
+    element,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    textNodes.push(node);
+  }
+  
+  return textNodes;
+}
+
+// ADD: Helper function to detect if content looks like an artifact
+function isArtifactContent(text) {
+  const artifactIndicators = [
+    /```[\w]*\n[\s\S]*\n```/,           // Code blocks
+    /function\s+\w+\s*\(/,              // Function definitions
+    /class\s+\w+/,                      // Class definitions
+    /import\s+.*from/,                  // Import statements
+    /export\s+(default\s+)?/,           // Export statements
+    /<\w+[^>]*>/,                       // HTML/JSX tags
+    /\{\s*"[\w":\s,\[\]{}]*\}/,        // JSON objects
+    /#!/,                               // Shebang lines
+    /package\.json|tsconfig|webpack/    // Config files
+  ];
+  
+  return artifactIndicators.some(pattern => pattern.test(text));
+}
+
+// ADD: Helper function to estimate content type from artifacts
+function detectArtifactType(content) {
+  if (content.includes('function') || content.includes('const') || content.includes('let')) {
+    return 'JavaScript Code';
+  }
+  if (content.includes('<div') || content.includes('<component')) {
+    return 'React Component';
+  }
+  if (content.includes('<html') || content.includes('<!DOCTYPE')) {
+    return 'HTML Document';
+  }
+  if (content.includes('def ') || content.includes('import ')) {
+    return 'Python Code';
+  }
+  if (content.includes('{') && content.includes('"')) {
+    return 'JSON Data';
+  }
+  if (content.includes('---') && content.includes('#')) {
+    return 'Markdown Document';
+  }
+  
+  return 'Code Artifact';
+}
+
+// REPLACE: extractClaudeData function
 function extractClaudeData() {
   try {
     console.log('🔍 Attempting to extract Claude data...');
@@ -238,7 +816,7 @@ function extractClaudeData() {
         console.log(`Claude selector "${selector}": found ${elements.length} elements`);
         
         if (elements.length > 0) {
-          // Filter elements that look like actual messages - be less aggressive
+          // Filter elements that look like actual messages
           const validMessages = Array.from(elements).filter(el => {
             const text = el.innerText?.trim();
             console.log(`🔍 Checking element with selector "${selector}":`, {
@@ -249,8 +827,7 @@ function extractClaudeData() {
               className: el.className
             });
             
-            // Much more permissive filtering for Claude
-            return text && text.length > 5; // Reduced from 20 to 5
+            return text && text.length > 5;
           });
           
           console.log(`📊 Selector "${selector}": ${elements.length} total, ${validMessages.length} valid after filtering`);
@@ -272,11 +849,9 @@ function extractClaudeData() {
     if (messageElements.length === 0) {
       console.log('🔍 Trying Claude content-based detection...');
       
-      // Look for main conversation area
       const mainContent = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
       
       if (mainContent) {
-        // Look for text blocks that could be messages
         const textBlocks = mainContent.querySelectorAll('div, p, article');
         const potentialMessages = Array.from(textBlocks).filter(el => {
           const text = el.innerText?.trim();
@@ -286,44 +861,70 @@ function extractClaudeData() {
             tagName: el.tagName
           });
           
-          // Much more permissive for Claude content detection
           return text && 
-                 text.length > 10 && // Reduced from 30
+                 text.length > 10 && 
                  text.length < 10000 && 
-                 !text.match(/^(Settings|Claude|Anthropic|Export|Share|New Chat)$/i); // More specific exclusions
+                 !text.match(/^(Settings|Claude|Anthropic|Export|Share|New Chat)$/i);
         });
         
         console.log(`Claude content detection found ${potentialMessages.length} potential messages`);
         
         if (potentialMessages.length > 0) {
-          messageElements = potentialMessages.slice(0, 50); // Reasonable limit
+          messageElements = potentialMessages.slice(0, 50);
           usedSelector = 'claude-content-based';
         }
       }
     }
     
-    // Claude conversation page detection
-    if (messageElements.length === 0) {
+    // Extract message content using our improved DOM-filtering function
+    const messages = extractMessageContent(messageElements, 'claude');
+    
+    // Filter out welcome screen messages but keep real conversation
+    const filteredMessages = messages.filter(msg => {
+      const isReal = isActualConversationMessage(msg.content, 'claude');
+      console.log(`🔍 Claude message check: "${msg.content.slice(0, 50)}..." → ${isReal ? 'KEEP' : 'FILTER'}`);
+      return isReal;
+    });
+    
+    console.log(`📊 Claude filtering: ${messages.length} raw → ${filteredMessages.length} filtered messages`);
+    
+    // Apply minimal post-processing (now much simpler thanks to DOM filtering)
+    const processedMessages = filteredMessages; // No post-processing needed, DOM handled it
+
+    console.log(`🎨 No post-processing needed - DOM filtering handled everything`);
+
+    // If we filtered everything out but we're on a conversation page
+    if (processedMessages.length === 0) {
       const isClaudeConversation = window.location.pathname.includes('/chat') || 
                                   document.querySelector('textarea[placeholder*="message"]') ||
                                   document.querySelector('textarea[placeholder*="Message"]') ||
                                   document.title.includes('Claude') ||
                                   document.querySelector('[data-testid*="chat"]');
       
-      console.log('Is Claude conversation page?', isClaudeConversation);
+      console.log('Is Claude conversation page after filtering?', isClaudeConversation);
+      
+      if (isClaudeConversation && messages.length > 0) {
+        console.log('🎯 Detected Claude welcome screen - returning 0 messages');
+        return {
+          messageCount: 0,
+          tokenCount: 0,
+          messages: [],
+          extractionMethod: 'claude-welcome-screen-filtered'
+        };
+      }
       
       if (isClaudeConversation) {
         console.log('📝 On Claude conversation page but no messages detected - returning fallback');
         return {
-          messageCount: 10,  // Reasonable fallback for Claude
-          tokenCount: 4000, // Reasonable fallback
+          messageCount: 10,
+          tokenCount: 4000,
           messages: [{ role: 'user', content: 'Claude conversation detected but unable to parse messages...' }],
           extractionMethod: 'claude-fallback-conversation-page'
         };
       }
     }
     
-    if (messageElements.length === 0) {
+    if (processedMessages.length === 0) {
       console.log('❌ No Claude messages found with any method');
       return {
         messageCount: 0,
@@ -333,56 +934,15 @@ function extractClaudeData() {
       };
     }
     
-    // Process Claude messages
-    const messages = Array.from(messageElements).map((el, index) => {
-      const text = el.innerText || el.textContent || '';
-      
-      // Try to determine if this is human or AI message based on context
-      let role = 'unknown';
-      
-      // Check for Claude-specific role indicators
-      if (el.getAttribute('data-testid') === 'human-message' || el.classList.contains('human')) {
-        role = 'user';
-      } else if (el.getAttribute('data-testid') === 'ai-message' || el.classList.contains('assistant')) {
-        role = 'assistant';
-      } else {
-        // Fallback: alternate between user and assistant
-        role = index % 2 === 0 ? 'user' : 'assistant';
-      }
-      
-      return {
-        role: role,
-        content: text.slice(0, 150) + (text.length > 150 ? '...' : ''),
-        length: text.length,
-        element: el
-      };
-    });
+    // Calculate token count AFTER processing (more accurate)
+    const tokenCount = estimateTokensFromMessages(processedMessages);
     
-    console.log('🔍 Claude messages before filtering:', messages.map(m => ({ 
-      role: m.role, 
-      length: m.length, 
-      content: m.content.slice(0, 50) + '...' 
-    })));
-    
-    // Filter and clean Claude messages
-    const filteredMessages = messages.filter(msg => {
-      const hasContent = msg.content.trim().length > 0;
-      if (!hasContent) {
-        msg.content = msg.role === 'assistant' ? '[Claude Media Response]' : '[User Media]';
-        msg.isMediaOnly = true;
-      }
-      return true; // Keep all messages
-    });
-    
-    const tokenCount = estimateTokens(messageElements);
-    
-    console.log(`📊 Claude extracted: ${filteredMessages.length} messages, ~${tokenCount} tokens`);
-    console.log('Claude sample messages:', filteredMessages.slice(0, 3));
+    console.log(`📊 Final Claude extraction: ${processedMessages.length} messages, ~${tokenCount} tokens`);
     
     return {
-      messageCount: filteredMessages.length,
+      messageCount: processedMessages.length,
       tokenCount: tokenCount,
-      messages: filteredMessages.slice(0, 5), // Return sample
+      messages: processedMessages,
       extractionMethod: usedSelector
     };
     
@@ -395,6 +955,69 @@ function extractClaudeData() {
       extractionMethod: 'claude-error: ' + error.message
     };
   }
+}
+
+// ADD: New token estimation function that works with processed messages
+function estimateTokensFromMessages(messages) {
+  let totalText = '';
+  messages.forEach(msg => {
+    totalText += msg.content + ' ';
+  });
+  
+  // More accurate token estimation
+  const cleanText = totalText.replace(/\s+/g, ' ').trim();
+  const wordCount = cleanText.split(' ').length;
+  
+  // Estimation: 1 token ≈ 0.75 words for English
+  const estimatedTokens = Math.floor(wordCount * 1.33);
+  
+  console.log(`📊 Message-based token estimation: ${cleanText.length} chars, ${wordCount} words, ~${estimatedTokens} tokens`);
+  
+  return estimatedTokens;
+}
+
+
+// **NEW: Artifact replacement function**
+function replaceArtifactsWithPlaceholders(content) {
+  console.log('🎨 Processing artifacts in content...');
+  
+  let processedContent = content;
+  
+  // 1. Remove Claude's internal thinking lines (time markers + reasoning)
+  processedContent = processedContent.replace(
+    /^\d+s\s+.*$/gm, 
+    ''
+  );
+  
+  // 2. Replace Claude's artifact headers (specific format)
+  processedContent = processedContent.replace(
+    /^(.*?)\s*(Code|Document|Text)\s*∙\s*Version\s*\d+\s*$/gm, 
+    (match, title, type) => {
+      console.log(`🔧 Found Claude artifact header: "${title.trim()}" - ${type}`);
+      return `[Artifact: "${title.trim()}" - ${type}]`;
+    }
+  );
+  
+  // 3. Replace substantial code blocks (200+ chars)
+  processedContent = processedContent.replace(/```(\w+)?\n([\s\S]*?)\n```/g, (match, language, code) => {
+    if (code.trim().length > 200) {
+      const lines = code.split('\n').length;
+      const chars = match.length;
+      const lang = language || 'code';
+      
+      console.log(`🔧 Found substantial code artifact: ${lang} (${chars} chars, ${lines} lines)`);
+      return `[Artifact: "${lang} Code" (${chars} chars, ${lines} lines)]`;
+    }
+    
+    // Keep small code snippets as they're likely examples in conversation
+    return match;
+  });
+  
+  // 4. Clean up extra whitespace left by removed thinking lines
+  processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n');
+  
+  // Keep everything else as-is - preserve all conversation context
+  return processedContent;
 }
 
 // Extract Gemini conversation data
@@ -440,7 +1063,7 @@ function extractGeminiData() {
             const text = el.innerText?.trim();
             console.log(`🔍 Checking Gemini element with selector "${selector}":`, {
               text: text?.slice(0, 50),
-              textLength: text?.length,
+              length: text?.length,
               tagName: el.tagName
             });
             return text && text.length > 5;
@@ -515,34 +1138,18 @@ function extractGeminiData() {
       };
     }
     
-    // Process Gemini messages
-    const messages = Array.from(messageElements).map((el, index) => {
-      const text = el.innerText || el.textContent || '';
-      return {
-        role: index % 2 === 0 ? 'user' : 'assistant',
-        content: text.slice(0, 150) + (text.length > 150 ? '...' : ''),
-        length: text.length,
-        element: el
-      };
-    });
+    // Extract message content using our new function
+    const messages = extractMessageContent(messageElements, 'gemini');
     
-    const filteredMessages = messages.filter(msg => {
-      const hasContent = msg.content.trim().length > 0;
-      if (!hasContent) {
-        msg.content = msg.role === 'assistant' ? '[Gemini Media Response]' : '[User Media]';
-        msg.isMediaOnly = true;
-      }
-      return true;
-    });
-    
+    // Calculate token count
     const tokenCount = estimateTokens(messageElements);
     
-    console.log(`📊 Gemini extracted: ${filteredMessages.length} messages, ~${tokenCount} tokens`);
+    console.log(`📊 Final extraction: ${messages.length} messages, ~${tokenCount} tokens`);
     
     return {
-      messageCount: filteredMessages.length,
+      messageCount: messages.length,
       tokenCount: tokenCount,
-      messages: filteredMessages.slice(0, 5),
+      messages: messages, // Return ALL messages
       extractionMethod: usedSelector
     };
     
@@ -601,7 +1208,7 @@ function extractBoltData() {
             const text = el.innerText?.trim();
             console.log(`🔍 Checking Bolt element with selector "${selector}":`, {
               text: text?.slice(0, 50),
-              textLength: text?.length,
+              length: text?.length,
               tagName: el.tagName
             });
             return text && text.length > 5;
@@ -676,34 +1283,18 @@ function extractBoltData() {
       };
     }
     
-    // Process Bolt messages
-    const messages = Array.from(messageElements).map((el, index) => {
-      const text = el.innerText || el.textContent || '';
-      return {
-        role: index % 2 === 0 ? 'user' : 'assistant',
-        content: text.slice(0, 150) + (text.length > 150 ? '...' : ''),
-        length: text.length,
-        element: el
-      };
-    });
+    // Extract message content using our new function
+    const messages = extractMessageContent(messageElements, 'bolt');
     
-    const filteredMessages = messages.filter(msg => {
-      const hasContent = msg.content.trim().length > 0;
-      if (!hasContent) {
-        msg.content = msg.role === 'assistant' ? '[Bolt Media Response]' : '[User Media]';
-        msg.isMediaOnly = true;
-      }
-      return true;
-    });
-    
+    // Calculate token count
     const tokenCount = estimateTokens(messageElements);
     
-    console.log(`📊 Bolt extracted: ${filteredMessages.length} messages, ~${tokenCount} tokens`);
+    console.log(`📊 Final extraction: ${messages.length} messages, ~${tokenCount} tokens`);
     
     return {
-      messageCount: filteredMessages.length,
+      messageCount: messages.length,
       tokenCount: tokenCount,
-      messages: filteredMessages.slice(0, 5),
+      messages: messages, // Return ALL messages
       extractionMethod: usedSelector
     };
     
@@ -717,6 +1308,7 @@ function extractBoltData() {
     };
   }
 }
+
 function estimateTokens(elements) {
   let totalText = '';
   elements.forEach(el => {
