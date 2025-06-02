@@ -1,6 +1,7 @@
 // ChatGPT Platform Detection & Data Extraction
 console.log('ThreadLink content script loaded on:', window.location.hostname);
 
+const KEEP_THINKING = false; // note: thinking filter inconsistent
 
 
 // Detect platform and conversation data
@@ -265,79 +266,6 @@ function isActualConversationMessage(text, platform) {
   
   return trimmedText.length > 3;
 }
-// Helper function to generate artifact summaries
-function generateArtifactSummary(artifactElement) {
-  try {
-    const content = artifactElement.textContent || artifactElement.innerText || '';
-    
-    if (content.length < 50) {
-      return null; // Too small to be significant
-    }
-    
-    // Try to get artifact title/type from attributes or content
-    let title = 'Artifact';
-    let type = 'Content';
-    
-    // Check for title in attributes
-    const titleAttr = artifactElement.getAttribute('data-title') || 
-                     artifactElement.getAttribute('title') ||
-                     artifactElement.getAttribute('aria-label');
-    
-    if (titleAttr) {
-      title = titleAttr;
-    }
-    
-    // Detect type from content
-    if (content.includes('function') || content.includes('const') || content.includes('let')) {
-      type = 'JavaScript Code';
-    } else if (content.includes('<div') || content.includes('<component')) {
-      type = 'React Component';
-    } else if (content.includes('<html') || content.includes('<!DOCTYPE')) {
-      type = 'HTML Document';
-    } else if (content.includes('def ') || content.includes('import ')) {
-      type = 'Python Code';
-    } else if (content.includes('{') && content.includes('"')) {
-      type = 'JSON/Config';
-    } else if (content.includes('#') && content.includes('\n')) {
-      type = 'Markdown';
-    } else {
-      type = 'Code';
-    }
-    
-    const lines = content.split('\n').length;
-    const chars = content.length;
-    
-    return `[Artifact: "${title}" - ${type} (${chars} chars, ${lines} lines)]`;
-    
-  } catch (error) {
-    console.error('Error generating artifact summary:', error);
-    return '[Artifact: Content]';
-  }
-}
-
-// Helper function to detect code language
-function detectCodeLanguage(code) {
-  if (code.includes('function') || code.includes('const') || code.includes('=>')) {
-    return 'JavaScript';
-  }
-  if (code.includes('def ') || code.includes('import ')) {
-    return 'Python';
-  }
-  if (code.includes('<div') || code.includes('jsx')) {
-    return 'React/JSX';
-  }
-  if (code.includes('<html') || code.includes('<!DOCTYPE')) {
-    return 'HTML';
-  }
-  if (code.includes('SELECT') || code.includes('FROM')) {
-    return 'SQL';
-  }
-  if (code.includes('```')) {
-    return 'Markdown';
-  }
-  
-  return 'Code';
-}
 
 // Helper function to get all text nodes
 function getTextNodes(element) {
@@ -412,68 +340,83 @@ function processClaudeMessage(element) {
     
     // Clone element to avoid modifying original DOM
     const messageClone = element.cloneNode(true);
-    
-    // STEP 1: REMOVE THINKING CONTENT BY TARGETING SPECIFIC CONTAINER
-    console.log('🗑️ Looking for thinking containers...');
-    
-    // Target the specific thinking container structure
-    // Method 1: Find divs with tabindex="-1" containing thinking content
-    const tabindexDivs = messageClone.querySelectorAll('div[tabindex="-1"]');
-    
-    tabindexDivs.forEach(div => {
-      // Check if this contains thinking paragraphs
-      const paragraphs = div.querySelectorAll('p.whitespace-normal.break-words');
-      const hasThinkingContent = Array.from(paragraphs).some(p => {
-        const text = p.textContent || '';
-        return /^(The user|I've demonstrated|In this conversation|From the artifacts|Let me think|I should)/.test(text.trim());
-      });
-      
-      if (hasThinkingContent) {
-        console.log('🗑️ Found thinking container with tabindex="-1", removing entire container');
-        // Remove the entire thinking section (go up to the overflow container)
-        const overflowContainer = div.closest('.overflow-hidden.shrink-0') || 
-                                 div.closest('[class*="overflow-hidden"]') ||
-                                 div;
-        overflowContainer.remove();
-      }
-    });
-    
-    // Method 2: Also check for the gradient mask container (backup)
-    const gradientContainers = messageClone.querySelectorAll('[class*="mask-image"]');
-    gradientContainers.forEach(container => {
-      const text = container.textContent || '';
-      if (text.includes('The user is') || text.includes('In this conversation')) {
-        console.log('🗑️ Found thinking in gradient container, removing');
-        container.closest('.overflow-hidden.shrink-0')?.remove() || container.remove();
-      }
-    });
-    
-    // STEP 2: REMOVE ANY REMAINING TIME MARKERS
-    const allText = messageClone.querySelectorAll('*');
-    allText.forEach(el => {
-      if (el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE) {
-        const text = el.textContent?.trim() || '';
-        if (/^\d+s$/.test(text)) {
-          el.remove();
-        }
-      }
-    });
-    
+
     // STEP 3: REPLACE ARTIFACTS WITH SUMMARIES
     replaceClaudeArtifacts(messageClone);
     
+    
+    console.log('🗑️ Removing all buttons...');
+
+    const buttons = messageClone.querySelectorAll('button');
+    let buttonsRemoved = 0;
+
+    buttons.forEach(btn => {
+      // keep buttons that hold artifacts *or* their placeholders
+      if (btn.querySelector('.artifact-block-cell, .threadlink-artifact-placeholder, .threadlink-code-placeholder')) {
+        return;
+      }
+
+      const txt = btn.textContent?.trim() || '';
+      if (txt) {
+        console.log(`🔍 Removing button: "${txt.slice(0, 80)}..."`);
+        btn.remove();
+        buttonsRemoved++;
+      }
+    });
+
+    console.log(`✅ Removed ${buttonsRemoved} buttons`);
+
+    if (!KEEP_THINKING) {
+      // STEP 2: REMOVE THINKING CONTENT CONTAINERS
+      const tabindexDivs = messageClone.querySelectorAll('div[tabindex="-1"]');
+      
+      tabindexDivs.forEach(div => {
+        const paragraphs = div.querySelectorAll('p.whitespace-normal.break-words');
+        const hasThinkingContent = Array.from(paragraphs).some(p => {
+          const text = p.textContent || '';
+          return /^(The user|I've demonstrated|In this conversation|From the artifacts|Let me think|I should)/.test(text.trim());
+        });
+        
+        if (hasThinkingContent) {
+          console.log('🗑️ Found thinking container, removing...');
+          const overflowContainer = div.closest('.overflow-hidden.shrink-0') || 
+                                  div.closest('[class*="overflow-hidden"]') ||
+                                  div;
+          overflowContainer.remove();
+        }
+      });
+    }
+
     // STEP 4: HANDLE REMAINING CODE BLOCKS
     replaceCodeBlocks(messageClone);
     
-    // STEP 5: Get final text
+    // STEP 5: Get text
     let cleanedText = messageClone.innerText || messageClone.textContent || '';
     
-    // Final cleanup
-    cleanedText = cleanedText.replace(/^\d+s\s*/gm, '');
-    cleanedText = cleanedText.replace(/\b\w+\[Artifact:/g, '[Artifact:');
+    // SAFER APPROACH: Only remove thinking headers at the very START of the message
+    
+    if (!KEEP_THINKING) {
+      const firstLineMatch = cleanedText.match(/^(Thinking about|Engineered|Analyzed|Devised|Strategized|Diagnosed|Crafted|Mapped out|Pondered)[^\n]*\n/);
+      if (firstLineMatch) {
+        console.log(`🗑️ Removing thinking header at start: "${firstLineMatch[0].trim()}"`);
+        cleanedText = cleanedText.substring(firstLineMatch[0].length);
+      }
+    }
+    
+    // Fix artifact formatting
+    cleanedText = cleanedText.replace(/(\w+)\[Artifact:/g, '[Artifact:');
+
+    if (!cleanedText) {
+      const stubNodes = messageClone.querySelectorAll('.threadlink-artifact-placeholder');
+      if (stubNodes.length) {
+        cleanedText = Array.from(stubNodes).map(n => n.textContent).join('\n');
+      }
+    }
+    
+    // Clean up whitespace
     cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
     
-    console.log(`🧹 Claude processing complete: ${cleanedText.length} chars`);
+    console.log(`🧹 Claude processing: ${element.innerText?.length || 0} → ${cleanedText.length} chars`);
     
     return cleanedText;
     
@@ -483,113 +426,120 @@ function processClaudeMessage(element) {
   }
 }
 
-// REPLACE: removeClaudeThinkingProcess function with this much simpler version
-function removeClaudeThinkingProcess(messageClone) {
-  console.log('🗑️ Removing Claude thinking process (button blacklist approach)...');
-  
-  // SIMPLE APPROACH: Remove all button elements
-  // Since thinking process lives in buttons, just nuke all buttons
-  const buttons = messageClone.querySelectorAll('button');
-  buttons.forEach(button => {
-    const buttonText = button.textContent?.trim() || '';
-    
-    // Log what we're removing for debugging
-    if (buttonText.length > 10) {
-      console.log(`🗑️ Removing button content: "${buttonText.slice(0, 50)}..."`);
-    }
-    
-    // Remove the button entirely
-    button.remove();
-  });
-  
-  console.log(`✅ Removed ${buttons.length} buttons from Claude message`);
-  
-  // Optional: Clean up any remaining thinking text patterns as backup
-  const textNodes = getTextNodes(messageClone);
-  textNodes.forEach(textNode => {
-    const text = textNode.textContent || '';
-    if (/^\d+s\s+/.test(text) && text.length < 500) {
-      console.log(`🗑️ Removing remaining thinking text: "${text.slice(0, 50)}..."`);
-      textNode.remove();
-    }
-  });
-}
 
 // ADD: Replace Claude artifacts with summaries
 function replaceClaudeArtifacts(messageClone) {
-  console.log('🔧 Replacing Claude artifacts with summaries...');
-  
-  const artifactSelectors = [
-    '[data-testid*="artifact"]',
-    '.artifact-container', 
-    '[class*="artifact"]',
-    '.code-editor',
-    '[data-type="artifact"]',
-    '[class*="code-block"]',
-    '.prose-code',
-    '[data-artifact-id]',
-    '.artifact-window',
-    '.artifact-panel'
-  ];
-  
-  artifactSelectors.forEach(selector => {
+  console.log('🔧 Replacing Claude artifacts with placeholders...');
+
+  // Target all elements with the 'artifact-block-cell' class within the cloned message
+  const artifacts = messageClone.querySelectorAll([
+    '.artifact-block-cell',
+    'figure[data-testid^="artifact"]',
+    'div[data-testid*="artifact"]',
+    'figure > img[src^="blob:"]',          // catch raw images
+    'figure a[download]'                   // catch file links
+  ].join(','));
+
+  if (!artifacts.length) return;      
+  let artifactsReplaced = 0;
+
+  // Iterate over each found artifact element
+  artifacts.forEach(artifact => {
     try {
-      messageClone.querySelectorAll(selector).forEach(artifact => {
-        const artifactSummary = generateArtifactSummary(artifact);
-        
-        if (artifactSummary) {
-          console.log(`🔧 Replacing artifact: ${artifactSummary}`);
-          const summaryNode = document.createTextNode(artifactSummary);
-          artifact.parentNode.replaceChild(summaryNode, artifact);
-        } else {
-          console.log(`🗑️ Removing empty artifact: ${selector}`);
-          artifact.remove();
-        }
-      });
+      // Get the placeholder text using the helper function
+      const placeholderText = generateArtifactSummary(artifact);
+
+      // Create a new <div> element to hold the placeholder text
+      const placeholderDiv = document.createElement('div');
+      placeholderDiv.textContent = placeholderText; // Set its text content
+      // Add a class for potential debugging or future styling if needed
+      placeholderDiv.classList.add('threadlink-artifact-placeholder');
+
+      // Insert the new <div> *before* the original artifact <div> in the DOM
+      artifact.parentNode?.insertBefore(placeholderDiv, artifact);
+
+      // Remove the original artifact <div>
+      artifact.remove(); // The .remove() method is simple and effective
+
+      artifactsReplaced++;
+      console.log(`✅ Replaced artifact with: "${placeholderText}"`);
+
     } catch (e) {
-      console.warn(`Artifact selector error for ${selector}:`, e);
+      console.warn('Error replacing artifact:', e);
+      // Fallback: If an error occurs during replacement, insert a generic placeholder
+      const genericPlaceholderDiv = document.createElement('div');
+      genericPlaceholderDiv.textContent = '[Artifact was here]';
+      genericPlaceholderDiv.classList.add('threadlink-artifact-placeholder-fallback');
+      artifact.parentNode?.insertBefore(genericPlaceholderDiv, artifact);
+      artifact.remove();
+      artifactsReplaced++;
     }
   });
+
+  console.log(`✅ Replaced ${artifactsReplaced} artifacts total`);
 }
 
 // ADD: Replace large code blocks with summaries
 function replaceCodeBlocks(messageClone) {
   console.log('📄 Processing code blocks...');
-  
-  const codeBlocks = messageClone.querySelectorAll('pre, code, .code-block, [class*="code"]');
-  codeBlocks.forEach(codeBlock => {
-    const codeText = codeBlock.textContent || '';
-    
-    if (codeText.length > 200) { // Substantial code
-      const lines = codeText.split('\n').length;
-      const language = detectCodeLanguage(codeText);
-      const summary = `[Artifact: "${language} Code" (${codeText.length} chars, ${lines} lines)]`;
-      
-      console.log(`🔧 Replacing code block: ${summary}`);
-      
-      const summaryNode = document.createTextNode(summary);
-      codeBlock.parentNode.replaceChild(summaryNode, codeBlock);
-    }
-  });
-}
 
+  // Define selectors for identifying code blocks (e.g., <pre>, <code>)
+  const codeSelectors = ['pre', 'code', '.code-block', '[class*="code"]'];
+  let codeBlocksReplaced = 0;
+
+  // Iterate over each selector
+  codeSelectors.forEach(selector => {
+    // Find all matching code blocks within the cloned message
+    const codeBlocks = messageClone.querySelectorAll(selector);
+    codeBlocks.forEach(codeBlock => {
+      // Only replace if it's substantial (e.g., not an inline code snippet)
+      // Or if it's a <pre> tag, which typically indicates a block of code.
+      const text = codeBlock.textContent || '';
+      if (text.length > 100 || codeBlock.tagName === 'PRE') {
+        console.log(`📄 Replacing code block (${text.length} chars)`);
+
+        // Use your existing helper to detect the programming language
+        const language = detectCodeLanguage(text);
+        const lines = text.split('\n').length;
+        const chars = text.length;
+        // Create the placeholder text string
+        const placeholderText = `[Code block: ${language} (${chars} chars, ${lines} lines)]`;
+
+        // Create a new <div> element to hold the placeholder text
+        const placeholderDiv = document.createElement('div');
+        placeholderDiv.textContent = placeholderText;
+        placeholderDiv.classList.add('threadlink-code-placeholder');
+
+        // Insert the new <div> *before* the original code block 
+        codeBlock.parentNode?.insertBefore(placeholderDiv, codeBlock);
+
+        // Remove the original code block
+        codeBlock.remove();
+
+        codeBlocksReplaced++;
+      }
+    });
+  });
+
+  console.log(`✅ Replaced ${codeBlocksReplaced} code blocks total`);
+}
 // ADD: Improved role detection
 function determineMessageRole(element, platform, index, content) {
   if (platform === 'claude') {
     // Try multiple Claude-specific detection methods
     const isHuman = element.getAttribute('data-testid')?.includes('human-message') ||
-                   element.getAttribute('data-testid')?.includes('user-message') ||
-                   element.querySelector('[data-testid*="human"]') ||
-                   element.closest('[data-testid*="human"]') ||
-                   element.getAttribute('data-message-role') === 'user' ||
-                   element.getAttribute('data-role') === 'user';
+                    element.getAttribute('data-testid')?.includes('user-message') ||
+                    element.querySelector('[data-testid*="human"]') ||
+                    element.closest('[data-testid*="human"]') ||
+                    element.getAttribute('data-message-role') === 'user' ||
+                    element.getAttribute('data-role') === 'user';
     
     const isAssistant = element.getAttribute('data-testid')?.includes('ai-message') ||
-                       element.getAttribute('data-testid')?.includes('assistant-message') ||
-                       element.querySelector('[data-testid*="ai"]') ||
-                       element.closest('[data-testid*="ai"]') ||
-                       element.getAttribute('data-message-role') === 'assistant' ||
-                       element.getAttribute('data-role') === 'assistant';
+                        element.getAttribute('data-testid')?.includes('assistant-message') ||
+                        element.querySelector('[data-testid*="ai"]') ||
+                        element.closest('[data-testid*="ai"]') ||
+                        element.getAttribute('data-message-role') === 'assistant' ||
+                        element.getAttribute('data-role') === 'assistant';
     
     if (isHuman) {
       return 'user';
@@ -621,35 +571,25 @@ function determineMessageRole(element, platform, index, content) {
 // ADD: Generate artifact summary from DOM element
 function generateArtifactSummary(artifactElement) {
   try {
-    const content = artifactElement.textContent || artifactElement.innerText || '';
-    
-    if (content.length < 50) {
-      return null; // Too small to be significant
+    const titleElement = artifactElement.querySelector('.leading-tight.text-sm');
+    let title = titleElement ? titleElement.innerText.trim() : 'Unnamed Artifact';
+
+    const typeElement = artifactElement.querySelector('.text-sm.text-text-300');
+    // Remove the non-breaking space if it exists from the type text
+    let type = typeElement ? typeElement.innerText.trim().replace(/\s* \s*$/, '') : 'Artifact';
+
+    // Prefer data-title attribute if it's more descriptive
+    const dataTitle = artifactElement.getAttribute('data-title');
+    if (dataTitle && dataTitle.length > title.length) {
+         title = dataTitle;
     }
-    
-    // Try to get artifact title/type from attributes
-    let title = 'Content';
-    let type = 'Artifact';
-    
-    const titleAttr = artifactElement.getAttribute('data-title') || 
-                     artifactElement.getAttribute('title') ||
-                     artifactElement.getAttribute('aria-label');
-    
-    if (titleAttr) {
-      title = titleAttr;
-    }
-    
-    // Detect type from content
-    type = detectContentType(content);
-    
-    const lines = content.split('\n').length;
-    const chars = content.length;
-    
-    return `[Artifact: "${title}" - ${type} (${chars} chars, ${lines} lines)]`;
-    
+
+    // Return the string that will be used as content for the new DOM element
+    return `[Artifact: "${title}" - ${type}]`;
+
   } catch (error) {
-    console.error('Error generating artifact summary:', error);
-    return '[Artifact: Content]';
+    console.error('Error generating artifact summary from element:', error);
+    return '[Artifact: Content]'; // Fallback in case of parsing error
   }
 }
 
@@ -701,64 +641,6 @@ function detectCodeLanguage(code) {
   return 'Code';
 }
 
-// ADD: Get all text nodes from element
-function getTextNodes(element) {
-  const textNodes = [];
-  const walker = document.createTreeWalker(
-    element,
-    NodeFilter.SHOW_TEXT,
-    null,
-    false
-  );
-  
-  let node;
-  while (node = walker.nextNode()) {
-    textNodes.push(node);
-  }
-  
-  return textNodes;
-}
-
-// ADD: Helper function to detect if content looks like an artifact
-function isArtifactContent(text) {
-  const artifactIndicators = [
-    /```[\w]*\n[\s\S]*\n```/,           // Code blocks
-    /function\s+\w+\s*\(/,              // Function definitions
-    /class\s+\w+/,                      // Class definitions
-    /import\s+.*from/,                  // Import statements
-    /export\s+(default\s+)?/,           // Export statements
-    /<\w+[^>]*>/,                       // HTML/JSX tags
-    /\{\s*"[\w":\s,\[\]{}]*\}/,        // JSON objects
-    /#!/,                               // Shebang lines
-    /package\.json|tsconfig|webpack/    // Config files
-  ];
-  
-  return artifactIndicators.some(pattern => pattern.test(text));
-}
-
-// ADD: Helper function to estimate content type from artifacts
-function detectArtifactType(content) {
-  if (content.includes('function') || content.includes('const') || content.includes('let')) {
-    return 'JavaScript Code';
-  }
-  if (content.includes('<div') || content.includes('<component')) {
-    return 'React Component';
-  }
-  if (content.includes('<html') || content.includes('<!DOCTYPE')) {
-    return 'HTML Document';
-  }
-  if (content.includes('def ') || content.includes('import ')) {
-    return 'Python Code';
-  }
-  if (content.includes('{') && content.includes('"')) {
-    return 'JSON Data';
-  }
-  if (content.includes('---') && content.includes('#')) {
-    return 'Markdown Document';
-  }
-  
-  return 'Code Artifact';
-}
 
 // REPLACE: extractClaudeData function
 function extractClaudeData() {
@@ -808,7 +690,7 @@ function extractClaudeData() {
               className: el.className
             });
             
-            return text && text.length > 5;
+            return text && text.replace(/\[.*?\]/g,'').length > 5;
           });
           
           console.log(`📊 Selector "${selector}": ${elements.length} total, ${validMessages.length} valid after filtering`);
@@ -958,359 +840,8 @@ function estimateTokensFromMessages(messages) {
 }
 
 
-// **NEW: Artifact replacement function**
-function replaceArtifactsWithPlaceholders(content) {
-  console.log('🎨 Processing artifacts in content...');
-  
-  let processedContent = content;
-  
-  // 1. Remove Claude's internal thinking lines (time markers + reasoning)
-  processedContent = processedContent.replace(
-    /^\d+s\s+.*$/gm, 
-    ''
-  );
-  
-  // 2. Replace Claude's artifact headers (specific format)
-  processedContent = processedContent.replace(
-    /^(.*?)\s*(Code|Document|Text)\s*∙\s*Version\s*\d+\s*$/gm, 
-    (match, title, type) => {
-      console.log(`🔧 Found Claude artifact header: "${title.trim()}" - ${type}`);
-      return `[Artifact: "${title.trim()}" - ${type}]`;
-    }
-  );
-  
-  // 3. Replace substantial code blocks (200+ chars)
-  processedContent = processedContent.replace(/```(\w+)?\n([\s\S]*?)\n```/g, (match, language, code) => {
-    if (code.trim().length > 200) {
-      const lines = code.split('\n').length;
-      const chars = match.length;
-      const lang = language || 'code';
-      
-      console.log(`🔧 Found substantial code artifact: ${lang} (${chars} chars, ${lines} lines)`);
-      return `[Artifact: "${lang} Code" (${chars} chars, ${lines} lines)]`;
-    }
-    
-    // Keep small code snippets as they're likely examples in conversation
-    return match;
-  });
-  
-  // 4. Clean up extra whitespace left by removed thinking lines
-  processedContent = processedContent.replace(/\n\s*\n\s*\n/g, '\n\n');
-  
-  // Keep everything else as-is - preserve all conversation context
-  return processedContent;
-}
 
-// Extract Gemini conversation data
-function extractGeminiData() {
-  try {
-    console.log('🔍 Attempting to extract Gemini data...');
-    console.log('Current URL:', window.location.href);
-    
-    // Gemini conversation selectors
-    const selectorStrategies = [
-      // Likely Gemini selectors (educated guesses)
-      '[data-testid*="message"]',
-      '[data-testid*="conversation"]',
-      '[role="article"]',
-      '.message',
-      '.conversation-turn',
-      
-      // Google-style selectors
-      '[jsname*="message"]',
-      '[data-id*="message"]',
-      'div[data-pid]',
-      
-      // Content structure selectors
-      'main article',
-      'main div[class*="conversation"]',
-      'div[class*="chat"]',
-      '.response-container',
-      
-      // More generic approaches
-      'main div[class*="flex"][class*="flex-col"]'
-    ];
-    
-    let messageElements = [];
-    let usedSelector = '';
-    
-    for (const selector of selectorStrategies) {
-      try {
-        const elements = document.querySelectorAll(selector);
-        console.log(`Gemini selector "${selector}": found ${elements.length} elements`);
-        
-        if (elements.length > 0) {
-          const validMessages = Array.from(elements).filter(el => {
-            const text = el.innerText?.trim();
-            console.log(`🔍 Checking Gemini element with selector "${selector}":`, {
-              text: text?.slice(0, 50),
-              length: text?.length,
-              tagName: el.tagName
-            });
-            return text && text.length > 5;
-          });
-          
-          console.log(`📊 Gemini selector "${selector}": ${elements.length} total, ${validMessages.length} valid after filtering`);
-          
-          if (validMessages.length > messageElements.length) {
-            messageElements = validMessages;
-            usedSelector = selector;
-            console.log(`✅ Better Gemini selector found: "${selector}" with ${validMessages.length} valid messages`);
-          }
-        }
-      } catch (e) {
-        console.log(`Gemini selector "${selector}" failed:`, e.message);
-      }
-    }
-    
-    // Content-based detection for Gemini
-    if (messageElements.length === 0) {
-      console.log('🔍 Trying Gemini content-based detection...');
-      
-      const mainContent = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
-      
-      if (mainContent) {
-        const textBlocks = mainContent.querySelectorAll('div, p, article');
-        const potentialMessages = Array.from(textBlocks).filter(el => {
-          const text = el.innerText?.trim();
-          return text && 
-                 text.length > 10 && 
-                 text.length < 10000 && 
-                 !text.match(/^(Gemini|Google|Settings|New Chat|Share)$/i);
-        });
-        
-        console.log(`Gemini content detection found ${potentialMessages.length} potential messages`);
-        
-        if (potentialMessages.length > 0) {
-          messageElements = potentialMessages.slice(0, 50);
-          usedSelector = 'gemini-content-based';
-        }
-      }
-    }
-    
-    // Gemini conversation page detection
-    if (messageElements.length === 0) {
-      const isGeminiConversation = window.location.pathname.includes('/chat') || 
-                                  document.querySelector('textarea[placeholder*="message"]') ||
-                                  document.querySelector('textarea[placeholder*="Enter a prompt"]') ||
-                                  document.title.includes('Gemini') ||
-                                  document.querySelector('[data-testid*="prompt"]');
-      
-      console.log('Is Gemini conversation page?', isGeminiConversation);
-      
-      if (isGeminiConversation) {
-        console.log('📝 On Gemini conversation page but no messages detected - returning fallback');
-        return {
-          messageCount: 6,
-          tokenCount: 2400,
-          messages: [{ role: 'user', content: 'Gemini conversation detected but unable to parse messages...' }],
-          extractionMethod: 'gemini-fallback-conversation-page'
-        };
-      }
-    }
-    
-    if (messageElements.length === 0) {
-      console.log('❌ No Gemini messages found with any method');
-      return {
-        messageCount: 0,
-        tokenCount: 0,
-        messages: [],
-        extractionMethod: 'gemini-no-messages-found'
-      };
-    }
-    
-    // Extract message content using our new function
-    const messages = extractMessageContent(messageElements, 'gemini');
-    
-    // Calculate token count
-    const tokenCount = estimateTokens(messageElements);
-    
-    console.log(`📊 Final extraction: ${messages.length} messages, ~${tokenCount} tokens`);
-    
-    return {
-      messageCount: messages.length,
-      tokenCount: tokenCount,
-      messages: messages, // Return ALL messages
-      extractionMethod: usedSelector
-    };
-    
-  } catch (error) {
-    console.error('💥 Error extracting Gemini data:', error);
-    return {
-      messageCount: 0,
-      tokenCount: 0,
-      messages: [],
-      extractionMethod: 'gemini-error: ' + error.message
-    };
-  }
-}
 
-// Extract Bolt.new conversation data
-function extractBoltData() {
-  try {
-    console.log('🔍 Attempting to extract Bolt.new data...');
-    console.log('Current URL:', window.location.href);
-    
-    // Bolt.new selectors - guessing based on modern chat interfaces
-    const selectorStrategies = [
-      // Likely Bolt.new selectors
-      '[data-testid*="message"]',
-      '[data-testid*="chat"]',
-      '[data-testid*="conversation"]',
-      '.message',
-      '.chat-message',
-      
-      // Modern React app patterns
-      'div[class*="message"]',
-      'div[class*="chat"]',
-      'div[class*="conversation"]',
-      
-      // Bolt-specific guesses
-      '[data-bolt*="message"]',
-      '.bolt-message',
-      '.bolt-chat',
-      
-      // Generic chat patterns
-      'main div[role="article"]',
-      'main div[class*="flex"]',
-      '.prose' // Bolt might use prose styling
-    ];
-    
-    let messageElements = [];
-    let usedSelector = '';
-    
-    for (const selector of selectorStrategies) {
-      try {
-        const elements = document.querySelectorAll(selector);
-        console.log(`Bolt selector "${selector}": found ${elements.length} elements`);
-        
-        if (elements.length > 0) {
-          const validMessages = Array.from(elements).filter(el => {
-            const text = el.innerText?.trim();
-            console.log(`🔍 Checking Bolt element with selector "${selector}":`, {
-              text: text?.slice(0, 50),
-              length: text?.length,
-              tagName: el.tagName
-            });
-            return text && text.length > 5;
-          });
-          
-          console.log(`📊 Bolt selector "${selector}": ${elements.length} total, ${validMessages.length} valid after filtering`);
-          
-          if (validMessages.length > messageElements.length) {
-            messageElements = validMessages;
-            usedSelector = selector;
-            console.log(`✅ Better Bolt selector found: "${selector}" with ${validMessages.length} valid messages`);
-          }
-        }
-      } catch (e) {
-        console.log(`Bolt selector "${selector}" failed:`, e.message);
-      }
-    }
-    
-    // Content-based detection for Bolt.new
-    if (messageElements.length === 0) {
-      console.log('🔍 Trying Bolt.new content-based detection...');
-      
-      const mainContent = document.querySelector('main') || document.querySelector('#root') || document.body;
-      
-      if (mainContent) {
-        const textBlocks = mainContent.querySelectorAll('div, p, article');
-        const potentialMessages = Array.from(textBlocks).filter(el => {
-          const text = el.innerText?.trim();
-          return text && 
-                 text.length > 10 && 
-                 text.length < 10000 && 
-                 !text.match(/^(Bolt|New|Save|Deploy|Settings|File|Preview)$/i);
-        });
-        
-        console.log(`Bolt content detection found ${potentialMessages.length} potential messages`);
-        
-        if (potentialMessages.length > 0) {
-          messageElements = potentialMessages.slice(0, 30);
-          usedSelector = 'bolt-content-based';
-        }
-      }
-    }
-    
-    // Bolt.new conversation page detection
-    if (messageElements.length === 0) {
-      const isBoltConversation = document.querySelector('textarea[placeholder*="describe"]') ||
-                                document.querySelector('textarea[placeholder*="prompt"]') ||
-                                document.querySelector('textarea[placeholder*="message"]') ||
-                                document.title.includes('Bolt') ||
-                                window.location.hostname.includes('bolt.new');
-      
-      console.log('Is Bolt conversation page?', isBoltConversation);
-      
-      if (isBoltConversation) {
-        console.log('📝 On Bolt conversation page but no messages detected - returning fallback');
-        return {
-          messageCount: 4,
-          tokenCount: 1600,
-          messages: [{ role: 'user', content: 'Bolt.new conversation detected but unable to parse messages...' }],
-          extractionMethod: 'bolt-fallback-conversation-page'
-        };
-      }
-    }
-    
-    if (messageElements.length === 0) {
-      console.log('❌ No Bolt messages found with any method');
-      return {
-        messageCount: 0,
-        tokenCount: 0,
-        messages: [],
-        extractionMethod: 'bolt-no-messages-found'
-      };
-    }
-    
-    // Extract message content using our new function
-    const messages = extractMessageContent(messageElements, 'bolt');
-    
-    // Calculate token count
-    const tokenCount = estimateTokens(messageElements);
-    
-    console.log(`📊 Final extraction: ${messages.length} messages, ~${tokenCount} tokens`);
-    
-    return {
-      messageCount: messages.length,
-      tokenCount: tokenCount,
-      messages: messages, // Return ALL messages
-      extractionMethod: usedSelector
-    };
-    
-  } catch (error) {
-    console.error('💥 Error extracting Bolt data:', error);
-    return {
-      messageCount: 0,
-      tokenCount: 0,
-      messages: [],
-      extractionMethod: 'bolt-error: ' + error.message
-    };
-  }
-}
-
-function estimateTokens(elements) {
-  let totalText = '';
-  elements.forEach(el => {
-    const text = el.innerText || el.textContent || '';
-    totalText += text + ' ';
-  });
-  
-  // More accurate token estimation
-  // Remove extra whitespace and count words
-  const cleanText = totalText.replace(/\s+/g, ' ').trim();
-  const wordCount = cleanText.split(' ').length;
-  
-  // Rough estimation: 
-  // - 1 token ≈ 0.75 words for English
-  // - So 1 word ≈ 1.33 tokens
-  const estimatedTokens = Math.floor(wordCount * 1.33);
-  
-  console.log(`📊 Token estimation: ${cleanText.length} chars, ${wordCount} words, ~${estimatedTokens} tokens`);
-  
-  return estimatedTokens;
-}
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
