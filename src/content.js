@@ -409,61 +409,53 @@ function extractMessageContent(messageElements, platform) {
 function processClaudeMessage(element) {
   try {
     console.log('🎯 Processing Claude message...');
-    console.log('📍 Original element:', element);
     
     // Clone element to avoid modifying original DOM
     const messageClone = element.cloneNode(true);
     
-    // Debug: Check what we're working with
-    console.log('🔍 Cloned element classes:', messageClone.className);
-    console.log('🔍 Cloned element HTML preview:', messageClone.innerHTML.slice(0, 200) + '...');
+    // STEP 1: REMOVE THINKING CONTENT BY TARGETING SPECIFIC CONTAINER
+    console.log('🗑️ Looking for thinking containers...');
     
-    // STEP 1: REMOVE THINKING PROCESS BUTTONS
-    // Target buttons with the specific class pattern you showed
-    const thinkingSelectors = [
-      'button.group\\/row',  // Escaped forward slash
-      'button[class*="group/row"]',  // Alternative selector
-      'button:has(.text-text-300)',  // If :has() is supported
-      'button',  // Fallback to all buttons
-      '.text-text-300'  // Direct text class
-    ];
+    // Target the specific thinking container structure
+    // Method 1: Find divs with tabindex="-1" containing thinking content
+    const tabindexDivs = messageClone.querySelectorAll('div[tabindex="-1"]');
     
-    let totalRemoved = 0;
-    
-    thinkingSelectors.forEach(selector => {
-      try {
-        const elements = messageClone.querySelectorAll(selector);
-        console.log(`🔍 Selector "${selector}" found ${elements.length} elements`);
-        
-        elements.forEach(el => {
-          const text = el.textContent?.trim() || '';
-          
-          // Check if this is thinking text (starts with time marker or thinking patterns)
-          if (/^\d+s/.test(text) || text.includes('The user is asking') || text.includes('Looking at')) {
-            console.log(`🗑️ Removing thinking element: "${text.slice(0, 50)}..."`);
-            el.remove();
-            totalRemoved++;
-          } else if (selector === 'button' && text.length > 100) {
-            // For generic button selector, remove long text that looks like thinking
-            console.log(`🗑️ Removing suspicious button: "${text.slice(0, 50)}..."`);
-            el.remove();
-            totalRemoved++;
-          }
-        });
-      } catch (e) {
-        console.warn(`Selector ${selector} failed:`, e);
+    tabindexDivs.forEach(div => {
+      // Check if this contains thinking paragraphs
+      const paragraphs = div.querySelectorAll('p.whitespace-normal.break-words');
+      const hasThinkingContent = Array.from(paragraphs).some(p => {
+        const text = p.textContent || '';
+        return /^(The user|I've demonstrated|In this conversation|From the artifacts|Let me think|I should)/.test(text.trim());
+      });
+      
+      if (hasThinkingContent) {
+        console.log('🗑️ Found thinking container with tabindex="-1", removing entire container');
+        // Remove the entire thinking section (go up to the overflow container)
+        const overflowContainer = div.closest('.overflow-hidden.shrink-0') || 
+                                 div.closest('[class*="overflow-hidden"]') ||
+                                 div;
+        overflowContainer.remove();
       }
     });
     
-    console.log(`✅ Removed ${totalRemoved} thinking elements total`);
+    // Method 2: Also check for the gradient mask container (backup)
+    const gradientContainers = messageClone.querySelectorAll('[class*="mask-image"]');
+    gradientContainers.forEach(container => {
+      const text = container.textContent || '';
+      if (text.includes('The user is') || text.includes('In this conversation')) {
+        console.log('🗑️ Found thinking in gradient container, removing');
+        container.closest('.overflow-hidden.shrink-0')?.remove() || container.remove();
+      }
+    });
     
-    // STEP 2: ADDITIONAL CLEANUP - Remove any remaining thinking text patterns
-    const allTextNodes = getTextNodes(messageClone);
-    allTextNodes.forEach(node => {
-      const text = node.textContent || '';
-      if (/^\d+s\s+The user/.test(text) || /^\d+s\s+Looking at/.test(text)) {
-        console.log(`🗑️ Removing text node: "${text.slice(0, 50)}..."`);
-        node.textContent = '';
+    // STEP 2: REMOVE ANY REMAINING TIME MARKERS
+    const allText = messageClone.querySelectorAll('*');
+    allText.forEach(el => {
+      if (el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE) {
+        const text = el.textContent?.trim() || '';
+        if (/^\d+s$/.test(text)) {
+          el.remove();
+        }
       }
     });
     
@@ -473,26 +465,15 @@ function processClaudeMessage(element) {
     // STEP 4: HANDLE REMAINING CODE BLOCKS
     replaceCodeBlocks(messageClone);
     
-    // STEP 5: POST-PROCESS THE TEXT
+    // STEP 5: Get final text
     let cleanedText = messageClone.innerText || messageClone.textContent || '';
     
-    // Final cleanup - remove any thinking patterns that leaked through
-    const thinkingPatterns = [
-      /^\d+s\s+The user is asking.*$/gm,          // Time + "The user is asking"
-      /^\d+s\s+Looking at the current.*$/gm,     // Time + "Looking at the current"  
-      /^\d+s\s+I should point out.*$/gm,         // Time + "I should point out"
-      /^\d+s\s+Let me think.*$/gm,               // Time + "Let me think"
-      /^\d+s\s+I need to consider.*$/gm,         // Time + "I need to consider"
-    ];
-    
-    thinkingPatterns.forEach(pattern => {
-      cleanedText = cleanedText.replace(pattern, '');
-    });
-    
-    // Remove excessive newlines
+    // Final cleanup
+    cleanedText = cleanedText.replace(/^\d+s\s*/gm, '');
+    cleanedText = cleanedText.replace(/\b\w+\[Artifact:/g, '[Artifact:');
     cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
     
-    console.log(`🧹 Claude processing complete: ${element.innerText?.length || 0} → ${cleanedText.length} chars`);
+    console.log(`🧹 Claude processing complete: ${cleanedText.length} chars`);
     
     return cleanedText;
     
