@@ -73,14 +73,14 @@ function ThreadLink() {
         </button>
       </div>
 
-      <div className="header-text mb-8 mt-3 px-3" style={{ fontFamily: 'Racing Sans One' }}>
+      <div className="header-text mb-4 mt-3 px-3" style={{ fontFamily: 'Racing Sans One' }}>
         <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
         <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
       </div>
 
       <div className="px-3">
         <textarea
-          className={`w-full h-[calc(100vh-280px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
+          className={`w-full h-[calc(100vh-280px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-3 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
           value={inputText}
           onChange={handleTextChange}
@@ -96,7 +96,7 @@ function ThreadLink() {
                 {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-8">
+            <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-4">
               <label>Target:</label>
               <input
                 type="number"
