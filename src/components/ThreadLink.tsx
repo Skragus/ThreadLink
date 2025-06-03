@@ -66,21 +66,21 @@ function ThreadLink() {
   };
 
   return (
-    <div className="app-container relative min-h-screen">
+    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] p-3">
       <div className="absolute top-3 right-3">
         <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
           ⚙️
         </button>
       </div>
 
-      <div className="header-text mb-4 mt-3 px-3" style={{ fontFamily: 'Racing Sans One' }}>
+      <div className="header-text mb-4 mt-6" style={{ fontFamily: 'Racing Sans One' }}>
         <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
         <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
       </div>
 
-      <div className="px-3">
+      <div className="mb-3">
         <textarea
-          className={`w-full h-[calc(100vh-280px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-3 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
+          className={`w-full h-[calc(100vh-140px)] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
           value={inputText}
           onChange={handleTextChange}
@@ -88,67 +88,65 @@ function ThreadLink() {
         />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--divider)]">
-        <div className="flex justify-between items-center h-[72px] px-3">
-          <div className="flex items-center">
-            <div className="w-[180px] flex-shrink-0">
-              <span className="text-[var(--text-secondary)]">
-                {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-4">
-              <label>Target:</label>
-              <input
-                type="number"
-                value={targetTokens}
-                onChange={handleTargetChange}
-                step="100"
-                min="100"
-                className="w-20 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)]"
-              />
-              <span>tokens</span>
-            </div>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center">
+          <div className="w-[180px] flex-shrink-0">
+            <span className="text-[var(--text-secondary)]">
+              {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}
+            </span>
           </div>
-          
-          <div className="flex space-x-3 items-center">
-            {inputText && !isProcessed && (
+          <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-4">
+            <label>Target:</label>
+            <input
+              type="number"
+              value={targetTokens}
+              onChange={handleTargetChange}
+              step="100"
+              min="100"
+              className="w-20 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)]"
+            />
+            <span>tokens</span>
+          </div>
+        </div>
+        
+        <div className="flex space-x-3 items-center">
+          {inputText && !isProcessed && (
+            <button 
+              onClick={handleCondense}
+              disabled={isLoading}
+              className="h-[42px] bg-[var(--highlight-blue)] text-white px-6 rounded-lg disabled:opacity-50 min-w-[120px]"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  Processing...
+                </div>
+              ) : (
+                'Condense'
+              )}
+            </button>
+          )}
+          {isProcessed && (
+            <>
               <button 
-                onClick={handleCondense}
-                disabled={isLoading}
-                className="h-[42px] bg-[var(--highlight-blue)] text-white px-6 rounded-lg disabled:opacity-50 min-w-[120px]"
+                onClick={handleCopy}
+                className="h-[42px] bg-[var(--highlight-blue)] text-white px-6 rounded-lg relative min-w-[100px]"
               >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Condense'
+                <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
+                {isCopied && (
+                  <span className="absolute inset-0 flex items-center justify-center animate-pulse">
+                    ✓
+                  </span>
                 )}
               </button>
-            )}
-            {isProcessed && (
-              <>
-                <button 
-                  onClick={handleCopy}
-                  className="h-[42px] bg-[var(--highlight-blue)] text-white px-6 rounded-lg relative min-w-[100px]"
-                >
-                  <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
-                  {isCopied && (
-                    <span className="absolute inset-0 flex items-center justify-center animate-pulse">
-                      ✓
-                    </span>
-                  )}
-                </button>
-                <button 
-                  onClick={handleReset}
-                  className="h-[42px] bg-[var(--text-secondary)] text-white px-6 rounded-lg min-w-[100px]"
-                >
-                  Reset
-                </button>
-              </>
-            )}
-          </div>
+              <button 
+                onClick={handleReset}
+                className="h-[42px] bg-[var(--text-secondary)] text-white px-6 rounded-lg min-w-[100px]"
+              >
+                Reset
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
