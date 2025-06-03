@@ -89,7 +89,7 @@ function ThreadLink() {
 
       <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--divider)]">
         <div className="flex justify-between items-center h-[72px] px-6">
-          <div className="flex items-center">
+          <div className="flex items-center pl-6">
             <div className="w-[180px] flex-shrink-0">
               <span className="text-[var(--text-secondary)]">
                 {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}
