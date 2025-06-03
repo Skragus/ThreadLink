@@ -67,18 +67,17 @@ function ThreadLink() {
 
   return (
     <div className="app-container relative min-h-screen">
-      <div className="absolute top-6 right-6">
-        <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+      <div className="flex items-center justify-between px-6 pt-6 mb-6">
+        <div className="header-text" style={{ fontFamily: 'Racing Sans One' }}>
+          <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
+          <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
+        </div>
+        <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--box-violet)] transition-colors">
           ⚙️
         </button>
       </div>
 
-      <div className="header-text mb-6 mt-6 px-6" style={{ fontFamily: 'Racing Sans One' }}>
-        <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
-        <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
-      </div>
-
-      <div className="px-6">
+      <div className="px-6 mb-[88px]">
         <textarea
           className={`w-full h-[calc(100vh-180px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-6 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
