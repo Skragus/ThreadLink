@@ -67,7 +67,7 @@ function ThreadLink() {
 
   return (
     <div className="app-container relative min-h-screen flex flex-col">
-      <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--divider)] flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--divider)] flex-shrink-0">
         <div className="header-text" style={{ fontFamily: 'Racing Sans One' }}>
           <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
           <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
@@ -88,7 +88,7 @@ function ThreadLink() {
       </div>
 
       <div className="border-t border-[var(--divider)] bg-[var(--bg-primary)] flex-shrink-0">
-        <div className="flex justify-between items-center h-16 px-6">
+        <div className="flex justify-between items-center h-16 px-6 py-4">
           <div className="flex items-center">
             <div className="w-[180px] flex-shrink-0">
               <span className="text-[var(--text-secondary)]">
