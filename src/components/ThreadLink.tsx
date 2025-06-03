@@ -112,9 +112,14 @@ function ThreadLink() {
             <>
               <button 
                 onClick={handleCopy}
-                className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg"
+                className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg relative"
               >
-                {isCopied ? 'Copied!' : 'Copy'}
+                <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
+                {isCopied && (
+                  <span className="absolute inset-0 flex items-center justify-center animate-pulse">
+                    ✓
+                  </span>
+                )}
               </button>
               <button 
                 onClick={() => {
