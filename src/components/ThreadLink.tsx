@@ -36,6 +36,21 @@ function ThreadLink() {
     }
   };
 
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setInputText(text);
+      
+      // Update token count
+      const words = text.trim().split(/\s+/).length;
+      const rawTokens = Math.floor(words * 1.33);
+      const roundedTokens = roundTokenCount(rawTokens);
+      setTokenCount(roundedTokens);
+    } catch (err) {
+      console.error('Failed to read clipboard contents: ', err);
+    }
+  };
+
   const handleCondense = async () => {
     setIsLoading(true);
     
@@ -113,6 +128,14 @@ function ThreadLink() {
           </div>
           
           <div className="flex space-x-3 items-center">
+            {!inputText && !isProcessed && (
+              <button 
+                onClick={handlePaste}
+                className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg min-w-[100px]"
+              >
+                Paste
+              </button>
+            )}
             {inputText && !isProcessed && (
               <button 
                 onClick={handleCondense}
