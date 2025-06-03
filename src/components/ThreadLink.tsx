@@ -77,7 +77,7 @@ function ThreadLink() {
         </button>
       </div>
 
-      <div className="flex-grow px-4 mb-[82px] min-h-0">
+      <div className="flex-grow px-4 mb-2 min-h-0">
         <textarea
           className={`w-full h-full bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
