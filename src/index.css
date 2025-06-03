@@ -20,19 +20,6 @@
   color: var(--text-primary);
 }
 
-.app-container header {
-  @apply p-4 rounded-lg mb-6;
-  background-color: var(--box-violet);
-}
-
-.app-container header h1 {
-  @apply text-2xl font-bold text-white mb-1;
-}
-
-.app-container header p {
-  color: var(--text-secondary);
-}
-
 .app-container textarea {
   @apply w-full h-64 p-4 rounded-lg focus:outline-none focus:ring-2;
   background-color: var(--card-bg);
