@@ -89,7 +89,7 @@ function ThreadLink() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--divider)] p-6">
-        <div className="flex justify-between items-center max-w-[calc(100vw-3rem)] mx-auto">
+        <div className="flex justify-between items-center max-w-[calc(100vw-3rem)] mx-auto h-[42px]">
           <div className="flex items-center">
             <div className="w-[140px] flex-shrink-0">
               <span className="text-[var(--text-secondary)]">
@@ -110,15 +110,15 @@ function ThreadLink() {
             </div>
           </div>
           
-          <div className="flex space-x-3">
+          <div className="flex space-x-3 h-[42px] items-center">
             {inputText && !isProcessed && (
               <button 
                 onClick={handleCondense}
                 disabled={isLoading}
-                className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg disabled:opacity-50"
+                className="h-[42px] bg-[var(--highlight-blue)] text-white px-6 rounded-lg disabled:opacity-50 min-w-[120px]"
               >
                 {isLoading ? (
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
                     Processing...
                   </div>
@@ -131,7 +131,7 @@ function ThreadLink() {
               <>
                 <button 
                   onClick={handleCopy}
-                  className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg relative"
+                  className="h-[42px] bg-[var(--highlight-blue)] text-white px-6 rounded-lg relative min-w-[100px]"
                 >
                   <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
                   {isCopied && (
@@ -142,7 +142,7 @@ function ThreadLink() {
                 </button>
                 <button 
                   onClick={handleReset}
-                  className="bg-[var(--text-secondary)] text-white px-6 py-2 rounded-lg"
+                  className="h-[42px] bg-[var(--text-secondary)] text-white px-6 rounded-lg min-w-[100px]"
                 >
                   Reset
                 </button>
