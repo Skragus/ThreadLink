@@ -67,7 +67,7 @@ function ThreadLink() {
 
   return (
     <div className="app-container relative min-h-screen">
-      <div className="flex items-center justify-between px-4 pt-4 mb-4">
+      <div className="flex items-center justify-between px-4 pt-4 mb-2">
         <div className="header-text" style={{ fontFamily: 'Racing Sans One' }}>
           <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
           <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
@@ -77,9 +77,9 @@ function ThreadLink() {
         </button>
       </div>
 
-      <div className="px-4 mb-[88px]">
+      <div className="px-4 mb-[82px]">
         <textarea
-          className={`w-full h-[calc(100vh-180px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
+          className={`w-full h-[calc(100vh-160px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
           value={inputText}
           onChange={handleTextChange}
