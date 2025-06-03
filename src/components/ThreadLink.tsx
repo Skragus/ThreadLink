@@ -88,7 +88,7 @@ function ThreadLink() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--divider)]">
-        <div className="flex justify-between items-center h-[72px] px-6">
+        <div className="flex justify-between items-center h-[72px] mx-6">
           <div className="flex items-center pl-6">
             <div className="w-[180px] flex-shrink-0">
               <span className="text-[var(--text-secondary)]">
@@ -109,7 +109,7 @@ function ThreadLink() {
             </div>
           </div>
           
-          <div className="flex space-x-3 items-center">
+          <div className="flex space-x-3 items-center pr-6">
             {inputText && !isProcessed && (
               <button 
                 onClick={handleCondense}
