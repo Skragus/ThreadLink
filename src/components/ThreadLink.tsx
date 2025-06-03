@@ -89,13 +89,13 @@ function ThreadLink() {
       </div>
 
       <div className="flex justify-between items-center mt-6">
-        <div className="flex items-center gap-12">
-          <div className="w-36">
+        <div className="flex items-center">
+          <div className="w-[140px] flex-shrink-0">
             <span className="text-[var(--text-secondary)]">
               {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens`}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+          <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-8">
             <label>Target:</label>
             <input
               type="number"
@@ -103,7 +103,7 @@ function ThreadLink() {
               onChange={handleTargetChange}
               step="100"
               min="100"
-              className="target-input"
+              className="w-20 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)]"
             />
             <span>tokens</span>
           </div>
