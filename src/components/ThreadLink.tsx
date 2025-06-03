@@ -65,19 +65,6 @@ function ThreadLink() {
     setTokenCount(0);
   };
 
-  const handlePaste = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      setInputText(text);
-      const words = text.trim().split(/\s+/).length;
-      const rawTokens = Math.floor(words * 1.33);
-      const roundedTokens = roundTokenCount(rawTokens);
-      setTokenCount(roundedTokens);
-    } catch (err) {
-      console.error('Failed to read clipboard:', err);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
@@ -93,23 +80,13 @@ function ThreadLink() {
 
       {/* Main content area */}
       <div className="flex-grow flex flex-col justify-center px-12 py-4">
-        <div className="relative flex-grow">
-          <textarea
-            className={`w-full h-full bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
-            placeholder="Paste your AI conversation here..."
-            value={inputText}
-            onChange={handleTextChange}
-            readOnly={isProcessed}
-          />
-          {!inputText && !isProcessed && (
-            <button
-              onClick={handlePaste}
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg min-w-[120px] flex items-center justify-center gap-2 hover:bg-[var(--glow-accent)] transition-colors"
-            >
-              <span>📋</span> Paste
-            </button>
-          )}
-        </div>
+        <textarea
+          className={`w-full flex-grow bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
+          placeholder="Paste your AI conversation here..."
+          value={inputText}
+          onChange={handleTextChange}
+          readOnly={isProcessed}
+        />
       </div>
 
       {/* Footer */}
