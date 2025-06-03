@@ -5,6 +5,7 @@ function ThreadLink() {
   const [isProcessed, setIsProcessed] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
   const [targetTokens, setTargetTokens] = useState(500);
+  const [isLoading, setIsLoading] = useState(false);
 
   const roundTokenCount = (count: number) => {
     if (count === 0) return 0;
@@ -34,6 +35,19 @@ function ThreadLink() {
     }
   };
 
+  const handleCondense = async () => {
+    setIsLoading(true);
+    
+    // Simulate API call with 3 second delay
+    setTimeout(() => {
+      setIsLoading(false);
+      setIsProcessed(true);
+      
+      // Set dummy condensed output
+      setInputText("This is a condensed summary of your AI conversation. The original content has been processed and summarized to meet your target token count while preserving key information and context.");
+    }, 3000);
+  };
+
   return (
     <div className="app-container">
       <div className="header-text mb-6" style={{ fontFamily: 'Racing Sans One' }}>
@@ -43,9 +57,11 @@ function ThreadLink() {
 
       <main>
         <textarea
+          className={`w-full h-[70vh] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
           value={inputText}
           onChange={handleTextChange}
+          readOnly={isProcessed}
         />
 
         <div className="info-row">
@@ -66,8 +82,19 @@ function ThreadLink() {
 
         <div className="actions">
           {inputText && !isProcessed && (
-            <button onClick={() => setIsProcessed(true)}>
-              Condense
+            <button 
+              onClick={handleCondense}
+              disabled={isLoading}
+              className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg disabled:opacity-50"
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  Processing...
+                </div>
+              ) : (
+                'Condense'
+              )}
             </button>
           )}
           {isProcessed && (
