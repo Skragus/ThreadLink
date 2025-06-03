@@ -24,7 +24,7 @@ function ThreadLink() {
   return (
     <div className="app-container">
       <div className="header-text mb-6" style={{ fontFamily: 'Racing Sans One' }}>
-        <span className="text-[var(--text-primary)]">ThreadLink</span>
+        <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
         <span className="text-[var(--text-secondary)]"> - Save, summarize, and continue your AI chats — anywhere.</span>
       </div>
 
