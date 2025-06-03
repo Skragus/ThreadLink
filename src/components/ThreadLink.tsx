@@ -6,12 +6,25 @@ function ThreadLink() {
   const [tokenCount, setTokenCount] = useState(0);
   const [targetTokens, setTargetTokens] = useState(500);
 
+  const roundTokenCount = (count: number) => {
+    if (count === 0) return 0;
+    if (count < 1000) {
+      return Math.round(count / 10) * 10;
+    } else if (count < 5000) {
+      return Math.round(count / 50) * 50;
+    } else {
+      return Math.round(count / 100) * 100;
+    }
+  };
+
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setInputText(text);
     // Simple token count estimation (words * 1.33)
     const words = text.trim().split(/\s+/).length;
-    setTokenCount(Math.floor(words * 1.33));
+    const rawTokens = Math.floor(words * 1.33);
+    const roundedTokens = roundTokenCount(rawTokens);
+    setTokenCount(roundedTokens);
   };
 
   const handleTargetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,7 +49,7 @@ function ThreadLink() {
         />
 
         <div className="info-row">
-          <span>{tokenCount} tokens detected</span>
+          <span>{tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}</span>
           <div className="target-section">
             <label>Target:</label>
             <input
