@@ -14,83 +14,17 @@
   --link-text: #A3B3F3;
 }
 
-.app-container {
-  @apply min-h-screen p-6;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+textarea {
+  min-height: 200px;
 }
 
-.app-container textarea {
-  @apply w-full p-4 rounded-lg focus:outline-none focus:ring-2;
-  height: 70vh;
-  min-height: 300px;
-  max-height: calc(100vh - 250px);
-  background-color: var(--card-bg);
-  border: 1px solid var(--divider);
-  color: var(--text-primary);
+/* Hide number input spinners */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
 }
 
-.app-container textarea::placeholder {
-  color: var(--text-secondary);
-}
-
-.app-container textarea:focus {
-  border-color: var(--highlight-blue);
-}
-
-.info-row {
-  @apply flex justify-between items-center mt-4;
-  color: var(--text-secondary);
-}
-
-.target-section {
-  @apply flex items-center gap-2;
-}
-
-.target-input {
-  background: var(--card-bg);
-  border: 1px solid var(--divider);
-  color: var(--text-primary);
-  padding: 4px 8px;
-  border-radius: 6px;
-  width: 80px;
-  text-align: center;
-}
-
-.target-input:focus {
-  outline: none;
-  border-color: var(--highlight-blue);
-}
-
-.target-input::-webkit-outer-spin-button,
-.target-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.target-input[type=number] {
+input[type=number] {
   -moz-appearance: textfield;
-}
-
-.actions {
-  @apply flex gap-4 mt-6;
-}
-
-.actions button {
-  @apply px-6 py-2 rounded-lg transition-colors;
-  background-color: var(--highlight-blue);
-  color: white;
-}
-
-.actions button:hover {
-  background-color: var(--glow-accent);
-}
-
-.settings-icon {
-  @apply fixed bottom-4 right-4 text-2xl cursor-pointer transition-colors;
-  color: var(--text-secondary);
-}
-
-.settings-icon:hover {
-  color: var(--glow-accent);
 }
