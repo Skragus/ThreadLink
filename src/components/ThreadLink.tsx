@@ -66,7 +66,13 @@ function ThreadLink() {
   };
 
   return (
-    <div className="app-container">
+    <div className="app-container relative">
+      <div className="absolute top-6 right-6">
+        <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+          ⚙️
+        </button>
+      </div>
+
       <div className="header-text mb-8 mt-6" style={{ fontFamily: 'Racing Sans One' }}>
         <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
         <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
@@ -83,9 +89,13 @@ function ThreadLink() {
       </div>
 
       <div className="flex justify-between items-center mt-6">
-        <div className="flex items-center space-x-6 text-[var(--text-secondary)]">
-          <span>{tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}</span>
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-12">
+          <div className="w-36">
+            <span className="text-[var(--text-secondary)]">
+              {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
             <label>Target:</label>
             <input
               type="number"
@@ -138,10 +148,6 @@ function ThreadLink() {
             </>
           )}
         </div>
-      </div>
-
-      <div className="settings-icon">
-        ⚙️
       </div>
     </div>
   );
