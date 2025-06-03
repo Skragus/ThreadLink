@@ -21,7 +21,10 @@
 }
 
 .app-container textarea {
-  @apply w-full h-64 p-4 rounded-lg focus:outline-none focus:ring-2;
+  @apply w-full p-4 rounded-lg focus:outline-none focus:ring-2;
+  height: 70vh;
+  min-height: 300px;
+  max-height: calc(100vh - 250px);
   background-color: var(--card-bg);
   border: 1px solid var(--divider);
   color: var(--text-primary);
