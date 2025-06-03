@@ -66,7 +66,7 @@ function ThreadLink() {
   };
 
   return (
-    <div className="app-container relative">
+    <div className="app-container relative pb-24">
       <div className="absolute top-6 right-6">
         <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
           ⚙️
@@ -80,7 +80,7 @@ function ThreadLink() {
 
       <div className="my-8">
         <textarea
-          className={`w-full h-[70vh] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
+          className={`w-full h-[calc(70vh-80px)] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
           value={inputText}
           onChange={handleTextChange}
@@ -88,65 +88,67 @@ function ThreadLink() {
         />
       </div>
 
-      <div className="flex justify-between items-center mt-6">
-        <div className="flex items-center">
-          <div className="w-[140px] flex-shrink-0">
-            <span className="text-[var(--text-secondary)]">
-              {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens`}
-            </span>
+      <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--divider)] p-6">
+        <div className="flex justify-between items-center max-w-[calc(100vw-3rem)] mx-auto">
+          <div className="flex items-center">
+            <div className="w-[140px] flex-shrink-0">
+              <span className="text-[var(--text-secondary)]">
+                {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-8">
+              <label>Target:</label>
+              <input
+                type="number"
+                value={targetTokens}
+                onChange={handleTargetChange}
+                step="100"
+                min="100"
+                className="w-20 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)]"
+              />
+              <span>tokens</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-8">
-            <label>Target:</label>
-            <input
-              type="number"
-              value={targetTokens}
-              onChange={handleTargetChange}
-              step="100"
-              min="100"
-              className="w-20 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)]"
-            />
-            <span>tokens</span>
-          </div>
-        </div>
-        
-        <div className="flex space-x-3">
-          {inputText && !isProcessed && (
-            <button 
-              onClick={handleCondense}
-              disabled={isLoading}
-              className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg disabled:opacity-50"
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  Processing...
-                </div>
-              ) : (
-                'Condense'
-              )}
-            </button>
-          )}
-          {isProcessed && (
-            <>
+          
+          <div className="flex space-x-3">
+            {inputText && !isProcessed && (
               <button 
-                onClick={handleCopy}
-                className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg relative"
+                onClick={handleCondense}
+                disabled={isLoading}
+                className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg disabled:opacity-50"
               >
-                <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
-                {isCopied && (
-                  <span className="absolute inset-0 flex items-center justify-center animate-pulse">
-                    ✓
-                  </span>
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'Condense'
                 )}
               </button>
-              <button 
-                onClick={handleReset}
-                className="bg-[var(--text-secondary)] text-white px-6 py-2 rounded-lg"
-              >
-                Reset
-              </button>
-            </>
-          )}
+            )}
+            {isProcessed && (
+              <>
+                <button 
+                  onClick={handleCopy}
+                  className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg relative"
+                >
+                  <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
+                  {isCopied && (
+                    <span className="absolute inset-0 flex items-center justify-center animate-pulse">
+                      ✓
+                    </span>
+                  )}
+                </button>
+                <button 
+                  onClick={handleReset}
+                  className="bg-[var(--text-secondary)] text-white px-6 py-2 rounded-lg"
+                >
+                  Reset
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
