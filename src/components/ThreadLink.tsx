@@ -67,7 +67,7 @@ function ThreadLink() {
 
   return (
     <div className="app-container relative min-h-screen">
-      <div className="flex items-center justify-between px-6 pt-6 mb-6">
+      <div className="flex items-center justify-between px-4 pt-4 mb-4">
         <div className="header-text" style={{ fontFamily: 'Racing Sans One' }}>
           <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
           <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
@@ -77,9 +77,9 @@ function ThreadLink() {
         </button>
       </div>
 
-      <div className="px-6 mb-[88px]">
+      <div className="px-4 mb-[88px]">
         <textarea
-          className={`w-full h-[calc(100vh-180px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-6 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
+          className={`w-full h-[calc(100vh-180px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
           value={inputText}
           onChange={handleTextChange}
@@ -88,8 +88,8 @@ function ThreadLink() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--divider)]">
-        <div className="flex justify-between items-center h-[72px] mx-6">
-          <div className="flex items-center pl-6">
+        <div className="flex justify-between items-center h-[64px] mx-4">
+          <div className="flex items-center pl-4">
             <div className="w-[180px] flex-shrink-0">
               <span className="text-[var(--text-secondary)]">
                 {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}
@@ -109,12 +109,12 @@ function ThreadLink() {
             </div>
           </div>
           
-          <div className="flex space-x-3 items-center pr-6">
+          <div className="flex space-x-3 items-center pr-4">
             {inputText && !isProcessed && (
               <button 
                 onClick={handleCondense}
                 disabled={isLoading}
-                className="h-[42px] bg-[var(--highlight-blue)] text-white px-6 rounded-lg disabled:opacity-50 min-w-[120px]"
+                className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg disabled:opacity-50 min-w-[120px]"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -130,7 +130,7 @@ function ThreadLink() {
               <>
                 <button 
                   onClick={handleCopy}
-                  className="h-[42px] bg-[var(--highlight-blue)] text-white px-6 rounded-lg relative min-w-[100px]"
+                  className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg relative min-w-[100px]"
                 >
                   <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
                   {isCopied && (
@@ -141,7 +141,7 @@ function ThreadLink() {
                 </button>
                 <button 
                   onClick={handleReset}
-                  className="h-[42px] bg-[var(--text-secondary)] text-white px-6 rounded-lg min-w-[100px]"
+                  className="h-[38px] bg-[var(--text-secondary)] text-white px-4 rounded-lg min-w-[100px]"
                 >
                   Reset
                 </button>
