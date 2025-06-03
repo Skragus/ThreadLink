@@ -6,6 +6,7 @@ function ThreadLink() {
   const [tokenCount, setTokenCount] = useState(0);
   const [targetTokens, setTargetTokens] = useState(500);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const roundTokenCount = (count: number) => {
     if (count === 0) return 0;
@@ -46,6 +47,16 @@ function ThreadLink() {
       // Set dummy condensed output
       setInputText("This is a condensed summary of your AI conversation. The original content has been processed and summarized to meet your target token count while preserving key information and context.");
     }, 3000);
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(inputText);
+    setIsCopied(true);
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      setIsCopied(false);
+    }, 2000);
   };
 
   return (
@@ -99,14 +110,20 @@ function ThreadLink() {
           )}
           {isProcessed && (
             <>
-              <button onClick={() => navigator.clipboard.writeText(inputText)}>
-                Copy
+              <button 
+                onClick={handleCopy}
+                className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg"
+              >
+                {isCopied ? 'Copied!' : 'Copy'}
               </button>
-              <button onClick={() => {
-                setInputText('');
-                setIsProcessed(false);
-                setTokenCount(0);
-              }}>
+              <button 
+                onClick={() => {
+                  setInputText('');
+                  setIsProcessed(false);
+                  setTokenCount(0);
+                }}
+                className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg"
+              >
                 Reset
               </button>
             </>
