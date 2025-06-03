@@ -59,14 +59,20 @@ function ThreadLink() {
     }, 2000);
   };
 
+  const handleReset = () => {
+    setInputText('');
+    setIsProcessed(false);
+    setTokenCount(0);
+  };
+
   return (
     <div className="app-container">
-      <div className="header-text mb-6" style={{ fontFamily: 'Racing Sans One' }}>
+      <div className="header-text mb-8 mt-6" style={{ fontFamily: 'Racing Sans One' }}>
         <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
         <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
       </div>
 
-      <main>
+      <div className="my-8">
         <textarea
           className={`w-full h-[70vh] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
@@ -74,10 +80,12 @@ function ThreadLink() {
           onChange={handleTextChange}
           readOnly={isProcessed}
         />
+      </div>
 
-        <div className="info-row">
+      <div className="flex justify-between items-center mt-6">
+        <div className="flex items-center space-x-6 text-[var(--text-secondary)]">
           <span>{tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}</span>
-          <div className="target-section">
+          <div className="flex items-center space-x-2">
             <label>Target:</label>
             <input
               type="number"
@@ -90,8 +98,8 @@ function ThreadLink() {
             <span>tokens</span>
           </div>
         </div>
-
-        <div className="actions">
+        
+        <div className="flex space-x-3">
           {inputText && !isProcessed && (
             <button 
               onClick={handleCondense}
@@ -122,19 +130,15 @@ function ThreadLink() {
                 )}
               </button>
               <button 
-                onClick={() => {
-                  setInputText('');
-                  setIsProcessed(false);
-                  setTokenCount(0);
-                }}
-                className="bg-[var(--highlight-blue)] text-white px-6 py-2 rounded-lg"
+                onClick={handleReset}
+                className="bg-[var(--text-secondary)] text-white px-6 py-2 rounded-lg"
               >
                 Reset
               </button>
             </>
           )}
         </div>
-      </main>
+      </div>
 
       <div className="settings-icon">
         ⚙️
