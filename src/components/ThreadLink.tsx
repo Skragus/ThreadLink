@@ -67,18 +67,18 @@ function ThreadLink() {
 
   return (
     <div className="app-container relative min-h-screen">
-      <div className="absolute top-6 right-6">
+      <div className="absolute top-3 right-3">
         <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
           ⚙️
         </button>
       </div>
 
-      <div className="header-text mb-8 mt-6 px-6" style={{ fontFamily: 'Racing Sans One' }}>
+      <div className="header-text mb-8 mt-3 px-3" style={{ fontFamily: 'Racing Sans One' }}>
         <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
         <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
       </div>
 
-      <div className="px-6">
+      <div className="px-3">
         <textarea
           className={`w-full h-[calc(100vh-280px)] min-h-[300px] bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
@@ -89,7 +89,7 @@ function ThreadLink() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--divider)]">
-        <div className="flex justify-between items-center h-[72px] px-6">
+        <div className="flex justify-between items-center h-[72px] px-3">
           <div className="flex items-center">
             <div className="w-[180px] flex-shrink-0">
               <span className="text-[var(--text-secondary)]">
