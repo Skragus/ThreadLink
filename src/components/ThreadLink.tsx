@@ -29,7 +29,7 @@ function ThreadLink() {
 
   const handleTargetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value >= 0) {
+    if (!isNaN(value) && value >= 100) {
       setTargetTokens(value);
     }
   };
@@ -56,6 +56,9 @@ function ThreadLink() {
               type="number"
               value={targetTokens}
               onChange={handleTargetChange}
+              step="100"
+              min="100"
+              className="target-input"
             />
             <span>tokens</span>
           </div>
