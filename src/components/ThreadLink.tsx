@@ -20,9 +20,8 @@ function ThreadLink() {
   };
 
   const formatTokenCount = (count: number) => {
-    if (count === 0) return '0 tokens';
     const rounded = roundTokenCount(count);
-    return `~${rounded.toLocaleString()} tokens`;
+    return `${count === 0 ? '' : '~'}${rounded.toLocaleString()} tokens`;
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
