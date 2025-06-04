@@ -96,65 +96,65 @@ function ThreadLink() {
 
       {/* Footer */}
       <div className="border-t border-[var(--divider)] bg-[var(--bg-primary)] pb-4">
-        <div className="flex justify-between items-center h-16 px-12 py-4">
-          <div className="flex items-center">
-            <div className="w-[180px] flex-shrink-0">
-              <span className="text-[var(--text-secondary)]">
-                {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}
+        <div className="px-12 py-4">
+          <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
+            <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] min-w-0">
+              <span className="truncate">
+                {tokenCount === 0 ? '~0 tokens' : `~${tokenCount} tokens`}
               </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="whitespace-nowrap">Target:</label>
+                <input
+                  type="number"
+                  value={targetTokens}
+                  onChange={handleTargetChange}
+                  step="100"
+                  min="100"
+                  className="w-16 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] shrink-0"
+                />
+                <span className="whitespace-nowrap">tokens</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-4">
-              <label>Target:</label>
-              <input
-                type="number"
-                value={targetTokens}
-                onChange={handleTargetChange}
-                step="100"
-                min="100"
-                className="w-20 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)]"
-              />
-              <span>tokens</span>
-            </div>
-          </div>
-          
-          <div className="flex space-x-3 items-center">
-            {inputText && !isProcessed && (
-              <button 
-                onClick={handleCondense}
-                disabled={isLoading}
-                className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg disabled:opacity-50 min-w-[120px]"
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Condense'
-                )}
-              </button>
-            )}
-            {isProcessed && (
-              <>
+            
+            <div className="flex gap-3 shrink-0">
+              {inputText && !isProcessed && (
                 <button 
-                  onClick={handleCopy}
-                  className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg relative min-w-[100px]"
+                  onClick={handleCondense}
+                  disabled={isLoading}
+                  className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg disabled:opacity-50 min-w-[120px] whitespace-nowrap"
                 >
-                  <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
-                  {isCopied && (
-                    <span className="absolute inset-0 flex items-center justify-center animate-pulse">
-                      ✓
-                    </span>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    'Condense'
                   )}
                 </button>
-                <button 
-                  onClick={handleReset}
-                  className="h-[38px] bg-[var(--text-secondary)] text-white px-4 rounded-lg min-w-[100px]"
-                >
-                  Reset
-                </button>
-              </>
-            )}
+              )}
+              {isProcessed && (
+                <>
+                  <button 
+                    onClick={handleCopy}
+                    className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg relative min-w-[100px] whitespace-nowrap"
+                  >
+                    <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
+                    {isCopied && (
+                      <span className="absolute inset-0 flex items-center justify-center animate-pulse">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                  <button 
+                    onClick={handleReset}
+                    className="h-[38px] bg-[var(--text-secondary)] text-white px-4 rounded-lg min-w-[100px] whitespace-nowrap"
+                  >
+                    Reset
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
