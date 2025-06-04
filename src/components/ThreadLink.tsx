@@ -74,7 +74,7 @@ function ThreadLink() {
             <span className="text-[#736C9E] tracking-[0.01em] font-normal">Thread</span>
             <span className="text-[#505C88] tracking-[-0.03em] font-medium">Link</span>
           </h1>
-          <p className="text-sm font-outfit font-normal text-[#7D87AD] opacity-75 whitespace-nowrap hidden md:block">
+          <p className="text-sm font-outfit font-normal text-[#7D87AD] opacity-75 whitespace-nowrap hidden sm:block">
             Condense, copy, continue — without breaking flow.
           </p>
         </div>
