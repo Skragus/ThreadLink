@@ -98,11 +98,10 @@ function ThreadLink() {
       <div className="border-t border-[var(--divider)] bg-[var(--bg-primary)] pb-4">
         <div className="px-12 py-4">
           <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
-            <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] min-w-0">
-              <span className="truncate">
-                {tokenCount === 0 ? '~0 tokens' : `~${tokenCount} tokens`}
-              </span>
+            <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)]">
               <div className="flex items-center gap-2 shrink-0">
+                <span className="font-mono w-24">~{tokenCount} tokens</span>
+                <span className="mx-2">•</span>
                 <label className="whitespace-nowrap">Target:</label>
                 <input
                   type="number"
@@ -110,7 +109,7 @@ function ThreadLink() {
                   onChange={handleTargetChange}
                   step="100"
                   min="100"
-                  className="w-16 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] shrink-0"
+                  className="w-16 px-2 py-1 text-center bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] shrink-0 font-mono"
                 />
                 <span className="whitespace-nowrap">tokens</span>
               </div>
