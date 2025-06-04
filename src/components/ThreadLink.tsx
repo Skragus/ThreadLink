@@ -119,7 +119,7 @@ function ThreadLink() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-[var(--divider)] bg-[var(--bg-primary)] pb-4">
+      <div className="border-t border-[#181920] bg-[var(--bg-primary)] pb-4">
         <div className="px-12 py-4">
           <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
             <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)]">
@@ -190,7 +190,7 @@ function ThreadLink() {
             href="https://bolt.new" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-[var(--text-primary)] hover:opacity-100 transition-opacity"
+            className="font-outfit font-extrabold text-[#A0A4B8] tracking-[-0.01em] leading-none text-sm sm:text-base hover:opacity-100 transition-opacity"
           >
             Bolt.new
           </a>
