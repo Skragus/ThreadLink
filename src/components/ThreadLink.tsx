@@ -8,7 +8,6 @@ function ThreadLink() {
   const [tokenCount, setTokenCount] = useState(0);
   const [targetTokens, setTargetTokens] = useState(500);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
 
   const roundTokenCount = (count: number) => {
     if (count === 0) return 0;
@@ -52,22 +51,6 @@ function ThreadLink() {
       // Set dummy condensed output
       setInputText("This is a condensed summary of your AI conversation. The original content has been processed and summarized to meet your target token count while preserving key information and context.");
     }, 3000);
-  };
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(inputText);
-    setIsCopied(true);
-    
-    // Reset after 2 seconds
-    setTimeout(() => {
-      setIsCopied(false);
-    }, 2000);
-  };
-
-  const handleReset = () => {
-    setInputText('');
-    setIsProcessed(false);
-    setTokenCount(0);
   };
 
   const openSettings = () => {
@@ -159,18 +142,17 @@ function ThreadLink() {
               {isProcessed && (
                 <>
                   <button 
-                    onClick={handleCopy}
-                    className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg relative min-w-[100px] whitespace-nowrap"
+                    onClick={() => navigator.clipboard.writeText(inputText)}
+                    className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg min-w-[100px] whitespace-nowrap"
                   >
-                    <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
-                    {isCopied && (
-                      <span className="absolute inset-0 flex items-center justify-center animate-pulse">
-                        ✓
-                      </span>
-                    )}
+                    Copy
                   </button>
                   <button 
-                    onClick={handleReset}
+                    onClick={() => {
+                      setInputText('');
+                      setIsProcessed(false);
+                      setTokenCount(0);
+                    }}
                     className="h-[38px] bg-[var(--text-secondary)] text-white px-4 rounded-lg min-w-[100px] whitespace-nowrap"
                   >
                     Reset
@@ -180,13 +162,6 @@ function ThreadLink() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-[var(--divider)] pt-3 mt-4">
-        <p className="text-xs text-center text-[#7D87AD]">
-          Open source • BYOK • Privacy-first
-        </p>
       </div>
     </div>
   );
