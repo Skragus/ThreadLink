@@ -70,8 +70,9 @@ function ThreadLink() {
       {/* Header */}
       <div className="flex items-center justify-between px-12 pt-6 pb-4 border-b border-[var(--divider)]">
         <div className="flex items-center gap-4">
-          <div className="text-3xl" style={{ fontFamily: 'Racing Sans One' }}>
-            <span className="text-[var(--text-primary)]">ThreadLink</span>
+          <div className="text-3xl font-outfit">
+            <span className="text-[#736C9E] tracking-[0.01em] font-normal">Thread</span>
+            <span className="text-[#505C88] tracking-[-0.03em] font-medium">Link</span>
           </div>
           <div className="text-[var(--text-secondary)] whitespace-nowrap hidden md:block">
             Save, summarize, and continue your AI chats — anywhere.
