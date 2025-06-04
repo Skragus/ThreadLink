@@ -91,7 +91,7 @@ function ThreadLink() {
               </div>
             </div>
             
-            <div className="flex gap-3 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
               {inputText && !isProcessed && (
                 <button 
                   onClick={() => setIsProcessed(true)}
@@ -120,6 +120,18 @@ function ThreadLink() {
                   </button>
                 </>
               )}
+              <a 
+                href="https://bolt.new"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-28 opacity-60 hover:opacity-100 transition-opacity"
+              >
+                <img 
+                  src="/logotext_poweredby_360w.png" 
+                  alt="Powered by Bolt.new" 
+                  className="w-full h-auto"
+                />
+              </a>
             </div>
           </div>
         </div>
