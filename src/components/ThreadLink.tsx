@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Settings } from 'lucide-react';
 
 function ThreadLink() {
   const [inputText, setInputText] = useState('');
@@ -65,6 +66,10 @@ function ThreadLink() {
     setTokenCount(0);
   };
 
+  const openSettings = () => {
+    // Settings handler placeholder
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
@@ -78,8 +83,11 @@ function ThreadLink() {
             Condense, copy, continue — without breaking flow.
           </p>
         </div>
-        <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--box-violet)] transition-colors">
-          ⚙️
+        <button 
+          onClick={openSettings}
+          className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
+        >
+          <Settings className="w-5 h-5" />
         </button>
       </div>
 
