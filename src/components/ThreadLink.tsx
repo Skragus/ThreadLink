@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Settings } from 'lucide-react';
 
 function ThreadLink() {
   const [inputText, setInputText] = useState('');
@@ -87,7 +86,7 @@ function ThreadLink() {
           onClick={openSettings}
           className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
         >
-          <Settings className="w-5 h-5" />
+          ⚙️
         </button>
       </div>
 
