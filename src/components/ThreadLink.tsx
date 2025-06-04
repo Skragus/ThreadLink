@@ -89,15 +89,15 @@ function ThreadLink() {
         <div className="flex gap-2">
           <button 
             onClick={openHelp}
-            className="w-10 h-10 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity"
+            className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
-            <img src="src/assets/circle-help.svg" alt="Help" className="w-6 h-6" />
+            ❓
           </button>
           <button 
             onClick={openSettings}
-            className="w-10 h-10 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity"
+            className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
-            <img src="src/assets/settings.svg" alt="Settings" className="w-6 h-6" />
+            ⚙️
           </button>
         </div>
       </div>
@@ -175,13 +175,6 @@ function ThreadLink() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-[var(--divider)] pt-3 mt-4">
-        <p className="text-xs text-center text-[#7D87AD]">
-          Open source • BYOK • Privacy-first
-        </p>
       </div>
     </div>
   );
