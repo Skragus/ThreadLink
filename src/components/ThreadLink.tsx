@@ -144,7 +144,7 @@ function ThreadLink() {
                 <button 
                   onClick={handleCondense}
                   disabled={isLoading}
-                  className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg disabled:opacity-50 min-w-[120px] whitespace-nowrap"
+                  className={`h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg disabled:opacity-50 min-w-[120px] whitespace-nowrap`}
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center">
@@ -180,13 +180,6 @@ function ThreadLink() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-[#181920] pt-3 mt-4">
-        <p className="text-xs text-center text-[#7D87AD]">
-          Open source • BYOK • Privacy-first
-        </p>
       </div>
     </div>
   );
