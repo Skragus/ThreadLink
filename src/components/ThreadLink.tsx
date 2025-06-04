@@ -183,7 +183,7 @@ function ThreadLink() {
       </div>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--divider)] bg-[var(--bg-primary)] py-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] py-3">
         <p className="text-xs text-center text-[var(--text-secondary)] opacity-70 flex items-center justify-center flex-wrap gap-x-2">
           <span>Powered by</span>
           <a 
