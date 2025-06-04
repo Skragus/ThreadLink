@@ -49,13 +49,13 @@ function ThreadLink() {
             onClick={openHelp}
             className="w-10 h-10 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
-            <img src={helpIcon} alt="Help" className="w-6 h-6" />
+            <img src={helpIcon} alt="Help" className="w-8 h-8 opacity-75" />
           </button>
           <button 
             onClick={openSettings}
             className="w-10 h-10 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
-            <img src={settingsIcon} alt="Settings" className="w-6 h-6" />
+            <img src={settingsIcon} alt="Settings" className="w-8 h-8 opacity-75" />
           </button>
         </div>
       </div>
