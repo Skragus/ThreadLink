@@ -69,14 +69,14 @@ function ThreadLink() {
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
       <div className="flex items-center justify-between px-12 pt-6 pb-4 border-b border-[var(--divider)]">
-        <div className="flex items-center gap-4">
-          <div className="text-3xl font-outfit">
+        <div className="flex items-baseline gap-8">
+          <h1 className="text-3xl font-outfit">
             <span className="text-[#736C9E] tracking-[0.01em] font-normal">Thread</span>
             <span className="text-[#505C88] tracking-[-0.03em] font-medium">Link</span>
-          </div>
-          <div className="text-[var(--text-secondary)] whitespace-nowrap hidden md:block font-outfit">
+          </h1>
+          <p className="text-sm font-outfit font-normal text-[#7D87AD] whitespace-nowrap hidden md:block">
             Condense, copy, continue — without breaking flow.
-          </div>
+          </p>
         </div>
         <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--box-violet)] transition-colors">
           ⚙️
