@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import settingsIcon from '../assets/settings.svg';
-import helpIcon from '../assets/circle-help.svg';
 
 function ThreadLink() {
   const [inputText, setInputText] = useState('');
@@ -93,13 +91,13 @@ function ThreadLink() {
             onClick={openHelp}
             className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
-            <img src={helpIcon} alt="Help" className="w-5 h-5 opacity-60" />
+            ❓
           </button>
           <button 
             onClick={openSettings}
             className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
-            <img src={settingsIcon} alt="Settings" className="w-5 h-5 opacity-60" />
+            ⚙️
           </button>
         </div>
       </div>
