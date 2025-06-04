@@ -68,23 +68,23 @@ function ThreadLink() {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-12 pt-6 pb-4 border-b border-[var(--divider)]">
-        <div className="flex items-center gap-8">
-          <h1 className="text-3xl font-outfit leading-none flex items-center">
+      <div className="flex items-center justify-between px-6 sm:px-12 pt-6 pb-4 border-b border-[var(--divider)]">
+        <div className="flex items-center gap-4 sm:gap-8">
+          <h1 className="text-3xl font-outfit leading-none flex items-center whitespace-nowrap">
             <span className="text-[#736C9E] tracking-[0.01em] font-normal">Thread</span>
             <span className="text-[#505C88] tracking-[-0.03em] font-medium">Link</span>
           </h1>
-          <p className="text-sm font-outfit font-normal text-[#7D87AD] opacity-75 whitespace-nowrap hidden md:block">
+          <p className="text-sm font-outfit font-normal text-[#7D87AD] opacity-75 whitespace-nowrap">
             Condense, copy, continue — without breaking flow.
           </p>
         </div>
-        <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--box-violet)] transition-colors">
+        <button className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--box-violet)] transition-colors">
           ⚙️
         </button>
       </div>
 
       {/* Main content area */}
-      <div className="flex-grow flex flex-col justify-center px-12 py-4">
+      <div className="flex-grow flex flex-col justify-center px-6 sm:px-12 py-4">
         <textarea
           className={`w-full flex-grow bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
@@ -96,14 +96,14 @@ function ThreadLink() {
 
       {/* Footer */}
       <div className="border-t border-[var(--divider)] bg-[var(--bg-primary)] pb-4">
-        <div className="flex justify-between items-center h-16 px-12 py-4">
-          <div className="flex items-center">
-            <div className="w-[180px] flex-shrink-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center h-auto sm:h-16 px-6 sm:px-12 py-4 gap-4 sm:gap-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-0">
+            <div className="w-full sm:w-[180px] flex-shrink-0">
               <span className="text-[var(--text-secondary)]">
                 {tokenCount === 0 ? '0 tokens detected' : `~${tokenCount} tokens detected`}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[var(--text-secondary)] ml-4">
+            <div className="flex items-center gap-2 text-[var(--text-secondary)]">
               <label>Target:</label>
               <input
                 type="number"
@@ -117,12 +117,12 @@ function ThreadLink() {
             </div>
           </div>
           
-          <div className="flex space-x-3 items-center">
+          <div className="flex space-x-3 items-center w-full sm:w-auto">
             {inputText && !isProcessed && (
               <button 
                 onClick={handleCondense}
                 disabled={isLoading}
-                className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg disabled:opacity-50 min-w-[120px]"
+                className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg disabled:opacity-50 min-w-[120px] w-full sm:w-auto"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -138,7 +138,7 @@ function ThreadLink() {
               <>
                 <button 
                   onClick={handleCopy}
-                  className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg relative min-w-[100px]"
+                  className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg relative min-w-[100px] w-full sm:w-auto"
                 >
                   <span className={isCopied ? 'opacity-0' : 'opacity-100'}>Copy</span>
                   {isCopied && (
@@ -149,7 +149,7 @@ function ThreadLink() {
                 </button>
                 <button 
                   onClick={handleReset}
-                  className="h-[38px] bg-[var(--text-secondary)] text-white px-4 rounded-lg min-w-[100px]"
+                  className="h-[38px] bg-[var(--text-secondary)] text-white px-4 rounded-lg min-w-[100px] w-full sm:w-auto"
                 >
                   Reset
                 </button>
