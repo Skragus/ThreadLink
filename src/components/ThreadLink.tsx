@@ -74,8 +74,8 @@ function ThreadLink() {
             <span className="text-[#736C9E] tracking-[0.01em] font-normal">Thread</span>
             <span className="text-[#505C88] tracking-[-0.03em] font-medium">Link</span>
           </div>
-          <div className="text-[var(--text-secondary)] whitespace-nowrap hidden md:block">
-            Save, summarize, and continue your AI chats — anywhere.
+          <div className="text-[var(--text-secondary)] whitespace-nowrap hidden md:block font-outfit">
+            Condense, copy, continue — without breaking flow.
           </div>
         </div>
         <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--box-violet)] transition-colors">
