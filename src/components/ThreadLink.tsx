@@ -192,7 +192,7 @@ function ThreadLink() {
             rel="noopener noreferrer" 
             className="font-outfit font-extrabold text-[#A0A4B8] tracking-[-0.01em] leading-none text-sm sm:text-base hover:opacity-100 transition-opacity"
           >
-            Bolt.new
+            bolt.new
           </a>
           <span>·</span>
           <span>Open Source</span>
