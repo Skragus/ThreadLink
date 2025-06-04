@@ -7,6 +7,7 @@ function ThreadLink() {
   const [isProcessed, setIsProcessed] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
   const [targetTokens, setTargetTokens] = useState(500);
+  const [isLoading, setIsLoading] = useState(false);
 
   const roundTokenCount = (count: number) => {
     if (count === 0) return 0;
@@ -37,6 +38,19 @@ function ThreadLink() {
     if (!isNaN(value) && value >= 0) {
       setTargetTokens(value);
     }
+  };
+
+  const handleCondense = async () => {
+    setIsLoading(true);
+    
+    // Simulate API call with 3 second delay
+    setTimeout(() => {
+      setIsLoading(false);
+      setIsProcessed(true);
+      
+      // Set dummy condensed output
+      setInputText("This is a condensed summary of your AI conversation. The original content has been processed and summarized to meet your target token count while preserving key information and context.");
+    }, 3000);
   };
 
   const openSettings = () => {
@@ -79,10 +93,11 @@ function ThreadLink() {
       {/* Main content area */}
       <div className="flex-grow flex flex-col justify-center px-12 py-4">
         <textarea
-          className={`w-full flex-grow bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none`}
+          className={`w-full flex-grow bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
           value={inputText}
           onChange={handleTextChange}
+          readOnly={isProcessed || isLoading}
         />
       </div>
 
@@ -110,10 +125,18 @@ function ThreadLink() {
             <div className="flex gap-3 shrink-0">
               {inputText && !isProcessed && (
                 <button 
-                  onClick={() => setIsProcessed(true)}
-                  className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg min-w-[100px] whitespace-nowrap"
+                  onClick={handleCondense}
+                  disabled={isLoading}
+                  className="h-[38px] bg-[var(--highlight-blue)] text-white px-4 rounded-lg disabled:opacity-50 min-w-[120px] whitespace-nowrap"
                 >
-                  Condense
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    'Condense'
+                  )}
                 </button>
               )}
               {isProcessed && (
