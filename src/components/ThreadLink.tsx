@@ -70,11 +70,11 @@ function ThreadLink() {
       {/* Header */}
       <div className="flex items-center justify-between px-12 pt-6 pb-4 border-b border-[var(--divider)]">
         <div className="flex items-center gap-8">
-          <h1 className="text-3xl font-outfit leading-none">
+          <h1 className="text-3xl font-outfit leading-none flex items-center">
             <span className="text-[#736C9E] tracking-[0.01em] font-normal">Thread</span>
             <span className="text-[#505C88] tracking-[-0.03em] font-medium">Link</span>
           </h1>
-          <p className="text-sm font-outfit font-normal text-[#7D87AD] whitespace-nowrap hidden md:block">
+          <p className="text-sm font-outfit font-normal text-[#7D87AD] opacity-75 whitespace-nowrap hidden md:block">
             Condense, copy, continue — without breaking flow.
           </p>
         </div>
