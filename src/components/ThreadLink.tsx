@@ -181,6 +181,27 @@ function ThreadLink() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--divider)] bg-[var(--bg-primary)] py-3">
+        <p className="text-xs text-center text-[var(--text-secondary)] opacity-70 flex items-center justify-center flex-wrap gap-x-2">
+          <span>Powered by</span>
+          <a 
+            href="https://bolt.new" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-[var(--text-primary)] hover:opacity-100 transition-opacity"
+          >
+            Bolt.new
+          </a>
+          <span>·</span>
+          <span>Open Source</span>
+          <span>·</span>
+          <span>BYOK</span>
+          <span>·</span>
+          <span>Privacy-first</span>
+        </p>
+      </div>
     </div>
   );
 }
