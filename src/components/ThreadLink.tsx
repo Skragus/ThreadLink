@@ -69,6 +69,10 @@ function ThreadLink() {
     // Settings handler placeholder
   };
 
+  const openHelp = () => {
+    // Help handler placeholder
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
@@ -82,12 +86,20 @@ function ThreadLink() {
             Condense, copy, continue — without breaking flow.
           </p>
         </div>
-        <button 
-          onClick={openSettings}
-          className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
-        >
-          ⚙️
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={openHelp}
+            className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
+          >
+            ❓
+          </button>
+          <button 
+            onClick={openSettings}
+            className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
+          >
+            ⚙️
+          </button>
+        </div>
       </div>
 
       {/* Main content area */}
