@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Settings } from 'lucide-react';
+import helpIcon from '../assets/circle-help.svg';
+import settingsIcon from '../assets/settings.svg';
 
 function ThreadLink() {
   const [inputText, setInputText] = useState('');
@@ -20,19 +21,22 @@ function ThreadLink() {
     }
   };
 
+  const formatTokenCount = (count: number) => {
+    const rounded = roundTokenCount(count);
+    return `${count === 0 ? '' : '~'}${rounded.toLocaleString()} tokens`;
+  };
+
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setInputText(text);
     // Simple token count estimation (words * 1.33)
     const words = text.trim().split(/\s+/).length;
-    const rawTokens = Math.floor(words * 1.33);
-    const roundedTokens = roundTokenCount(rawTokens);
-    setTokenCount(roundedTokens);
+    setTokenCount(Math.floor(words * 1.33));
   };
 
   const handleTargetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value >= 100) {
+    if (!isNaN(value) && value >= 0) {
       setTargetTokens(value);
     }
   };
@@ -70,6 +74,10 @@ function ThreadLink() {
     // Settings handler placeholder
   };
 
+  const openHelp = () => {
+    // Help handler placeholder
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
@@ -83,12 +91,20 @@ function ThreadLink() {
             Condense, copy, continue — without breaking flow.
           </p>
         </div>
-        <button 
-          onClick={openSettings}
-          className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={openHelp}
+            className="w-12 h-12 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
+          >
+            <img src={helpIcon} alt="Help" className="w-10 h-10 opacity-50" />
+          </button>
+          <button 
+            onClick={openSettings}
+            className="w-12 h-12 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
+          >
+            <img src={settingsIcon} alt="Settings" className="w-10 h-10 opacity-50" />
+          </button>
+        </div>
       </div>
 
       {/* Main content area */}
@@ -98,7 +114,7 @@ function ThreadLink() {
           placeholder="Paste your AI conversation here..."
           value={inputText}
           onChange={handleTextChange}
-          readOnly={isProcessed}
+          readOnly={isProcessed || isLoading}
         />
       </div>
 
@@ -108,7 +124,7 @@ function ThreadLink() {
           <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
             <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)]">
               <div className="flex items-center gap-2 shrink-0">
-                <span className="font-mono w-32">{tokenCount === 0 ? '0 tokens' : `~${tokenCount} tokens`}</span>
+                <span className="font-mono w-32">{formatTokenCount(tokenCount)}</span>
                 <span className="mx-2">•</span>
                 <label className="whitespace-nowrap">Target:</label>
                 <input
@@ -164,6 +180,13 @@ function ThreadLink() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-[#181920] pt-3 mt-4">
+        <p className="text-xs text-center text-[#7D87AD]">
+          Open source • BYOK • Privacy-first
+        </p>
       </div>
     </div>
   );
