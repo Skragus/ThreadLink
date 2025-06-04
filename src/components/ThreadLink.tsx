@@ -127,7 +127,7 @@ function ThreadLink() {
                 className="w-28 opacity-60 hover:opacity-100 transition-opacity"
               >
                 <img 
-                  src="logotext_poweredby_360w.png" 
+                  src="/logotext_poweredby_360w.png" 
                   alt="Powered by Bolt.new" 
                   className="w-full h-auto"
                 />
