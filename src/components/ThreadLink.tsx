@@ -47,7 +47,7 @@ function ThreadLink() {
         <div className="flex gap-2">
           <button 
             onClick={openHelp}
-            className="w-8 h-5 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
+            className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
             <img src={helpIcon} alt="Help" className="w-10 h-10 opacity-50" />
           </button>
