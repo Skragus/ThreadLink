@@ -69,8 +69,13 @@ function ThreadLink() {
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
       <div className="flex items-center justify-between px-12 pt-6 pb-4 border-b border-[var(--divider)]">
-        <div className="text-3xl" style={{ fontFamily: 'Racing Sans One' }}>
-          <span className="text-[var(--text-primary)]">ThreadLink</span>
+        <div className="flex items-center gap-4">
+          <div className="text-3xl" style={{ fontFamily: 'Racing Sans One' }}>
+            <span className="text-[var(--text-primary)]">ThreadLink</span>
+          </div>
+          <div className="text-[var(--text-secondary)] whitespace-nowrap hidden md:block">
+            Save, summarize, and continue your AI chats — anywhere.
+          </div>
         </div>
         <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--box-violet)] transition-colors">
           ⚙️
