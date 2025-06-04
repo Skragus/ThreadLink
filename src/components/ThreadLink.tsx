@@ -8,6 +8,23 @@ function ThreadLink() {
   const [tokenCount, setTokenCount] = useState(0);
   const [targetTokens, setTargetTokens] = useState(500);
 
+  const roundTokenCount = (count: number) => {
+    if (count === 0) return 0;
+    if (count < 1000) {
+      return Math.round(count / 10) * 10;
+    } else if (count < 5000) {
+      return Math.round(count / 50) * 50;
+    } else {
+      return Math.round(count / 100) * 100;
+    }
+  };
+
+  const formatTokenCount = (count: number) => {
+    if (count === 0) return '0 tokens';
+    const rounded = roundTokenCount(count);
+    return `~${rounded.toLocaleString()} tokens`;
+  };
+
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setInputText(text);
@@ -47,13 +64,13 @@ function ThreadLink() {
         <div className="flex gap-2">
           <button 
             onClick={openHelp}
-            className="w-10 h-10 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
+            className="w-12 h-12 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
             <img src={helpIcon} alt="Help" className="w-10 h-10 opacity-50" />
           </button>
           <button 
             onClick={openSettings}
-            className="w-10 h-10 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
+            className="w-12 h-12 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] opacity-80 hover:opacity-100 transition-opacity p-2"
           >
             <img src={settingsIcon} alt="Settings" className="w-10 h-10 opacity-50" />
           </button>
@@ -76,7 +93,7 @@ function ThreadLink() {
           <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
             <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)]">
               <div className="flex items-center gap-2 shrink-0">
-                <span className="font-mono w-32">{tokenCount === 0 ? '0 tokens' : `~${tokenCount} tokens`}</span>
+                <span className="font-mono w-32">{formatTokenCount(tokenCount)}</span>
                 <span className="mx-2">•</span>
                 <label className="whitespace-nowrap">Target:</label>
                 <input
