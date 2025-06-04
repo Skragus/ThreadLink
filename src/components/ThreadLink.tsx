@@ -100,7 +100,7 @@ function ThreadLink() {
           <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
             <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)]">
               <div className="flex items-center gap-2 shrink-0">
-                <span className="font-mono w-24">~{tokenCount} tokens</span>
+                <span className="font-mono w-32">{tokenCount === 0 ? '0 tokens' : `~${tokenCount} tokens`}</span>
                 <span className="mx-2">•</span>
                 <label className="whitespace-nowrap">Target:</label>
                 <input
