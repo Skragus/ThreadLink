@@ -69,9 +69,9 @@ function ThreadLink() {
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
       <div className="flex items-center justify-between px-12 pt-6 pb-4 border-b border-[var(--divider)]">
-        <div className="header-text" style={{ fontFamily: 'Racing Sans One' }}>
+        <div className="flex items-center space-x-3 overflow-hidden">
           <span className="text-[var(--text-primary)] text-3xl">ThreadLink</span>
-          <span className="text-[var(--text-secondary)]"> - Bridge your AI sessions with focused summaries, not forgotten context.</span>
+          <span className="text-[var(--text-secondary)] whitespace-nowrap text-sm">Bridge your AI sessions with focused summaries</span>
         </div>
         <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--box-violet)] transition-colors">
           ⚙️
