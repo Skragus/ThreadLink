@@ -23,6 +23,7 @@ const {
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+const formatNum = (n) => (typeof n === 'number' ? n.toLocaleString() : '???');
 
 /**
  * Calculate estimated tokens in text (rough approximation).
@@ -62,22 +63,11 @@ function truncateToTokens(text, maxTokens) {
  * Create system prompt for drone condensation.
  */
 function createDroneSystemPrompt(targetTokens) {
-    return `You are an AI conversation condensation specialist. Your mission is to distill conversation segments into ultra-dense, context-rich summaries.
-
-CRITICAL OBJECTIVES:
-• PRESERVE MAXIMUM CONTEXT: Keep all key decisions, technical details, code snippets, and actionable insights
-• CONDENSE RUTHLESSLY: Remove redundancy, filler, and verbose explanations while retaining substance
-• MAINTAIN FLOW: Preserve chronological progression and cause-effect relationships
-• FOCUS ON VALUE: Prioritize information that would be essential for understanding this conversation later
-
-OUTPUT REQUIREMENTS:
-• Target exactly ${targetTokens} tokens (approximately ${Math.floor(targetTokens * 4)} characters)
-• Use information-dense prose with technical precision
-• Include specific commands, configurations, or code when mentioned
-• Preserve important URLs, names, and numerical values
-• Connect ideas with concise transitions
-
-Your condensed segment will join others to create a comprehensive context card for future AI assistants. Every token must earn its place.`;
+    if (!DEFAULT_DRONE_PROMPT) {
+        throw new Error("DEFAULT_DRONE_PROMPT is not defined or imported from config.js");
+    }
+    // Use the imported constant and just replace the placeholder
+    return DEFAULT_DRONE_PROMPT.replace('{TARGET_TOKENS}', Math.round(targetTokens));
 }
 
 /**
@@ -139,7 +129,7 @@ async function processDroneBatch(
                 userPrompt,
                 model,
                 temperature,
-                targetTokens * 1.2 // Give some buffer for LLM to work with
+                null // Let generateResponse use its default max_tokens (e.g., HARD_LIMIT_SAFETY_NET)
             );
 
             if (!result || result.trim().length === 0) {
@@ -151,10 +141,13 @@ async function processDroneBatch(
                 return `[Drone ${batchIndex + 1} failed: Empty response]`;
             }
 
-            const resultTokens = estimateTokens(result);
+            const { cleanAnthropicIntros } = require('./utils');
+            const cleanedResult = cleanAnthropicIntros(result);
+
+            const resultTokens = estimateTokens(cleanedResult);
             console.log(`✅ Drone ${batchIndex + 1}: Success (${resultTokens} tokens)`);
             
-            return result.trim();
+            return cleanedResult.trim();
 
         } catch (error) {
             console.error(`❌ Drone ${batchIndex + 1}: Attempt ${attempt} failed:`, error.message);
@@ -248,8 +241,8 @@ function loadDronePayloads(filePath = 'drone_payloads.json') {
 /**
  * Calculate session statistics.
  */
-function calculateSessionStats(payloads) {
-    // Handle both string payloads and object payloads with input_text
+// The corrected calculateSessionStats function in drones.js
+function calculateSessionStats(payloads, customTarget = null) {
     const totalInputTokens = payloads.reduce((sum, payload) => {
         let tokens = 0;
         if (typeof payload === 'string') {
@@ -268,44 +261,66 @@ function calculateSessionStats(payloads) {
         return sum + tokens;
     }, 0);
     
-    const estimatedDrones = Math.min(payloads.length, MAX_TOTAL_DRONES);
-    const dynamicTarget = calculateDroneOutputTarget(totalInputTokens);
-    const minTargetPerDrone = 150; // Same minimum as dispatch
-    const targetOutputPerDrone = Math.max(dynamicTarget, minTargetPerDrone);
-    const estimatedOutputTokens = estimatedDrones * targetOutputPerDrone;
+    const estimatedDrones = calculateEstimatedDrones(totalInputTokens);
+
+    // This is the key change. We pass the total input tokens and the user's custom
+    // target directly to our single source of truth in config.js.
+    // If no custom target, it will use the default from config.
+    const targetOutputPerDrone = calculateDroneOutputTarget(totalInputTokens, customTarget);
+
+    const displayTargetForCard = customTarget !== null ? customTarget : (targetOutputPerDrone * estimatedDrones);
+    
+    const estimatedTotalOutputTokens = estimatedDrones * targetOutputPerDrone;
 
     return {
         totalInputTokens,
         estimatedDrones,
-        targetOutputPerDrone,
-        estimatedOutputTokens,
-        compressionRatio: totalInputTokens > 0 ? (totalInputTokens / estimatedOutputTokens).toFixed(1) : '0.0'
+        targetOutputPerDrone, // Now correctly calculated
+        estimatedOutputTokens: estimatedTotalOutputTokens,
+        displayTargetTokens: displayTargetForCard,
+        compressionRatio: totalInputTokens > 0 && estimatedTotalOutputTokens > 0
+            ? (totalInputTokens / estimatedTotalOutputTokens).toFixed(1)
+            : '0.0'
     };
 }
 
 /**
  * Create final context card from drone results.
  */
-function createContextCard(droneResults, sessionStats) {
-    const header = `# Conversation Context Card
-Generated from ${sessionStats.totalInputTokens.toLocaleString()} tokens (${sessionStats.compressionRatio}:1 compression)
-Processed by ${droneResults.length} AI drones
+function createContextCard(droneResults, sessionStats) { // sessionStats is mutated here
+    const successfulDroneOutputs = droneResults.filter(result => result && !result.startsWith('[Drone'));
+    const content = successfulDroneOutputs.join('\n\n---\n\n');
+    
+    const finalContentTokens = estimateTokens(content);
+    const successfulDronesCount = successfulDroneOutputs.length;
+
+    // Update sessionStats with actual values based on drone outputs
+    sessionStats.finalContentTokens = finalContentTokens; // Actual tokens of the condensed content
+    sessionStats.successfulDrones = successfulDronesCount;
+    
+    // Recalculate compression ratio based on actual final content tokens
+    if (sessionStats.totalInputTokens > 0 && finalContentTokens > 0) {
+        sessionStats.compressionRatio = (sessionStats.totalInputTokens / finalContentTokens).toFixed(1);
+    } else {
+        sessionStats.compressionRatio = 'N/A';
+    }
+
+    // sessionStats.displayTargetTokens was set by calculateSessionStats
+    const targetDisplayValue = sessionStats.displayTargetTokens;
+
+    const header = `# Threadlink Context Card
+Source size: ${formatNum(sessionStats.totalInputTokens)} tokens → Final size: ${formatNum(finalContentTokens)} tokens (target: ${formatNum(targetDisplayValue)} tokens)
+Compression Ratio: ${sessionStats.compressionRatio}:1 | Drones: ${successfulDronesCount}
 
 ---
 
 `;
 
-    const content = droneResults
-        .filter(result => result && !result.startsWith('[Drone'))
-        .join('\n\n---\n\n');
-
     const fullCard = header + content;
-    const finalTokens = estimateTokens(fullCard);
+    const finalOutputTokensOfCard = estimateTokens(fullCard); // Total tokens of the card including its header
+    sessionStats.finalOutputTokens = finalOutputTokensOfCard; 
 
-    if (finalTokens > MAX_FINAL_OUTPUT_TOKENS) {
-        console.log(`⚠️ Context card too long (${finalTokens} tokens), truncating to ${MAX_FINAL_OUTPUT_TOKENS} tokens`);
-        return truncateToTokens(fullCard, MAX_FINAL_OUTPUT_TOKENS);
-    }
+
 
     return fullCard;
 }
@@ -353,7 +368,8 @@ async function dispatchDrones(options = {}) {
         maxConcurrency = 3,
         retries = 2,
         saveOutput = true,
-        onProgress = null
+        onProgress = null,
+        customTargetTokens = null  // ADDED
     } = options;
 
     console.log('\n🚀 DRONE DISPATCH INITIATED');
@@ -373,15 +389,13 @@ async function dispatchDrones(options = {}) {
         }
 
         // Calculate session statistics
-        const sessionStats = calculateSessionStats(payloads);
-        
-        console.log(`📊 Session Statistics:`);
-        console.log(`   Input tokens: ${sessionStats.totalInputTokens.toLocaleString()}`);
+        const sessionStats = calculateSessionStats(payloads, customTargetTokens);
+        console.log(`📊 Session Statistics (Initial Estimates):`);
+        console.log(`   Input tokens: ${formatNum(sessionStats.totalInputTokens)}`);
         console.log(`   Drones: ${sessionStats.estimatedDrones}`);
-        console.log(`   Target per drone: ${sessionStats.targetOutputPerDrone} tokens`);
-        console.log(`   Estimated output: ${sessionStats.estimatedOutputTokens.toLocaleString()} tokens`);
-        console.log(`   Final output: ${sessionStats.finalOutputTokens.toLocaleString()} tokens`);
-        console.log(`   Compression: ${sessionStats.compressionRatio}:1`);
+        console.log(`   Target per drone: ${formatNum(sessionStats.targetOutputPerDrone)} tokens`);
+        console.log(`   Overall Target Output: ${formatNum(sessionStats.displayTargetTokens)} tokens`); // User's target or derived config target
+        console.log(`   Estimated Compression: ${sessionStats.compressionRatio}:1`); // Based on initial estimates
         console.log(`   Model: ${model}\n`);
 
         // Process drones
@@ -411,12 +425,14 @@ async function dispatchDrones(options = {}) {
         console.log(`\n✅ All drones completed in ${totalTime}s`);
 
         // Create context card
-        const contextCard = createContextCard(droneResults, sessionStats);
-        const finalTokens = estimateTokens(contextCard);
+        // Note: createContextCard mutates sessionStats with actual values (finalContentTokens, successfulDrones, compressionRatio, finalOutputTokens)
+        const contextCard = createContextCard(droneResults, sessionStats); 
 
-        console.log(`\n📄 Context Card Complete:`);
-        console.log(`   Final size: ${finalTokens.toLocaleString()} tokens`);
-        console.log(`   Successful drones: ${droneResults.filter(r => r && !r.startsWith('[Drone')).length}/${droneResults.length}`);
+        console.log(`\n📄 Context Card Complete (Actuals):`);
+        console.log(`   Final content size: ${formatNum(sessionStats.finalContentTokens)} tokens (target: ${formatNum(sessionStats.displayTargetTokens)} tokens)`);
+        console.log(`   Total card size (incl. header): ${formatNum(sessionStats.finalOutputTokens)} tokens`);
+        console.log(`   Actual Compression: ${sessionStats.compressionRatio}:1`);
+        console.log(`   Successful drones: ${sessionStats.successfulDrones}/${droneResults.length}`);
 
         // Save results
         let filePaths = null;

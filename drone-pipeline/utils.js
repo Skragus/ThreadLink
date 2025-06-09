@@ -1,5 +1,24 @@
 // utils.js
 
+// Load environment variables from .env file
+require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
+const path = require('path');
+const fs = require('fs');
+
+// DEBUG: What dotenv is about to read
+const envPath = path.resolve(__dirname, '.env');
+console.log("🔍 Attempting to load .env from:", envPath);
+
+if (fs.existsSync(envPath)) {
+    console.log("📄 .env file contents:\n" + fs.readFileSync(envPath, 'utf8'));
+} else {
+    console.log("❌ .env file not found at", envPath);
+}
+
+require('dotenv').config({ path: envPath });
+
+console.log("📦 GOOGLE_API_KEY:", JSON.stringify(process.env.GOOGLE_API_KEY));
+
 /**
  * Rough token estimation: ~4 characters per token on average.
  * @param {string} text
@@ -26,14 +45,15 @@ const MODEL_PROVIDERS = {
     "gpt-4": "openai",
     "gpt-4o": "openai",
     "gpt-4o-mini": "openai",
-    "gpt-4-turbo": "openai",
-    "gpt-3.5-turbo": "openai",
-    "gpt-3.5-turbo-16k": "openai",
+    "gpt-4.1-mini": "openai",
+    "gpt-4.1-nano": "openai",
     
     // Anthropic models
     "claude-3-5-sonnet-20241022": "anthropic",
     "claude-3-5-sonnet-20240620": "anthropic",
+    "claude-3-5-sonnet-20240620": "anthropic",
     "claude-3-haiku-20240307": "anthropic",
+    "claude-3-5-haiku-20241022": "anthropic",
     "claude-3-opus-20240229": "anthropic",
     "claude-3-sonnet-20240229": "anthropic",
     
@@ -41,7 +61,6 @@ const MODEL_PROVIDERS = {
     "gemini-pro": "google",
     "gemini-1.5-pro": "google",
     "gemini-1.5-flash": "google",
-    "gemini-pro-vision": "google",
 };
 
 /**
@@ -136,10 +155,13 @@ async function _generateOpenAIResponse(
             { role: "user", content: userPrompt },
         ];
 
+        const HARD_LIMIT_SAFETY_NET = 2048;
+
         const requestParams = {
             model,
             messages,
-            temperature
+            temperature,
+            max_tokens: HARD_LIMIT_SAFETY_NET
         };
         
         if (maxTokens) {
@@ -175,10 +197,10 @@ async function _generateAnthropicResponse(
     
     try {
         const client = _getAnthropicClient();
-
+        const HARD_LIMIT_SAFETY_NET = 2048;
         const requestParams = {
             model,
-            max_tokens: maxTokens || 1000,
+            max_tokens: HARD_LIMIT_SAFETY_NET, // Use the fixed safety net
             temperature,
             system: systemInstructions,
             messages: [{ role: "user", content: userPrompt }],
@@ -430,6 +452,111 @@ async function testAllProviders() {
     return results;
 }
 
+
+/**
+ * Clean up common Anthropic introductory phrases from drone outputs.
+ * Uses both specific patterns and intelligent keyword-based detection.
+ */
+function cleanAnthropicIntros(text, options = {}) {
+    if (!text || typeof text !== 'string') return text;
+    
+    const { debug = false } = options;
+    const originalLength = text.length;
+    let cleaned = text.trim();
+    let patternMatched = null;
+    let method = null;
+    
+    // STRATEGY 1: Keyword-based first-line detection (NEW!)
+    // Look for first line ending with colon + containing summary keywords
+    const lines = cleaned.split('\n');
+    const firstLine = lines[0]?.trim();
+    
+    if (firstLine && firstLine.endsWith(':')) {
+        const summaryKeywords = [
+            'summary', 'condensed', 'conversation', 'context', 'card', 'token',
+            'segment', 'analysis', 'overview', 'breakdown', 'insights',
+            'highlights', 'key', 'core', 'essential', 'focus', 'recap', 'implementation', 'strategy'
+        ];
+        
+        const hasKeyword = summaryKeywords.some(keyword => 
+            firstLine.toLowerCase().includes(keyword.toLowerCase())
+        );
+        
+        if (hasKeyword) {
+            patternMatched = firstLine + ':';
+            method = 'keyword-based';
+            cleaned = lines.slice(1).join('\n').trim();
+        }
+    }
+    
+    // STRATEGY 2: Specific pattern matching (fallback for edge cases)
+    if (!patternMatched) {
+        const specificPatterns = [
+            // "Here's..." patterns
+            /^Here's [^:]*:\s*/i,
+            
+            // "I'll..." patterns (newly discovered!)
+            /^I'll analyze [^.]*\.\s*/i,
+            /^I'll condense [^:]*:\s*/i,
+            /^I'll [^.]*\.\s*/i,
+            /^I'll [^.]*\.\s*Let's [^:]*:\s*/i,
+            // Direct headers
+            /^[🔬📊💡🚀📈📄🧪🎉💥⚠️✅❌⭐️🔍]+ [^:]*:\s*/i,
+            /^[A-Z][a-z]+ [A-Z][^:]*Summary[^:]*:\s*/i,
+            
+            // Other common patterns
+            /^This is [^:]*:\s*/i,
+            /^The following is [^:]*:\s*/i,
+            /^Below is [^:]*:\s*/i,
+        ];
+        
+        for (const pattern of specificPatterns) {
+            const match = cleaned.match(pattern);
+            if (match) {
+                patternMatched = match[0];
+                method = 'pattern-based';
+                cleaned = cleaned.replace(pattern, '').trim();
+                break;
+            }
+        }
+    }
+    
+    // Debug logging
+    if (patternMatched && debug) {
+        const trimmedChars = originalLength - cleaned.length;
+        console.log(`🧹 Cleaned intro (${method}): "${patternMatched.trim()}" (removed ${trimmedChars} chars)`);
+    }
+    
+    return cleaned;
+}
+
+// Test cases based on your context card
+const testCases = [
+    "Here's the 198-token condensed summary:\n\nActual content here...",
+    "Here's a condensed summary of the preprocessing log, focusing on key technical details and process flow:\n\nContent...",
+    "🔬 Condensed Conversation Segment (198 tokens):\n\nContent...",
+    "Code Refactoring Summary: Unified Drone Output Target Calculation\n\nContent...",
+    "Condensed Segment (198 tokens):\n\nContent...",
+    "Here's a precise implementation strategy that embodies exactly what you described:\n\nContent..."
+];
+
+// Test function (for development)
+function testCleanup() {
+    console.log("Testing Anthropic intro cleanup...\n");
+    
+    testCases.forEach((testCase, index) => {
+        console.log(`Test ${index + 1}:`);
+        console.log(`Original: "${testCase.split('\n')[0]}"`);
+        const cleaned = cleanAnthropicIntros(testCase);
+        console.log(`Cleaned:  "${cleaned.split('\n')[0]}"`);
+        console.log(`Success:  ${!cleaned.toLowerCase().includes('here\'s') && !cleaned.includes('Summary:')}}\n`);
+    });
+}
+
+module.exports = {
+    cleanAnthropicIntros,
+    testCleanup // For development testing
+};
 module.exports = {
     // Main API
     generateResponse,
@@ -442,7 +569,8 @@ module.exports = {
     testProviderConnection,
     testAllProviders,
     estimateTokens,
-    
+    cleanAnthropicIntros, 
+    testCleanup,
     // Constants
     MODEL_PROVIDERS,
 };

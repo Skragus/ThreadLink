@@ -134,23 +134,58 @@ async function processConversation(options = {}) {
         runDrones = false,
         model = 'gemini-1.5-flash',
         concurrency = 3,
-        saveOutput = true
+        saveOutput = true,
+        customTargetTokens = null  // ADD THIS LINE
     } = options;
 
-    // Temporarily override process.argv for this call
-    const originalArgv = process.argv;
-    process.argv = ['node', 'index.js'];
-    
-    if (runDrones) process.argv.push('--run-drones');
-    if (model !== 'gemini-1.5-flash') process.argv.push(`--model=${model}`);
-    if (concurrency !== 3) process.argv.push(`--concurrency=${concurrency}`);
-    if (!saveOutput) process.argv.push('--no-save');
+    // Handle customTargetTokens specially since it can't be passed via CLI args
+    if (runDrones && customTargetTokens !== null) {
+        // We need to call dispatchDrones directly with the custom target
+        // First, run preprocessing without drones to generate payloads
+        
+        // Temporarily override process.argv for preprocessing
+        const originalArgv = process.argv;
+        process.argv = ['node', 'index.js'];
+        
+        if (model !== 'gemini-1.5-flash') process.argv.push(`--model=${model}`);
+        if (concurrency !== 3) process.argv.push(`--concurrency=${concurrency}`);
+        if (!saveOutput) process.argv.push('--no-save');
+        // Note: NOT adding --run-drones here
+        
+        try {
+            // Run preprocessing only
+            await main();
+            
+            // Now dispatch drones with custom target
+            const { dispatchDrones } = require('./drones');
+            const droneResult = await dispatchDrones({
+                payloadsFile: 'drone_payloads.json',
+                model: model,
+                maxConcurrency: concurrency,
+                saveOutput: saveOutput,
+                customTargetTokens: customTargetTokens  // Pass the custom target
+            });
 
-    try {
-        const result = await main();
-        return result;
-    } finally {
-        process.argv = originalArgv;
+            return droneResult;
+        } finally {
+            process.argv = originalArgv;
+        }
+    } else {
+        // Normal flow - use your original approach
+        const originalArgv = process.argv;
+        process.argv = ['node', 'index.js'];
+        
+        if (runDrones) process.argv.push('--run-drones');
+        if (model !== 'gemini-1.5-flash') process.argv.push(`--model=${model}`);
+        if (concurrency !== 3) process.argv.push(`--concurrency=${concurrency}`);
+        if (!saveOutput) process.argv.push('--no-save');
+
+        try {
+            const result = await main();
+            return result;
+        } finally {
+            process.argv = originalArgv;
+        }
     }
 }
 

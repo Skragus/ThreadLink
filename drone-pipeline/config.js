@@ -6,6 +6,11 @@ const TARGET_CONTEXT_CARD_TOKENS = 3000;   // What the user actually wants
 const DRONES_PER_10K_TOKENS = 2;           // 2 drones per 10k input tokens
 const MAX_TOTAL_DRONES = 100;              // Hard cap to prevent runaway costs
 
+// === NEW QUALITY & COMPRESSION GUARDRAILS ===
+const MAX_COMPRESSION_RATIO = 25; // Default cap at 25:1
+const MINIMUM_OUTPUT_PER_DRONE = 50; // Hard floor for any single drone's output
+
+
 // === DERIVED DRONE SETTINGS ===
 const DRONE_INPUT_TOKEN_MAX = 6000;                                    // Good for Flash efficiency
 const DRONE_INPUT_TOKEN_MIN = Math.floor(DRONE_INPUT_TOKEN_MAX * 0.5); // 3000 - flexibility
@@ -46,8 +51,8 @@ CRITICAL OBJECTIVES:
 - FOCUS ON VALUE: Prioritize information that would be essential for understanding this conversation later
 
 OUTPUT REQUIREMENTS:
-- Aim for approximately {TARGET_TOKENS} tokens. Do not exceed this unless necessary for coherence.
-- Avoid introductory phrases and summarizer language. Write as if continuing the original conversation, not describing it.
+- Aim for approximately {TARGET_TOKENS} tokens. DO NOT EXCEED THIS UNLESS NECESSARY FOR COHERENCE. 
+- YOUR RESPONSE MUST START WITH THE FIRST WORD OF THE SUMMARY. DO NOT under any circumstances include a preamble, introduction, or meta-commentary like "Here is a summary...".
 - Use information-dense prose with technical precision
 - Retain commands, configs, and code verbatim where relevant
 - Preserve important URLs, names, and numerical values
@@ -63,18 +68,24 @@ const DEFAULT_DRONE_OUTPUT_TOKEN_TARGET = Math.ceil(TARGET_CONTEXT_CARD_TOKENS /
 const MAX_FINAL_OUTPUT_TOKENS = Math.max(TARGET_CONTEXT_CARD_TOKENS, 6000); // Use user target or minimum viable
 
 /**
- * Calculate optimal drone output target based on session size
+ * Calculates the optimal drone output target, respecting quality and compression guardrails.
  * @param {number} inputTokens - Total tokens in the session
  * @returns {number} Target tokens per drone output
  */
-function calculateDroneOutputTarget(inputTokens) {
-    const estimatedDrones = Math.min(
-        Math.ceil(inputTokens / 10000 * DRONES_PER_10K_TOKENS),
-        MAX_TOTAL_DRONES
-    );
-    
-    // User's target divided by drone count
-    return Math.ceil(TARGET_CONTEXT_CARD_TOKENS / estimatedDrones);
+// The upgraded function from our last discussion, now with customTargetTokens
+function calculateDroneOutputTarget(inputTokens, customTargetTokens = TARGET_CONTEXT_CARD_TOKENS) {
+    const estimatedDrones = calculateEstimatedDrones(inputTokens);
+
+    const targetFromCompressionCap = Math.ceil(inputTokens / MAX_COMPRESSION_RATIO);
+
+    // Use the custom target if provided, otherwise use the default from config
+    const userRequestedTarget = customTargetTokens;
+
+    const effectiveTotalTarget = Math.max(userRequestedTarget, targetFromCompressionCap);
+    const calculatedPerDroneTarget = Math.ceil(effectiveTotalTarget / estimatedDrones);
+    const finalPerDroneTarget = Math.max(calculatedPerDroneTarget, MINIMUM_OUTPUT_PER_DRONE);
+
+    return finalPerDroneTarget;
 }
 
 /**
