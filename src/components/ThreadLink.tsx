@@ -1,16 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import helpIcon from '../assets/circle-help.svg';
 import settingsIcon from '../assets/settings.svg';
 
+// API configuration
+const API_BASE_URL = 'http://localhost:3001/api';
+
+interface Stats {
+  executionTime: string | number;
+  compressionRatio: string | number;
+  successfulDrones: number;
+  totalDrones: number;
+  // Add other potential stats properties if they exist
+}
+
 function ThreadLink() {
   const [inputText, setInputText] = useState('');
+  const [outputText, setOutputText] = useState('');
   const [isProcessed, setIsProcessed] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
-  const [targetTokens, setTargetTokens] = useState(500);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
+  const [targetTokens, setTargetTokens] = useState(1500);
+  const [isLoading, setIsLoading] = useState(false);  const [isCopied, setIsCopied] = useState(false);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState<Stats | null>(null);
 
-  const roundTokenCount = (count: number) => {
+  // Settings
+  const [model, setModel] = useState('gemini-1.5-flash');
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Refs for scrolling
+  const errorRef = useRef<HTMLDivElement>(null);
+  const statsRef = useRef<HTMLDivElement>(null);
+  const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const roundTokenCount = (count) => {
     if (count === 0) return 0;
     if (count < 1000) {
       return Math.round(count / 10) * 10;
@@ -21,20 +43,54 @@ function ThreadLink() {
     }
   };
 
-  const formatTokenCount = (count: number) => {
+  const formatTokenCount = (count) => {
     const rounded = roundTokenCount(count);
     return `${count === 0 ? '' : '~'}${rounded.toLocaleString()} tokens`;
   };
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setInputText(text);
-    // Simple token count estimation (words * 1.33)
-    const words = text.trim().split(/\s+/).length;
-    setTokenCount(Math.floor(words * 1.33));
+  const estimateTokens = (text) => {
+      // Use the same standard approximation as the backend.
+      // Rough approximation: ~4 characters per token
+      return Math.ceil((text || "").length / 4);
   };
 
-  const handleTargetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  
+
+  const handleTextChange = (e) => {
+    const text = e.target.value;
+    setInputText(text);
+    setError('');
+    setTokenCount(estimateTokens(text));
+  };
+
+
+  // Add this function before your component
+  const getErrorDisplay = (errorMessage, errorType) => {
+    if (errorType === 'AUTH_ERROR' || errorMessage.includes('Invalid API key')) {
+      return 'Authentication failed. Please check your API key configuration.';
+    }
+    if (errorType === 'NETWORK_ERROR' || errorMessage.includes('Cannot connect')) {
+      return 'Unable to connect to the processing server. Ensure the backend is running.';
+    }
+    if (errorType === 'RATE_LIMIT') {
+      return 'API rate limit reached. The system is handling this automatically.';
+    }
+    if (errorType === 'PROCESSING_FAILURE') {
+      return 'Processing failed - no content could be generated. All drones encountered errors.';
+    }
+    if (errorType === 'SERVER_ERROR') {
+      return 'Server temporarily unavailable. Please try again in a moment.';
+    }
+    if (errorType === 'BAD_REQUEST') {
+      return 'Invalid request. Please check your input or parameters.';
+    }
+    if (errorType === 'TIMEOUT') {
+      return 'The operation timed out. Please try again. If the problem persists, consider reducing input size.';
+    }
+    return errorMessage;
+  };
+
+  const handleTargetChange = (e) => {
     const value = parseInt(e.target.value, 10);
     if (!isNaN(value) && value >= 0) {
       setTargetTokens(value);
@@ -42,23 +98,69 @@ function ThreadLink() {
   };
 
   const handleCondense = async () => {
+    if (!inputText.trim()) {
+      setError('Please paste some text to condense');
+      return;
+    }
+
     setIsLoading(true);
+    setError('');
+    setStats(null);
     
-    // Simulate API call with 3 second delay
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsProcessed(true);
+    try {
+      console.log('🚀 Sending request to backend...');
       
-      // Set dummy condensed output
-      setInputText("This is a condensed summary of your AI conversation. The original content has been processed and summarized to meet your target token count while preserving key information and context.");
-    }, 3000);
+      const response = await fetch(`${API_BASE_URL}/condense`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: inputText,
+          model: model,
+          targetTokens: targetTokens
+        })
+      });
+
+      const data = await response.json();
+
+      // Update error handling
+      if (!response.ok) {
+        const errorInfo = getErrorDisplay(data.message || data.error || 'Processing failed', data.errorType);
+        throw new Error(errorInfo);
+      }
+
+      // Check the success flag in the response body (for 200 OK responses that might still indicate logical failure)
+      if (data.success) {
+        setOutputText(data.contextCard);
+        setStats(data.stats);
+        setIsProcessed(true);
+        console.log('✅ Processing complete:', data.stats);
+      } else {
+        const errorInfo = getErrorDisplay(data.message || 'Processing failed according to server.', data.errorType);
+        setError(errorInfo.message);
+        console.error('❌ Processing Failed (data.success is false):', errorInfo.message, '| Type:', errorInfo.type, '| Suggested Action:', errorInfo.action, '| Full Response:', data);
+      }
+      
+    } catch (err: any) { // Catch network errors or other unexpected issues
+      console.error('❌ Caught an exception during processing:', err);
+      // Determine if it's a network-like error or a general one
+      const isNetworkError = err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes('NetworkError'));
+      const errorInfo = getErrorDisplay(
+        err.message || 'An unexpected client-side error occurred.',
+        isNetworkError ? 'NETWORK_ERROR' : 'GENERAL_ERROR'
+      );
+      setError(errorInfo.message);
+      console.error('❌ Exception Details:', errorInfo.message, '| Type:', errorInfo.type, '| Suggested Action:', errorInfo.action);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(inputText);
+    const textToCopy = isProcessed ? outputText : inputText;
+    await navigator.clipboard.writeText(textToCopy);
     setIsCopied(true);
-    
-    // Reset after 2 seconds
     setTimeout(() => {
       setIsCopied(false);
     }, 2000);
@@ -66,20 +168,103 @@ function ThreadLink() {
 
   const handleReset = () => {
     setInputText('');
+    setOutputText('');
     setIsProcessed(false);
     setTokenCount(0);
+    setError('');
+    setStats(null);
   };
 
   const openSettings = () => {
-    // Settings handler placeholder
+    setShowSettings(true);
   };
 
   const openHelp = () => {
-    // Help handler placeholder
+    window.open('https://github.com/skragus/threadlink', '_blank');
   };
+  const displayText = isProcessed ? outputText : inputText;
+  // Effect to scroll to the relevant section after processing
+  useEffect(() => {
+    // Only scroll if isProcessed is true and we have stats to show (not the textarea)
+    if (isProcessed && stats) {
+      // Delay to allow DOM to fully update after state changes
+      const timer = setTimeout(() => {
+        requestAnimationFrame(() => {
+          if (statsRef.current) {
+            // Only scroll to stats, not the textarea
+            statsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isProcessed, stats]); // Removed outputText from dependencies
+
+  // Add this new useEffect to control textarea scroll position:
+  useEffect(() => {
+    // Reset textarea scroll to top when content changes
+    if (outputTextareaRef.current && isProcessed) {
+      // Small delay to ensure the value has been updated
+      const timer = setTimeout(() => {
+        if (outputTextareaRef.current) {
+          outputTextareaRef.current.scrollTop = 0;
+        }
+      }, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [outputText, isProcessed]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">Settings</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="model-select" className="block text-sm text-[var(--text-secondary)] mb-1">
+                  Model
+                </label>
+                <select
+                  id="model-select"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)]"
+                >
+                  <optgroup label="Google">
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  </optgroup>
+                  <optgroup label="OpenAI">
+                    <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
+                    <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                  </optgroup>
+                  <optgroup label="Anthropic">
+                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="flex-1 px-4 py-2 bg-[var(--highlight-blue)] text-white rounded-lg"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="px-4 py-2 bg-[var(--text-secondary)] text-white rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between px-12 pt-6 pb-4 border-b border-[var(--divider)]">
         <div className="flex items-center gap-8">
@@ -105,14 +290,25 @@ function ThreadLink() {
             <img src={settingsIcon} alt="Settings" className="w-10 h-10 opacity-50" />
           </button>
         </div>
-      </div>
+      </div>      {/* Error Display */}
+      {error && (
+        <div ref={errorRef} className="mx-12 mt-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded text-red-400 text-sm">
+          {error}
+        </div>
+      )}
 
-      {/* Main content area */}
+      {/* Stats Display */}
+      {stats && (
+        <div ref={statsRef} className="mx-12 mt-4 p-3 bg-green-500 bg-opacity-10 border border-green-500 rounded text-green-400 text-sm">
+          ✅ Processed in {stats.executionTime}s • {stats.compressionRatio}:1 compression • {stats.successfulDrones}/{stats.totalDrones} drones successful
+        </div>
+      )}      {/* Main content area */}
       <div className="flex-grow flex flex-col justify-center px-12 py-4">
         <textarea
+          ref={outputTextareaRef}
           className={`w-full flex-grow bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''}`}
           placeholder="Paste your AI conversation here..."
-          value={inputText}
+          value={displayText}
           onChange={handleTextChange}
           readOnly={isProcessed || isLoading}
         />
@@ -126,10 +322,11 @@ function ThreadLink() {
               <div className="flex items-center gap-2 shrink-0">
                 <span className="font-mono w-32">{formatTokenCount(tokenCount)}</span>
                 <span className="mx-2">•</span>
-                <label className="whitespace-nowrap">Target:</label>
+                <label htmlFor="target-tokens-input" className="whitespace-nowrap">Target:</label>
                 <input
                   type="number"
                   value={targetTokens}
+                  id="target-tokens-input"
                   onChange={handleTargetChange}
                   step="100"
                   min="100"
@@ -156,7 +353,7 @@ function ThreadLink() {
                   )}
                 </button>
               )}
-              {isProcessed && (
+              {(isProcessed) && (
                 <>
                   <button 
                     onClick={handleCopy}
@@ -197,7 +394,7 @@ function ThreadLink() {
           <span>·</span>
           <span>Open Source</span>
           <span>·</span>
-          <span>BYOK</span>
+          <span>Backend Processing</span>
           <span>·</span>
           <span>Privacy-first</span>
         </p>

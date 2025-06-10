@@ -2,22 +2,7 @@
 
 // Load environment variables from .env file
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
-const path = require('path');
-const fs = require('fs');
-
-// DEBUG: What dotenv is about to read
-const envPath = path.resolve(__dirname, '.env');
-console.log("🔍 Attempting to load .env from:", envPath);
-
-if (fs.existsSync(envPath)) {
-    console.log("📄 .env file contents:\n" + fs.readFileSync(envPath, 'utf8'));
-} else {
-    console.log("❌ .env file not found at", envPath);
-}
-
-require('dotenv').config({ path: envPath });
-
-console.log("📦 GOOGLE_API_KEY:", JSON.stringify(process.env.GOOGLE_API_KEY));
+const config = require('./config.js');
 
 /**
  * Rough token estimation: ~4 characters per token on average.
@@ -148,20 +133,16 @@ async function _generateOpenAIResponse(
     }
     
     try {
-        const client = _getOpenAIClient();
-
-        const messages = [
+        const client = _getOpenAIClient();        const messages = [
             { role: "system", content: systemInstructions },
             { role: "user", content: userPrompt },
         ];
-
-        const HARD_LIMIT_SAFETY_NET = 2048;
 
         const requestParams = {
             model,
             messages,
             temperature,
-            max_tokens: HARD_LIMIT_SAFETY_NET
+            max_tokens: config.MAX_OUTPUT_TOKENS_SAFETY
         };
         
         if (maxTokens) {
@@ -194,13 +175,11 @@ async function _generateAnthropicResponse(
         console.error("Empty system instructions or user prompt provided");
         return "";
     }
-    
-    try {
+      try {
         const client = _getAnthropicClient();
-        const HARD_LIMIT_SAFETY_NET = 2048;
         const requestParams = {
             model,
-            max_tokens: HARD_LIMIT_SAFETY_NET, // Use the fixed safety net
+            max_tokens: config.MAX_OUTPUT_TOKENS_SAFETY, // Use the config safety net
             temperature,
             system: systemInstructions,
             messages: [{ role: "user", content: userPrompt }],
@@ -530,33 +509,26 @@ function cleanAnthropicIntros(text, options = {}) {
     return cleaned;
 }
 
-// Test cases based on your context card
 const testCases = [
     "Here's the 198-token condensed summary:\n\nActual content here...",
     "Here's a condensed summary of the preprocessing log, focusing on key technical details and process flow:\n\nContent...",
     "🔬 Condensed Conversation Segment (198 tokens):\n\nContent...",
     "Code Refactoring Summary: Unified Drone Output Target Calculation\n\nContent...",
     "Condensed Segment (198 tokens):\n\nContent...",
-    "Here's a precise implementation strategy that embodies exactly what you described:\n\nContent..."
+    "Here's a precise implementation strategy that embodies exactly what you described:\n\nContent...",
 ];
 
 // Test function (for development)
 function testCleanup() {
     console.log("Testing Anthropic intro cleanup...\n");
-    
-    testCases.forEach((testCase, index) => {
+    testCases.forEach((testCase, index) => { // Corrected parameter order
         console.log(`Test ${index + 1}:`);
         console.log(`Original: "${testCase.split('\n')[0]}"`);
-        const cleaned = cleanAnthropicIntros(testCase);
+        const cleaned = cleanAnthropicIntros(testCase, { debug: true });
         console.log(`Cleaned:  "${cleaned.split('\n')[0]}"`);
-        console.log(`Success:  ${!cleaned.toLowerCase().includes('here\'s') && !cleaned.includes('Summary:')}}\n`);
+        console.log(`Success:  ${!cleaned.toLowerCase().includes('here\'s') && !cleaned.toLowerCase().includes('summary:')}\n`); // Check lowercase
     });
 }
-
-module.exports = {
-    cleanAnthropicIntros,
-    testCleanup // For development testing
-};
 module.exports = {
     // Main API
     generateResponse,

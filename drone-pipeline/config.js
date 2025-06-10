@@ -40,6 +40,35 @@ const ABSOLUTE_MIN_VIABLE_DRONE_TOKENS = 100; // Smallest payload to send, even 
 const SEGMENT_TEXT_SEPARATOR = "\n\n"; // Separator used to join segment texts for a drone
 const RECENT_CONVERSATION_MIN_TOKENS = 600;
 
+// === QUALITY CONTROL SETTINGS ===
+const QUALITY_MIN_TOKEN_ABSOLUTE = 25;           // Absolute minimum tokens for quality check
+const QUALITY_MIN_TOKEN_PERCENTAGE = 0.25;       // Minimum percentage of target tokens
+const QUALITY_MIN_CHAR_COUNT = 50;               // Minimum character count for quality
+
+// === RETRY LOGIC SETTINGS ===
+const RETRY_BASE_DELAY_MS = 2000;                // Base delay for retries in milliseconds
+const MAX_RETRY_ATTEMPTS = 3;                    // Maximum number of retry attempts
+
+// === CONSOLE DETECTION SETTINGS ===
+const CONSOLE_SPECIAL_CHAR_THRESHOLD_PERCENT = 0.05; // Threshold for console special characters
+
+// === PARAGRAPH MERGING SETTINGS ===
+const ORPHAN_MERGE_SEPARATOR = "\n";             // Separator for merging orphan paragraphs
+const CONSOLIDATION_SEPARATOR = "\n\n";          // Different from SEGMENT_TEXT_SEPARATOR
+
+// === OUTPUT SAFETY SETTINGS ===
+const MAX_OUTPUT_TOKENS_SAFETY = 2048;           // Hard limit safety net for output tokens
+
+// === MODEL CONFIGURATION DEFAULTS ===
+const DEFAULT_RATE_LIMIT_BACKOFF_MS = 60000;     // Default rate limit backoff in milliseconds
+const DEFAULT_CONSERVATIVE_CONCURRENCY = 1;      // Conservative concurrency for sensitive models
+const DEFAULT_STANDARD_CONCURRENCY = 2;          // Standard concurrency for stable models
+
+// === MODEL-SPECIFIC BACKOFF TIMES ===
+const CLAUDE_RATE_LIMIT_BACKOFF_MS = 90000;      // Claude-specific backoff
+const GEMINI_RATE_LIMIT_BACKOFF_MS = 30000;      // Gemini-specific backoff  
+const GPT4_RATE_LIMIT_BACKOFF_MS = 45000;        // GPT-4 specific backoff
+
 // Drone Operation Specifics (used when dispatching, but good to keep with configs)
 const DEFAULT_DRONE_PROMPT = `You are an AI conversation condensation specialist. Your mission is to distill conversation segments into ultra-dense, context-rich summaries.
 
@@ -161,6 +190,45 @@ module.exports = {
     DRONE_TARGET_TOKEN_WINDOW_UPPER_PERCENT,
     REBALANCE_LOWER_THRESHOLD_PERCENT,
     REBALANCE_UPPER_THRESHOLD_PERCENT,
+    ABSOLUTE_MIN_VIABLE_DRONE_TOKENS,
+    
+    // Stage 6
+    SEGMENT_TEXT_SEPARATOR,
+    RECENT_CONVERSATION_MIN_TOKENS,
+    
+    // Quality control
+    QUALITY_MIN_TOKEN_ABSOLUTE,
+    QUALITY_MIN_TOKEN_PERCENTAGE,
+    QUALITY_MIN_CHAR_COUNT,
+    
+    // Retry logic
+    RETRY_BASE_DELAY_MS,
+    MAX_RETRY_ATTEMPTS,
+    
+    // Console detection
+    CONSOLE_SPECIAL_CHAR_THRESHOLD_PERCENT,
+      // Paragraph merging
+    ORPHAN_MERGE_SEPARATOR,
+    CONSOLIDATION_SEPARATOR,
+    
+    // Output safety
+    MAX_OUTPUT_TOKENS_SAFETY,
+    
+    // Model configuration defaults
+    DEFAULT_RATE_LIMIT_BACKOFF_MS,
+    DEFAULT_CONSERVATIVE_CONCURRENCY,
+    DEFAULT_STANDARD_CONCURRENCY,
+    
+    // Model-specific backoff times
+    CLAUDE_RATE_LIMIT_BACKOFF_MS,
+    GEMINI_RATE_LIMIT_BACKOFF_MS,
+    GPT4_RATE_LIMIT_BACKOFF_MS,
+    
+    // Drone operation
+    DEFAULT_DRONE_PROMPT,
+    MAX_COMPRESSION_RATIO,
+    MINIMUM_OUTPUT_PER_DRONE,
+
     ABSOLUTE_MIN_VIABLE_DRONE_TOKENS,
     
     // Stage 6

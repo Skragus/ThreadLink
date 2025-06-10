@@ -52,25 +52,34 @@ app.post('/api/condense', async (req, res) => {
         model: model,
         concurrency: concurrency,
         saveOutput: false, // Don't save files for API requests
-        customTargetTokens: targetTokens  // ADDED
+        customTargetTokens: targetTokens
       });
+
+      // Check if processing failed
+      if (result.success === false) {
+        return res.status(400).json({
+          success: false,
+          error: result.error,
+          errorType: result.errorType || 'PROCESSING_FAILURE',
+          stats: result.stats
+        });
+      }
       
       console.log(`✅ Processing complete: ${result.sessionStats?.compressionRatio || 'N/A'}:1 compression`);
       
-      // Return the result
+      // Success response
       res.json({
         success: true,
         contextCard: result.contextCard,
         stats: {
-          compressionRatio: result.sessionStats?.compressionRatio || 'N/A',
-          executionTime: result.executionTime,
-          successfulDrones: result.droneResults?.filter(r => r && !r.startsWith('[Drone')).length || 0,
-          totalDrones: result.droneResults?.length || 0,
-          originalTokens: result.sessionStats?.originalTokens,
-          finalTokens: result.sessionStats?.finalTokens
+            compressionRatio: result.sessionStats?.compressionRatio || 'N/A',
+            executionTime: result.executionTime,
+            successfulDrones: result.sessionStats?.successfulDrones || 0,
+            totalDrones: result.sessionStats?.estimatedDrones || 0,
+            originalTokens: result.sessionStats?.totalInputTokens,
+            finalTokens: result.sessionStats?.finalContentTokens
         }
       });
-      
     } finally {
       // Cleanup: remove temp file and restore original
       if (fs.existsSync(tempInputFile)) {

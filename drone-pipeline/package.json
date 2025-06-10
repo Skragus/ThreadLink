@@ -2,7 +2,11 @@
   "name": "drone-pipeline",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "jest",
+    "test:drones": "jest tests/drones.test.js",
+    "test:watch": "jest --watch",
+    "test:verbose": "jest --verbose"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.53.0",

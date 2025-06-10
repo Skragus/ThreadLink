@@ -1,4 +1,5 @@
 const { estimateTokens } = require('./utils'); // Assuming cleaner.js is in the same directory and exports estimateTokens
+const config = require('./config.js');
 
 // --- Constants (mirrored from Python script) ---
 const CODE_LANGUAGES = new Set([
@@ -402,10 +403,9 @@ function mergeConsoleOutputInternal(paragraphs) {
                         isConsoleContinuation = true;
                         break;
                     }
-                }
-                if (!isConsoleContinuation) {
+                }                if (!isConsoleContinuation) {
                     const specialCharCount = Array.from(nextPara).filter(c => CONSOLE_SPECIAL_CHARS_STRING.includes(c)).length;
-                    if (nextPara.length > 0 && specialCharCount / nextPara.length > 0.05) {
+                    if (nextPara.length > 0 && specialCharCount / nextPara.length > config.CONSOLE_SPECIAL_CHAR_THRESHOLD_PERCENT) {
                         isConsoleContinuation = true;
                     }
                 }
@@ -454,6 +454,8 @@ function mergeUiElementsInternal(paragraphs) {
  * Each object: { id: string, text: string, token_count: number, char_count: number, line_count: number }
  */
 function spliceIntoConceptualParagraphs(cleanedSessionText) {
+    if (!cleanedSessionText || typeof cleanedSessionText !== 'string') return [];
+    if (cleanedSessionText.trim() === '') return [];
     if (typeof cleanedSessionText !== 'string') {
         throw new Error('Input must be a string.');
     }

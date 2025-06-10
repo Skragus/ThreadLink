@@ -1,66 +1,87 @@
-// batcher.js (or segmentProcessor.js)
+// batcher.js 
 
-const { estimateTokens } = require('./utils');
 const config = require('./config');
+const {
+    MIN_ORPHAN_TOKEN_THRESHOLD,
+    ORPHAN_MERGE_SEPARATOR,
+    MIN_SEGMENT_TARGET_TOKENS,
+    AGGREGATOR_CEILING_TOKENS,
+    DRONE_INPUT_TOKEN_MIN,
+    DRONE_INPUT_TOKEN_MAX,
+    DRONE_IDEAL_TARGET_TOKENS,
+    SEGMENT_TEXT_SEPARATOR,
+    RECENT_CONVERSATION_MIN_TOKENS,
+    CONSOLIDATION_SEPARATOR,
+    REBALANCE_LOWER_THRESHOLD_PERCENT,
+    REBALANCE_UPPER_THRESHOLD_PERCENT,
+    ABSOLUTE_MIN_VIABLE_DRONE_TOKENS,
+    DRONE_TARGET_TOKEN_WINDOW_LOWER_PERCENT,
+    DRONE_TARGET_TOKEN_WINDOW_UPPER_PERCENT
+} = config;
 
+// Also import utils if not already imported:
+const utils = require('./utils');
+const { estimateTokens } = utils;
 /**
  * Merges tiny "orphan" paragraphs with adjacent paragraphs.
  */
-function rescueTinyOrphans(paragraphs, minTokenThreshold = 25) {
-    if (!Array.isArray(paragraphs)) {
-        console.warn("rescueTinyOrphans: Input is not an array. Returning input as is.");
-        return paragraphs;
+function rescueTinyOrphans(paragraphs, minThreshold = MIN_ORPHAN_TOKEN_THRESHOLD) {
+    // --- ESSENTIAL: Input Validation (from your original code) ---
+    // Preserves original input type for invalid inputs to ensure test compatibility.
+    if (paragraphs === null) return null;
+    if (typeof paragraphs === 'string') return paragraphs;
+    if (!Array.isArray(paragraphs)) return paragraphs;
+    if (paragraphs.length === 0) return [];
+
+    console.log(`🚀 Starting orphan rescue for ${paragraphs.length} paragraphs...`);
+
+    // --- ESSENTIAL: Malformed Paragraph Filtering ---
+    // We work with a new array, so the original is never modified.
+    // This also filters any invalid paragraph objects upfront.
+    const validParagraphs = paragraphs.filter(p =>
+        p && typeof p === 'object' && p.id && typeof p.token_count === 'number'
+    );
+
+    if (validParagraphs.length < 2) {
+        console.log(`🏁 Orphan rescue complete: No merging needed for ${validParagraphs.length} paragraph(s).`);
+        return validParagraphs;
     }
-    if (paragraphs.length === 0) {
-        return [];
-    }
 
-    let rescued = JSON.parse(JSON.stringify(paragraphs));
-    let mergedSomethingInLoop = true;
+    // --- The Efficient Single-Pass Algorithm ---
+    // Start our new array with the first valid paragraph. This is our "accumulator".
+    const rescued = [validParagraphs[0]];
 
-    while (mergedSomethingInLoop) {
-        mergedSomethingInLoop = false;
-        const nextIterationRescued = [];
-        let i = 0;
+    for (let i = 1; i < validParagraphs.length; i++) {
+        const current = validParagraphs[i];
+        const previous = rescued[rescued.length - 1];
 
-        while (i < rescued.length) {
-            const currentP = rescued[i];
+        // Core Logic: If the current paragraph is an orphan, OR if the paragraph
+        // we just finished building (previous) is still an orphan, we must merge.
+        if (current.token_count < minThreshold || previous.token_count < minThreshold) {
+            console.log(`🔍 Merging orphan (${current.id}, ${current.token_count}t) into previous (${previous.id}, ${previous.token_count}t)`);
 
-            if (currentP.token_count < minTokenThreshold) {
-                mergedSomethingInLoop = true;
+            // --- ESSENTIAL: Correct Merging Logic & ID Tracking ---
+            previous.id = `${previous.id}+${current.id}`;
+            previous.text = `${previous.text || ''}${ORPHAN_MERGE_SEPARATOR}${current.text || ''}`;
+            previous.token_count += (current.token_count || 0);
+            previous.char_count += (current.char_count || 0) + (ORPHAN_MERGE_SEPARATOR ? ORPHAN_MERGE_SEPARATOR.length : 0);
+            previous.line_count += (current.line_count || 0);
 
-                if (rescued.length === 1) {
-                    nextIterationRescued.push(currentP);
-                    i++;
-                    continue;
-                }
+            // Correctly accumulate all original IDs from both merged paragraphs.
+            const currentOriginals = Array.isArray(current.merged_from) ? current.merged_from : [current.id];
+            const previousOriginals = Array.isArray(previous.merged_from) ? previous.merged_from : [previous.id];
+            previous.merged_from = previousOriginals.concat(currentOriginals);
 
-                if (i < rescued.length - 1) {
-                    const nextP = rescued[i + 1];
-                    nextP.text = currentP.text + "\n" + nextP.text;
-                    nextP.token_count += currentP.token_count;
-                    nextP.char_count += currentP.char_count;
-                    nextP.line_count += currentP.line_count + 1;
-                    nextIterationRescued.push(nextP);
-                    i += 2;
-                } else if (i === rescued.length - 1 && nextIterationRescued.length > 0) {
-                    const prevPInNewList = nextIterationRescued[nextIterationRescued.length - 1];
-                    prevPInNewList.text += "\n" + currentP.text;
-                    prevPInNewList.token_count += currentP.token_count;
-                    prevPInNewList.char_count += currentP.char_count;
-                    prevPInNewList.line_count += currentP.line_count + 1;
-                    i++;
-                } else {
-                    nextIterationRescued.push(currentP);
-                    i++;
-                }
-            } else {
-                nextIterationRescued.push(currentP);
-                i++;
-            }
+        } else {
+            // Neither paragraph is an orphan. It's safe to add the current one as a new item.
+            rescued.push(current);
         }
-        rescued = nextIterationRescued;
     }
+
+    // --- OBSOLETE: No `while` loop or MAX_ITERATIONS needed ---
+    // The single `for` loop is guaranteed to terminate, making an iteration counter unnecessary.
+
+    console.log(`🏁 Orphan rescue complete: ${paragraphs.length} → ${rescued.length} paragraphs`);
     return rescued;
 }
 
@@ -175,7 +196,7 @@ function consolidateSegments(
                 original_ids: paragraph.original_ids || [paragraph.id]
             };
         } else {
-            const potentialCombinedText = currentSegment.text + "\n\n" + paragraph.text;
+            const potentialCombinedText = currentSegment.text + config.SEGMENT_TEXT_SEPARATOR + paragraph.text;
             const actualPotentialTokens = estimateTokens(potentialCombinedText);
 
             if (actualPotentialTokens <= aggregatorCeilingTokens) {
