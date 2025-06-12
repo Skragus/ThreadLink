@@ -559,27 +559,22 @@ function createDroneBatches(consolidatedSegments) {
                 }
             }
             
-            // Last resort: try merging with any viable batch
-            if (!merged) {
-                for (let j = 0; j < batches.length; j++) {
-                    if (j !== i && batches[j].total_tokens + batch.total_tokens <= config.DRONE_INPUT_TOKEN_MAX) {
-                        console.log(`🔗 Last resort: Merging batch ${batch.batch_id} into batch ${batches[j].batch_id}`);
-                        if (j < i) {
-                            batches[j].segments.push(...batch.segments);
-                        } else {
-                            batches[j].segments.unshift(...batch.segments);
-                        }
-                        batches[j].total_tokens += batch.total_tokens;
-                        batches.splice(i, 1);
-                        merged = true;
-                        break;
-                    }
-                }
+            // The New, order-preserving "Last Resort"
+            if (!merged && i > 0) { // Check if there's a previous batch (i > 0)
+                const prevBatch = batches[i-1];
+                console.warn(`⚠️ Last Resort: Force-merging tiny batch ${batch.batch_id} into previous batch ${prevBatch.batch_id}.`);
+                
+                // This is the "overloading" we discussed.
+                prevBatch.segments.push(...batch.segments);
+                prevBatch.total_tokens += batch.total_tokens;
+                batches.splice(i, 1); // Remove the now-merged tiny batch
+                merged = true;
             }
-            
+
             if (!merged) {
-                console.error(`💀 CRITICAL: Cannot merge tiny batch ${batch.batch_id} anywhere. Marking for potential skip.`);
-                batch.skip_reason = `Below minimum threshold (${batch.total_tokens} < ${config.DRONE_INPUT_TOKEN_MIN}) and cannot merge`;
+                // If we get here, it means merged is still false, which can only happen if i === 0.
+                // The tiny batch is the very first one. We do nothing. We let it pass.
+                console.warn(`⚠️ First batch ${batch.batch_id} is below minimum size but has no predecessors to merge with. Processing as-is.`);
             }
         }
     }
@@ -634,7 +629,10 @@ function prepareDroneInputs(droneBatches) {
 
         // Sanity check for final token count vs max
         if (actualTokenCount > config.DRONE_INPUT_TOKEN_MAX) {
-            console.error(`CRITICAL ERROR for ${batch.batch_id}: Final concatenated input_text has ${actualTokenCount} tokens, exceeding DRONE_INPUT_TOKEN_MAX (${config.DRONE_INPUT_TOKEN_MAX}). Batch tokens sum was ${batch.total_tokens}. This might be due to separator tokens.`);
+            console.warn(`⚠️  OVERLOADED BATCH DETECTED for ${batch.batch_id}:`);
+            console.warn(`   - Final size is ${actualTokenCount} tokens, which exceeds the configured DRONE_INPUT_TOKEN_MAX of ${config.DRONE_INPUT_TOKEN_MAX}.`);
+            console.warn(`   - This likely occurred due to a 'last resort' merge to preserve chronological order.`);
+            console.warn(`   - Proceeding with dispatch. The API may reject this if it exceeds the model's absolute context limit.`);
         }
 
         const originalSegmentIds = batch.segments.reduce((acc, seg) => {

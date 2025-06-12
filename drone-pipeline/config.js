@@ -18,10 +18,10 @@ const DRONE_IDEAL_TARGET_TOKENS = Math.floor(DRONE_INPUT_TOKEN_MAX * 0.75); // 4
 
 // === SEGMENTATION SETTINGS (derived from drone settings) ===
 
-// Stage 3: Tiny Orphan Rescue (batcher.js / orphanRescuer.js)
+// Stage 3: Tiny Orphan Rescue (batcher.js)
 const MIN_ORPHAN_TOKEN_THRESHOLD = 50; // Paragraphs below this token count are considered orphans
 
-// Stage 4: Segment Consolidation (batcher.js / segmentProcessor.js)
+// Stage 4: Segment Consolidation (batcher.js)
 const MIN_SEGMENT_TARGET_TOKENS = 250;  // Soft minimum token size for consolidated segments
 const AGGREGATOR_CEILING_TOKENS = Math.floor(DRONE_INPUT_TOKEN_MAX * 0.8); // 4800 - leave room for separators
 
@@ -29,7 +29,7 @@ const AGGREGATOR_CEILING_TOKENS = Math.floor(DRONE_INPUT_TOKEN_MAX * 0.8); // 48
 const DRONE_TARGET_TOKEN_WINDOW_LOWER_PERCENT = 0.60; // 60% of ideal = 2700
 const DRONE_TARGET_TOKEN_WINDOW_UPPER_PERCENT = 1.00; // 100% of ideal = 4500
 
-// "Last Two Drone Rebalance" specific settings (droneBatcher.js)
+// "Last Two Drone Rebalance" specific settings (batcher.js)
 const REBALANCE_LOWER_THRESHOLD_PERCENT = 0.85; // If last batch is below 85% of DRONE_IDEAL_TARGET_TOKENS
 const REBALANCE_UPPER_THRESHOLD_PERCENT = 1.05; // If second-to-last batch is above 105% of DRONE_IDEAL_TARGET_TOKENS
 
@@ -42,7 +42,7 @@ const RECENT_CONVERSATION_MIN_TOKENS = 600;
 
 // === QUALITY CONTROL SETTINGS ===
 const QUALITY_MIN_TOKEN_ABSOLUTE = 25;           // Absolute minimum tokens for quality check
-const QUALITY_MIN_TOKEN_PERCENTAGE = 0.25;       // Minimum percentage of target tokens
+const QUALITY_MIN_TOKEN_PERCENTAGE = 0.1;       // Minimum percentage of target tokens
 const QUALITY_MIN_CHAR_COUNT = 50;               // Minimum character count for quality
 
 // === RETRY LOGIC SETTINGS ===
@@ -69,6 +69,40 @@ const CLAUDE_RATE_LIMIT_BACKOFF_MS = 90000;      // Claude-specific backoff
 const GEMINI_RATE_LIMIT_BACKOFF_MS = 30000;      // Gemini-specific backoff  
 const GPT4_RATE_LIMIT_BACKOFF_MS = 45000;        // GPT-4 specific backoff
 
+// === MODEL CONFIGURATIONS ===
+const MODEL_CONFIGS = {
+    'claude-3-5-haiku-20241022': { 
+        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
+        rateLimitBackoff: DEFAULT_RATE_LIMIT_BACKOFF_MS,  // 1 minute conservative wait
+        maxRetries: 3,
+        aggressive: false
+    },
+    'claude-3-5-sonnet': { 
+        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
+        rateLimitBackoff: CLAUDE_RATE_LIMIT_BACKOFF_MS,  // 1.5 minutes for expensive model
+        maxRetries: 2,
+        aggressive: false
+    },
+    'gemini-1.5-flash': { 
+        safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
+        rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 30 seconds
+        maxRetries: 2,
+        aggressive: true
+    },
+    'gpt-4.1-nano': { 
+        safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
+        rateLimitBackoff: GPT4_RATE_LIMIT_BACKOFF_MS,  // 45 seconds
+        maxRetries: 2,
+        aggressive: true
+    },
+    'gpt-4.1-mini': { 
+        safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
+        rateLimitBackoff: GPT4_RATE_LIMIT_BACKOFF_MS,  // 45 seconds
+        maxRetries: 2,
+        aggressive: true
+    }
+};
+
 // Drone Operation Specifics (used when dispatching, but good to keep with configs)
 const DEFAULT_DRONE_PROMPT = `You are an AI conversation condensation specialist. Your mission is to distill conversation segments into ultra-dense, context-rich summaries.
 
@@ -80,8 +114,8 @@ CRITICAL OBJECTIVES:
 - FOCUS ON VALUE: Prioritize information that would be essential for understanding this conversation later
 
 OUTPUT REQUIREMENTS:
-- Aim for approximately {TARGET_TOKENS} tokens. DO NOT EXCEED THIS UNLESS NECESSARY FOR COHERENCE. 
-- YOUR RESPONSE MUST START WITH THE FIRST WORD OF THE SUMMARY. DO NOT under any circumstances include a preamble, introduction, or meta-commentary like "Here is a summary...".
+- You have a strict token budget of approximately {TARGET_TOKENS} tokens. All CRITICAL OBJECTIVES must be met within this budget.
+- YOUR RESPONSE MUST START WITH THE FIRST WORD OF THE SUMMARY. DO NOT include any preamble or meta-commentary.
 - Use information-dense prose with technical precision
 - Retain commands, configs, and code verbatim where relevant
 - Preserve important URLs, names, and numerical values
@@ -223,20 +257,12 @@ module.exports = {
     CLAUDE_RATE_LIMIT_BACKOFF_MS,
     GEMINI_RATE_LIMIT_BACKOFF_MS,
     GPT4_RATE_LIMIT_BACKOFF_MS,
-    
+      // Model configurations
+    MODEL_CONFIGS,
     // Drone operation
     DEFAULT_DRONE_PROMPT,
     MAX_COMPRESSION_RATIO,
     MINIMUM_OUTPUT_PER_DRONE,
-
-    ABSOLUTE_MIN_VIABLE_DRONE_TOKENS,
-    
-    // Stage 6
-    SEGMENT_TEXT_SEPARATOR,
-    
-    // Drone Ops
-    RECENT_CONVERSATION_MIN_TOKENS,
-    DEFAULT_DRONE_PROMPT,
     DEFAULT_DRONE_OUTPUT_TOKEN_TARGET,
     
     // Dynamic calculation functions

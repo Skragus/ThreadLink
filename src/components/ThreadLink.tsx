@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import helpIcon from '../assets/circle-help.svg';
 import settingsIcon from '../assets/settings.svg';
+// Add this to your imports (you might need to install lucide-react or use your own icons)
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // API configuration
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -22,10 +24,15 @@ function ThreadLink() {
   const [isLoading, setIsLoading] = useState(false);  const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState('');
   const [stats, setStats] = useState<Stats | null>(null);
-
   // Settings
   const [model, setModel] = useState('gemini-1.5-flash');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Add these after your existing useState declarations
+  const [processingSpeed, setProcessingSpeed] = useState('balanced');
+  const [recencyMode, setRecencyMode] = useState(false);
+  const [recencyStrength, setRecencyStrength] = useState(1); // 0=Subtle, 1=Balanced, 2=Strong
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Refs for scrolling
   const errorRef = useRef<HTMLDivElement>(null);
@@ -211,18 +218,42 @@ function ThreadLink() {
         }
       }, 10);
       return () => clearTimeout(timer);
-    }
-  }, [outputText, isProcessed]);
+    }  }, [outputText, isProcessed]);
 
   return (
+    <>
+      {/* Custom slider styles */}
+      <style>{`
+        input[type="range"]::-webkit-slider-thumb {
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: var(--highlight-blue);
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: var(--highlight-blue);
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          border: none; /* Important for Firefox */
+        }
+      `}</style>
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">Settings</h3>
-            
-            <div className="space-y-4">
+              <div className="space-y-6">
+              {/* Model Selection */}
               <div>
                 <label htmlFor="model-select" className="block text-sm text-[var(--text-secondary)] mb-1">
                   Model
@@ -244,6 +275,116 @@ function ThreadLink() {
                     <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
                   </optgroup>
                 </select>
+              </div>
+
+              {/* Processing Speed Toggle - Hide if Claude Haiku is selected */}
+              {model !== 'claude-3-5-haiku-20241022' && (
+                <div>
+                  <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                    Processing Speed
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <span className={`text-sm ${processingSpeed === 'balanced' ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
+                      Normal
+                    </span>                    <button
+                      onClick={() => setProcessingSpeed(processingSpeed === 'balanced' ? 'fast' : 'balanced')}
+                      title={`Switch to ${processingSpeed === 'balanced' ? 'fast' : 'balanced'} processing`}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        processingSpeed === 'fast' ? 'bg-[var(--highlight-blue)]' : 'bg-[var(--divider)]'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          processingSpeed === 'fast' ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-sm ${processingSpeed === 'fast' ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
+                      Fast
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Recency Mode Toggle */}
+              <div>
+                <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                  Recency Mode
+                </label>
+                <div className="flex items-center space-x-3">
+                  <span className={`text-sm ${!recencyMode ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
+                    Off
+                  </span>                  <button
+                    onClick={() => setRecencyMode(!recencyMode)}
+                    title={`${recencyMode ? 'Disable' : 'Enable'} recency mode`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      recencyMode ? 'bg-[var(--highlight-blue)]' : 'bg-[var(--divider)]'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        recencyMode ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className={`text-sm ${recencyMode ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
+                    On
+                  </span>
+                </div>
+              </div>
+
+              {/* Recency Strength Slider - Only show if recency mode is on */}
+              {recencyMode && (
+                <div>
+                  <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                    Recency Strength
+                  </label>
+                  <div className="space-y-2">                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="1"
+                      value={recencyStrength}
+                      onChange={(e) => setRecencyStrength(parseInt(e.target.value))}
+                      title="Adjust recency strength"
+                      className="w-full h-2 bg-[var(--divider)] rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="flex justify-between text-xs text-[var(--text-secondary)]">
+                      <span className={recencyStrength === 0 ? 'text-[var(--text-primary)] font-medium' : ''}>Subtle</span>
+                      <span className={recencyStrength === 1 ? 'text-[var(--text-primary)] font-medium' : ''}>Balanced</span>
+                      <span className={recencyStrength === 2 ? 'text-[var(--text-primary)] font-medium' : ''}>Strong</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Advanced Settings */}
+              <div className="border-t border-[var(--divider)] pt-4">
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center space-x-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  {showAdvanced ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  <span>Advanced Settings</span>
+                </button>
+                
+                {showAdvanced && (
+                  <div className="mt-3 space-y-4 pl-6 border-l-2 border-[var(--divider)]">
+                    <div>
+                      <label className="block text-sm text-[var(--text-secondary)] mb-1">
+                        Temperature Override
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        placeholder="0.7"
+                        className="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)]"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -396,10 +537,10 @@ function ThreadLink() {
           <span>·</span>
           <span>Backend Processing</span>
           <span>·</span>
-          <span>Privacy-first</span>
-        </p>
+          <span>Privacy-first</span>        </p>
       </div>
     </div>
+    </>
   );
 }
 

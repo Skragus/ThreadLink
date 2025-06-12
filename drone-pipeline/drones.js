@@ -17,50 +17,16 @@ const {
     QUALITY_MIN_TOKEN_ABSOLUTE,
     QUALITY_MIN_TOKEN_PERCENTAGE,
     QUALITY_MIN_CHAR_COUNT,
+    MINIMUM_OUTPUT_PER_DRONE,
     RETRY_BASE_DELAY_MS,
     DEFAULT_RATE_LIMIT_BACKOFF_MS,
     CLAUDE_RATE_LIMIT_BACKOFF_MS,
     GEMINI_RATE_LIMIT_BACKOFF_MS,
     GPT4_RATE_LIMIT_BACKOFF_MS,
     DEFAULT_CONSERVATIVE_CONCURRENCY,
-    DEFAULT_STANDARD_CONCURRENCY
+    DEFAULT_STANDARD_CONCURRENCY,
+    MODEL_CONFIGS
 } = require('./config');
-
-/**
- * Model-specific rate limit configurations
- */
-const MODEL_CONFIGS = {
-    'claude-3-5-haiku-20241022': { 
-        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
-        rateLimitBackoff: DEFAULT_RATE_LIMIT_BACKOFF_MS,  // 1 minute conservative wait
-        maxRetries: 3,
-        aggressive: false
-    },
-    'claude-3-5-sonnet': { 
-        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
-        rateLimitBackoff: CLAUDE_RATE_LIMIT_BACKOFF_MS,  // 1.5 minutes for expensive model
-        maxRetries: 2,
-        aggressive: false
-    },
-    'gemini-1.5-flash': { 
-        safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
-        rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 30 seconds
-        maxRetries: 2,
-        aggressive: true
-    },
-    'gpt-4.1-nano': { 
-        safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
-        rateLimitBackoff: GPT4_RATE_LIMIT_BACKOFF_MS,  // 45 seconds
-        maxRetries: 2,
-        aggressive: true
-    },
-    'gpt-4.1-mini': { 
-        safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
-        rateLimitBackoff: GPT4_RATE_LIMIT_BACKOFF_MS,  // 45 seconds
-        maxRetries: 2,
-        aggressive: true
-    }
-};
 
 /**
  * Error classification for intelligent handling
@@ -178,7 +144,7 @@ function isCatastrophicFailure(output, targetTokens) {
     if (trimmed.length === 0) {
         return { failed: true, reason: 'Empty output after cleaning' };
     }    const actualTokens = estimateTokens(trimmed);
-    const minTokens = Math.max(QUALITY_MIN_TOKEN_ABSOLUTE, targetTokens * QUALITY_MIN_TOKEN_PERCENTAGE); // At least 25 tokens OR 25% of target
+    const minTokens = Math.max(QUALITY_MIN_TOKEN_ABSOLUTE, MINIMUM_OUTPUT_PER_DRONE ); 
     
     if (actualTokens < minTokens) {
         return { failed: true, reason: `Too short: ${actualTokens} tokens (need ${minTokens})` };
@@ -281,8 +247,16 @@ async function processDroneBatch(
     console.log(`🤖 Drone ${batchIndex + 1}/${totalBatches}: Processing ${estimateTokens(textContent)} tokens -> ${targetTokens} tokens`);
 
     const systemPrompt = createDroneSystemPrompt(targetTokens);
-    const userPrompt = `Please condense the following conversation segment while preserving maximum context and technical detail:\n\n${textContent}`;
+    const userPrompt = `Please condense the following text segment.
 
+    --- BEGIN TEXT SEGMENT ---
+    ${textContent}
+    --- END TEXT SEGMENT ---
+
+    CRITICAL OUTPUT REQUIREMENTS:
+    1.  Your final output must NOT EXCEED ${targetTokens} tokens.
+    2.  Your response MUST start with the first word of the summary itself. DO NOT include any preamble or meta-commentary.
+    3.  Ensure your final sentence is complete.`;
     // Retry loop with intelligent error handling
     for (let attempt = 1; attempt <= retries + 1; attempt++) {
         try {
