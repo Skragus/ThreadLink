@@ -48,6 +48,7 @@ function cleanAiChatContent(content) {
         /^Settings\s*$/gim,
         /^Sign out\s*$/gim,
         /^Menu\s*$/gim,
+        /^Skip to content\s*$/gim,
 
         // Status messages (only when standalone)
         /^Claude is typing\.\.\.\s*$/gim,

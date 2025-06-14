@@ -36,3 +36,10 @@ add logo for tab
 BYOK build
 
 clean code for open source
+
+Target Tokens Override
+Temperature
+Drone Density
+Concurrency *warn for anthropic
+Recency Strength 
+Runaway Cost Protection (Max Drones per session)

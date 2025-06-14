@@ -1,4 +1,4 @@
-// config.js - MVP Smart Defaults (Draft 1)
+// config.js - Fixed with better drone density support
 require('dotenv').config();
 
 // === CORE USER-FACING SETTINGS ===
@@ -7,9 +7,18 @@ const DRONES_PER_10K_TOKENS = 2;           // 2 drones per 10k input tokens
 const MAX_TOTAL_DRONES = 100;              // Hard cap to prevent runaway costs
 
 // === NEW QUALITY & COMPRESSION GUARDRAILS ===
-const MAX_COMPRESSION_RATIO = 25; // Default cap at 25:1
+const MAX_COMPRESSION_RATIO = 30;  // 20-14 12-10  6-8   5-7  15-11  30-17 
 const MINIMUM_OUTPUT_PER_DRONE = 50; // Hard floor for any single drone's output
 
+// === RECENCY MODE SETTINGS ===
+const RECENCY_STRENGTH_OFF = 0;
+const RECENCY_STRENGTH_SUBTLE = 25;
+const RECENCY_STRENGTH_BALANCED = 50;
+const RECENCY_STRENGTH_STRONG = 90;
+
+// === PROCESSING SPEED SETTINGS ===
+const PROCESSING_SPEED_BALANCED = 'balanced';
+const PROCESSING_SPEED_FAST = 'fast';
 
 // === DERIVED DRONE SETTINGS ===
 const DRONE_INPUT_TOKEN_MAX = 6000;                                    // Good for Flash efficiency
@@ -133,17 +142,16 @@ const MAX_FINAL_OUTPUT_TOKENS = Math.max(TARGET_CONTEXT_CARD_TOKENS, 6000); // U
 /**
  * Calculates the optimal drone output target, respecting quality and compression guardrails.
  * @param {number} inputTokens - Total tokens in the session
+ * @param {number} customTargetTokens - Custom target tokens (overrides default)
+ * @param {number} customDroneDensity - Custom drone density (overrides default)
  * @returns {number} Target tokens per drone output
  */
-// The upgraded function from our last discussion, now with customTargetTokens
-function calculateDroneOutputTarget(inputTokens, customTargetTokens = TARGET_CONTEXT_CARD_TOKENS) {
-    const estimatedDrones = calculateEstimatedDrones(inputTokens);
+function calculateDroneOutputTarget(inputTokens, customTargetTokens = TARGET_CONTEXT_CARD_TOKENS, customDroneDensity = null) {
+    const droneDensity = customDroneDensity !== null ? customDroneDensity : DRONES_PER_10K_TOKENS;
+    const estimatedDrones = calculateEstimatedDrones(inputTokens, droneDensity);
 
     const targetFromCompressionCap = Math.ceil(inputTokens / MAX_COMPRESSION_RATIO);
-
-    // Use the custom target if provided, otherwise use the default from config
     const userRequestedTarget = customTargetTokens;
-
     const effectiveTotalTarget = Math.max(userRequestedTarget, targetFromCompressionCap);
     const calculatedPerDroneTarget = Math.ceil(effectiveTotalTarget / estimatedDrones);
     const finalPerDroneTarget = Math.max(calculatedPerDroneTarget, MINIMUM_OUTPUT_PER_DRONE);
@@ -154,26 +162,61 @@ function calculateDroneOutputTarget(inputTokens, customTargetTokens = TARGET_CON
 /**
  * Calculate estimated number of drones for a session
  * @param {number} inputTokens - Total tokens in the session
+ * @param {number} customDroneDensity - Custom drone density (overrides default)
+ * @param {number} customMaxDrones - Custom max drones (overrides default)
  * @returns {number} Estimated number of drones needed
  */
-function calculateEstimatedDrones(inputTokens) {
+function calculateEstimatedDrones(inputTokens, customDroneDensity = null, customMaxDrones = null) {
+    const droneDensity = customDroneDensity !== null ? customDroneDensity : DRONES_PER_10K_TOKENS;
+    const maxDrones = customMaxDrones !== null ? customMaxDrones : MAX_TOTAL_DRONES;
+    
     return Math.min(
-        Math.ceil(inputTokens / 10000 * DRONES_PER_10K_TOKENS),
-        MAX_TOTAL_DRONES
+        Math.ceil(inputTokens / 10000 * droneDensity),
+        maxDrones
     );
 }
 
 /**
- * Get optimal drone input size based on session size
+ * Get optimal drone input size based on session size - FIXED for high density
  * @param {number} inputTokens - Total tokens in the session
+ * @param {number} customDroneDensity - Custom drone density
+ * @param {number} customMaxDrones - Custom max drones
  * @returns {number} Optimal tokens per drone input
  */
-function calculateOptimalDroneInputSize(inputTokens) {
-    const estimatedDrones = calculateEstimatedDrones(inputTokens);
+function calculateOptimalDroneInputSize(inputTokens, customDroneDensity = null, customMaxDrones = null) {
+    const estimatedDrones = calculateEstimatedDrones(inputTokens, customDroneDensity, customMaxDrones);
     const optimalSize = Math.ceil(inputTokens / estimatedDrones);
     
-    // Clamp to our min/max bounds
+    // For high drone density (≥3), allow much smaller optimal sizes
+    if (customDroneDensity && customDroneDensity >= 3) {
+        // High density mode: allow down to 500 tokens, up to normal max
+        const minSize = 500;
+        const maxSize = DRONE_INPUT_TOKEN_MAX;
+        return Math.min(Math.max(optimalSize, minSize), maxSize);
+    }
+    
+    // Normal density mode: use standard clamps
     return Math.min(Math.max(optimalSize, DRONE_INPUT_TOKEN_MIN), DRONE_INPUT_TOKEN_MAX);
+}
+
+/**
+ * Get processing speed adjustments
+ * @param {string} processingSpeed - 'balanced' or 'fast'
+ * @returns {object} Adjustments for retries and other parameters
+ */
+function getProcessingSpeedAdjustments(processingSpeed) {
+    if (processingSpeed === PROCESSING_SPEED_FAST) {
+        return {
+            maxRetries: 1,  // Fewer retries for speed
+            qualityCheckLevel: 'basic',  // Less stringent quality checks
+            rateLimitBackoffMultiplier: 0.5  // Shorter waits
+        };
+    }
+    return {
+        maxRetries: 3,  // Normal retries
+        qualityCheckLevel: 'standard',
+        rateLimitBackoffMultiplier: 1.0
+    };
 }
 
 // === SANITY CHECKS ===
@@ -209,6 +252,16 @@ module.exports = {
     MAX_TOTAL_DRONES,
     MAX_FINAL_OUTPUT_TOKENS,
     
+    // Recency mode constants
+    RECENCY_STRENGTH_OFF,
+    RECENCY_STRENGTH_SUBTLE,
+    RECENCY_STRENGTH_BALANCED,
+    RECENCY_STRENGTH_STRONG,
+    
+    // Processing speed constants
+    PROCESSING_SPEED_BALANCED,
+    PROCESSING_SPEED_FAST,
+    
     // Stage 3
     MIN_ORPHAN_TOKEN_THRESHOLD,
     
@@ -241,7 +294,7 @@ module.exports = {
     
     // Console detection
     CONSOLE_SPECIAL_CHAR_THRESHOLD_PERCENT,
-      // Paragraph merging
+    // Paragraph merging
     ORPHAN_MERGE_SEPARATOR,
     CONSOLIDATION_SEPARATOR,
     
@@ -257,7 +310,7 @@ module.exports = {
     CLAUDE_RATE_LIMIT_BACKOFF_MS,
     GEMINI_RATE_LIMIT_BACKOFF_MS,
     GPT4_RATE_LIMIT_BACKOFF_MS,
-      // Model configurations
+    // Model configurations
     MODEL_CONFIGS,
     // Drone operation
     DEFAULT_DRONE_PROMPT,
@@ -269,4 +322,5 @@ module.exports = {
     calculateDroneOutputTarget,
     calculateEstimatedDrones,
     calculateOptimalDroneInputSize,
+    getProcessingSpeedAdjustments
 };

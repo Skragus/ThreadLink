@@ -66,6 +66,18 @@ jest.mock('../config', () => ({
     MAX_FINAL_OUTPUT_TOKENS: 10000,
     calculateDroneOutputTarget: jest.fn(() => 500),
     calculateEstimatedDrones: jest.fn(() => 3),
+    MODEL_CONFIGS: {
+        'gemini-1.5-flash': {
+            safeConcurrency: 2,
+            aggressive: true,
+            rateLimitBackoff: 5000
+        },
+        'claude-3-5-haiku-20241022': {
+            safeConcurrency: 1,
+            aggressive: false,
+            rateLimitBackoff: 10000
+        }
+    }
 }));
 
 const utils = require('../utils');
@@ -404,6 +416,39 @@ describe('Drone Error Handling', () => {
             
             // Expecting 2 calls: Batch 1 and Batch 2 start. Batch 2 fails fatally, stopping the process.
             expect(utils.generateResponse).toHaveBeenCalledTimes(2);
+        });        it('should handle cancellation immediately', async () => {
+            const batches = [
+                { input_text: "Batch 1 text with sufficient content for processing" },
+                { input_text: "Batch 2 text with sufficient content for processing" }
+            ];
+
+            // Create a cancellation function that returns true immediately
+            const cancelled = jest.fn().mockReturnValue(true);
+
+            await expect(
+                processDronesWithConcurrency(batches, { ...defaultOptions, cancelled })
+            ).rejects.toThrow('Processing was cancelled');
+
+            // Should not have called generateResponse at all
+            expect(utils.generateResponse).toHaveBeenCalledTimes(0);
+            expect(cancelled).toHaveBeenCalled();
+        });
+
+        it('should complete normally when cancellation never triggers', async () => {
+            const batches = [
+                { input_text: "Batch 1 text with sufficient content for processing" }
+            ];
+
+            const cancelled = jest.fn().mockReturnValue(false);
+
+            utils.generateResponse.mockResolvedValue("This is a comprehensive response that contains more than enough content to easily pass all quality validation checks and demonstrates proper functionality with adequate token count and meaningful content for testing purposes.");
+
+            const results = await processDronesWithConcurrency(batches, { ...defaultOptions, cancelled });
+
+            expect(results).toHaveLength(1);
+            expect(results[0]).toContain("comprehensive response");
+            expect(cancelled).toHaveBeenCalled();
+            expect(cancelled).toHaveReturnedWith(false);
         });
     });
 });
