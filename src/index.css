@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+body, * {
+  user-select: none;
+  -webkit-user-select: none; /* For Safari */
+  -moz-user-select: none;    /* For Firefox */
+  -ms-user-select: none;     /* For Internet Explorer/Edge */
+}
+
 :root {
   --bg-primary: #0D0D12;
   --box-violet: #393A6B;
