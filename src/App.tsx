@@ -1,12 +1,12 @@
-import ThreadLink from './ThreadLink';
-import './App.css';
+import './App.css'
+import ThreadLink from './ThreadLink'
 
 function App() {
   return (
-    <div className="App">
+    <>
       <ThreadLink />
-    </div>
-  );
+    </>
+  )
 }
 
-export default App;
+export default App
