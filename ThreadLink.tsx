@@ -8,23 +8,41 @@ import {
   Key, 
   X,
   Sparkles,
+  Copy,
+  Trash2,
   Package,
+  Scale,
   Bot,
   Focus,
-  Shield,
-  Scale,
-  Copy,
-  Trash2
+  Shield
 } from 'lucide-react';
 
-// API configuration
-const API_BASE_URL = 'http://localhost:3001/api';
+// Import our browser-based modules
+// @ts-ignore - JavaScript modules without TypeScript declarations
+import { runCondensationPipeline } from './src/pipeline/orchestrator.js';
+// @ts-ignore - JavaScript modules without TypeScript declarations
+import { getAPIKey, saveAPIKey, removeAPIKey } from './src/lib/storage.js';
+// @ts-ignore - JavaScript modules without TypeScript declarations
+import { MODEL_PROVIDERS } from './src/lib/client-api.js';
+// @ts-ignore - JavaScript modules without TypeScript declarations
+import { estimateTokens } from './src/lib/client-api.js';
+
+// Local type definitions
+interface ProgressUpdate {
+  phase?: 'preparing' | 'launching' | 'processing' | 'finalizing';
+  message?: string;
+  completedDrones?: number;
+  totalDrones?: number;
+  progress?: number;
+}
 
 interface Stats {
   executionTime: string | number;
   compressionRatio: string | number;
   successfulDrones: number;
   totalDrones: number;
+  initialTokens?: number;
+  finalTokens?: number;
 }
 
 interface LoadingProgress {
@@ -33,9 +51,11 @@ interface LoadingProgress {
   completedDrones?: number;
   totalDrones?: number;
   elapsedTime?: number;
+  progress?: number;
 }
 
 function ThreadLink() {
+  // Main app state
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [isProcessed, setIsProcessed] = useState(false);
@@ -51,55 +71,77 @@ function ThreadLink() {
     phase: 'preparing',
     message: 'Preparing drone batches'
   });
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);  // Settings
+  const [isCancelling, setIsCancelling] = useState(false);
+  const cancelRef = useRef<boolean>(false);
+
+  // Settings
   const [model, setModel] = useState('gemini-1.5-flash');
   const [showSettings, setShowSettings] = useState(false);
   const [showAPIKeys, setShowAPIKeys] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [processingSpeed, setProcessingSpeed] = useState('balanced');
-  const [recencyMode, setRecencyMode] = useState(false);
-  const [recencyStrength, setRecencyStrength] = useState(1);
+  const [recencyMode, setRecencyMode] = useState(false);  const [recencyStrength, setRecencyStrength] = useState(1);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [adv_targetTokens, setAdv_targetTokens] = useState(1500);
+  // const [adv_targetTokens, setAdv_targetTokens] = useState(1500); // Unused
   const [adv_temperature, setAdv_temperature] = useState(0.5);
-  const [adv_droneDensity, setAdv_droneDensity] = useState(2);  const [adv_recencyStrength, setAdv_recencyStrength] = useState(50);
+  const [adv_droneDensity, setAdv_droneDensity] = useState(2);
+  // const [adv_recencyStrength, setAdv_recencyStrength] = useState(50); // Unused
   const [adv_maxDrones, setAdv_maxDrones] = useState(50);
 
-  // API Keys state
+  // API Keys state - Initialize from storage
   const [googleAPIKey, setGoogleAPIKey] = useState('');
   const [openaiAPIKey, setOpenaiAPIKey] = useState('');
   const [anthropicAPIKey, setAnthropicAPIKey] = useState('');
   
-  // Cache toggle states
+  // Cache toggle states - Initialize from storage
   const [googleCacheEnabled, setGoogleCacheEnabled] = useState(false);
   const [openaiCacheEnabled, setOpenaiCacheEnabled] = useState(false);
-  const [anthropicCacheEnabled, setAnthropicCacheEnabled] = useState(false);// Info Panel expandable sections state
+  const [anthropicCacheEnabled, setAnthropicCacheEnabled] = useState(false);
+
+  // Info Panel expandable sections state
   const [expandedSections, setExpandedSections] = useState({
-    what: false,       // "What is ThreadLink?" - not expanded by default
-    howto: false,      // "How to Use ThreadLink"
+    what: false,
+    howto: false,
     compression: false,
-    strategy: false,   // "Context Card Strategy"
+    strategy: false,
     drones: false,
     recency: false,
-    advanced: false,   // "Advanced Controls"
+    advanced: false,
     privacy: false
   });
-
   // Refs
   const errorRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
   const loadingStartTime = useRef<number>(0);
-  const progressPollInterval = useRef<NodeJS.Timeout | null>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+
   // Processing Speed logic
   const isAnthropicModel = model.includes('claude');
   const showProcessingSpeed = !isAnthropicModel;
+  // Initialize API keys from storage on mount
   useEffect(() => {
-  if ((isProcessed || isLoading) && outputTextareaRef.current) {
-    outputTextareaRef.current.blur();
-  }
+    // Load API keys
+    const loadedGoogleKey = getAPIKey('google');
+    const loadedOpenAIKey = getAPIKey('openai');
+    const loadedAnthropicKey = getAPIKey('anthropic');
+    
+    if (loadedGoogleKey) setGoogleAPIKey(loadedGoogleKey);
+    if (loadedOpenAIKey) setOpenaiAPIKey(loadedOpenAIKey);
+    if (loadedAnthropicKey) setAnthropicAPIKey(loadedAnthropicKey);
+    
+    // Load cache states - simplified to always false for now
+    setGoogleCacheEnabled(false);
+    setOpenaiCacheEnabled(false);
+    setAnthropicCacheEnabled(false);
+  }, []);
+
+  useEffect(() => {
+    if ((isProcessed || isLoading) && outputTextareaRef.current) {
+      outputTextareaRef.current.blur();
+    }
   }, [isProcessed, isLoading]);
+
   // Auto-reset processing speed when switching to Anthropic
   useEffect(() => {
     if (isAnthropicModel && processingSpeed === 'fast') {
@@ -129,10 +171,6 @@ function ThreadLink() {
     return `${count === 0 ? '' : '~'}${rounded.toLocaleString()} tokens`;
   };
 
-  const estimateTokens = (text: string): number => {
-    return Math.ceil((text || "").length / 4);
-  };
-
   const calculateTargetTokens = (): number => {
     if (tokenCount === 0) return 100;
     
@@ -159,8 +197,8 @@ function ThreadLink() {
     if (errorType === 'AUTH_ERROR' || errorMessage.includes('Invalid API key')) {
       return 'Authentication failed. Please check your API key configuration.';
     }
-    if (errorType === 'NETWORK_ERROR' || errorMessage.includes('Cannot connect')) {
-      return 'Unable to connect to the processing server. Ensure the backend is running.';
+    if (errorType === 'NETWORK_ERROR' || errorMessage.includes('fetch')) {
+      return 'Network error. Please check your internet connection.';
     }
     if (errorType === 'RATE_LIMIT') {
       return 'API rate limit reached. The system is handling this automatically.';
@@ -168,14 +206,8 @@ function ThreadLink() {
     if (errorType === 'PROCESSING_FAILURE') {
       return 'Processing failed - no content could be generated. All drones encountered errors.';
     }
-    if (errorType === 'SERVER_ERROR') {
-      return 'Server temporarily unavailable. Please try again in a moment.';
-    }
-    if (errorType === 'BAD_REQUEST') {
-      return 'Invalid request. Please check your input or parameters.';
-    }
-    if (errorType === 'TIMEOUT') {
-      return 'The operation timed out. Please try again. If the problem persists, consider reducing input size.';
+    if (errorType === 'CANCELLED') {
+      return 'Processing was cancelled.';
     }
     return errorMessage;
   };
@@ -184,81 +216,35 @@ function ThreadLink() {
     setCompressionRatio(e.target.value);
   };
 
-  // Progress polling function
-  const pollProgress = async (jobId: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/progress/${jobId}`);
-      const data = await response.json();
-      
-      if (data.phase && data.message) {
-        const elapsedTime = (Date.now() - loadingStartTime.current) / 1000;
-        setLoadingProgress({
-          ...data,
-          elapsedTime
-        });
-        
-        // If processing is complete, stop polling
-        if (data.phase === 'complete') {
-          if (progressPollInterval.current) {
-            clearInterval(progressPollInterval.current);
-            progressPollInterval.current = null;
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Progress poll failed:', error);
-    }
-  };
-
-  const startProgressPolling = (jobId: string) => {
-    loadingStartTime.current = Date.now();
-    setLoadingProgress({
-      phase: 'preparing',
-      message: 'Preparing drone batches',
-      elapsedTime: 0
-    });
-    
-    // Poll every 500ms for smooth updates
-    progressPollInterval.current = setInterval(() => {
-      pollProgress(jobId);
-    }, 500);
-  };
-
-  const stopProgressPolling = () => {
-    if (progressPollInterval.current) {
-      clearInterval(progressPollInterval.current);
-      progressPollInterval.current = null;
-    }
-  };
-
-  const handleCancel = async () => {
-    if (!jobId || isCancelling) return;
+  const handleCancel = () => {
+    if (isCancelling) return;
     
     setIsCancelling(true);
+    cancelRef.current = true;
     
-    try {
-      const response = await fetch(`${API_BASE_URL}/cancel/${jobId}`, {
-        method: 'POST'
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        console.log('✅ Processing cancelled successfully');
-        setError('Processing was cancelled');
-      } else {
-        console.warn('⚠️ Cancel request failed:', data.message);
-        setError('Failed to cancel processing');
-      }
-    } catch (error) {
-      console.error('❌ Cancel request error:', error);
-      setError('Failed to cancel processing');
-    } finally {
-      // Clean up regardless of cancel success/failure
-      stopProgressPolling();
-      setIsLoading(false);
-      setIsCancelling(false);
-      setJobId(null);
+    // The orchestrator will check cancelRef and handle cleanup
+    setError('Processing was cancelled');
+  };
+  const saveAPIKeys = () => {
+    // Save Google API key
+    if (googleAPIKey) {
+      saveAPIKey('google', googleAPIKey);
+    } else {
+      removeAPIKey('google');
+    }
+    
+    // Save OpenAI API key
+    if (openaiAPIKey) {
+      saveAPIKey('openai', openaiAPIKey);
+    } else {
+      removeAPIKey('openai');
+    }
+    
+    // Save Anthropic API key
+    if (anthropicAPIKey) {
+      saveAPIKey('anthropic', anthropicAPIKey);
+    } else {
+      removeAPIKey('anthropic');
     }
   };
 
@@ -268,81 +254,87 @@ function ThreadLink() {
       return;
     }
 
+    // Check if we have the required API key for the selected model
+    const provider = MODEL_PROVIDERS[model];
+    if (!provider) {
+      setError(`Unknown model: ${model}`);
+      return;
+    }
+
+    const apiKey = getAPIKey(provider);
+    if (!apiKey) {
+      setError(`Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key`);
+      setShowAPIKeys(true);
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     setStats(null);
+    cancelRef.current = false;
+    setIsCancelling(false);
+    
     const targetTokens = calculateTargetTokens();
     const calculatedConcurrency = calculateConcurrency();
-    
-    // Generate job ID for progress tracking
-    const newJobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setJobId(newJobId);
-    
-    // Start progress polling
-    startProgressPolling(newJobId);
+    loadingStartTime.current = Date.now();
     
     const recencyStrengthValue = recencyMode ? 
       (recencyStrength === 0 ? 25 : recencyStrength === 1 ? 50 : 90) : 0;
     
-    try {
-      const requestBody = {
-        text: inputText,
-        model: model,
-        targetTokens: targetTokens,
-        jobId: newJobId, // Include job ID for progress tracking
-        
-        // Processing settings
-        processingSpeed: processingSpeed,
-        concurrency: calculatedConcurrency,
-        recencyMode: recencyMode,
-        recencyStrength: recencyStrengthValue,
-        
-        // Advanced settings
-        temperature: adv_temperature,
-        droneDensity: recencyMode ? undefined : adv_droneDensity,
-        maxDrones: adv_maxDrones,
-        
-        compressionRatio: compressionRatio
-      };
-      
-      const response = await fetch(`${API_BASE_URL}/condense`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    try {      const result = await runCondensationPipeline({
+        rawText: inputText,
+        apiKey: apiKey,
+        settings: {
+          model: model,
+          temperature: adv_temperature,
+          maxConcurrency: calculatedConcurrency,
+          customTargetTokens: targetTokens,
+          processingSpeed: processingSpeed,
+          recencyMode: recencyMode,        recencyStrength: recencyStrengthValue,
+          droneDensity: recencyMode ? undefined : adv_droneDensity,
+          maxDrones: adv_maxDrones
         },
-        body: JSON.stringify(requestBody)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorInfo = getErrorDisplay(data.message || data.error || 'Processing failed', data.errorType);
-        throw new Error(errorInfo);
-      }
-
-      if (data.success) {
-        setOutputText(data.contextCard);
-        setStats(data.stats);
+        onProgress: (update: ProgressUpdate) => {
+          const elapsedTime = (Date.now() - loadingStartTime.current) / 1000;
+          setLoadingProgress({
+            phase: update.phase || 'processing',
+            message: update.message || 'Processing...',
+            completedDrones: update.completedDrones,
+            totalDrones: update.totalDrones,
+            elapsedTime: elapsedTime,
+            progress: update.progress
+          });
+        },
+        cancelled: () => cancelRef.current
+      } as any);if (result.success) {
+        setOutputText(result.contextCard);
+        setStats({
+          executionTime: (result as any).executionTime || '0',
+          compressionRatio: (result as any).sessionStats?.compressionRatio || result.stats?.compressionRatio || '0',
+          successfulDrones: (result as any).sessionStats?.successfulDrones || result.stats?.successfulDrones || 0,
+          totalDrones: (result as any).sessionStats?.totalDrones || result.stats?.totalDrones || 0,
+          initialTokens: result.stats?.initialTokens,
+          finalTokens: result.stats?.finalTokens || (result as any).sessionStats?.finalContentTokens
+        });
         setIsProcessed(true);
-        console.log('✅ Processing complete:', data.stats);
+        console.log('✅ Processing complete:', result.stats);
       } else {
-        const errorInfo = getErrorDisplay(data.message || 'Processing failed according to server.', data.errorType);
+        const errorInfo = getErrorDisplay((result as any).error || 'Processing failed', (result as any).errorType);
         setError(errorInfo);
         console.error('❌ Processing Failed:', errorInfo);
       }
       
     } catch (err: any) {
       console.error('❌ Caught an exception during processing:', err);
-      const isNetworkError = err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes('NetworkError'));
       const errorInfo = getErrorDisplay(
-        err.message || 'An unexpected client-side error occurred.',
-        isNetworkError ? 'NETWORK_ERROR' : 'GENERAL_ERROR'
+        err.message || 'An unexpected error occurred.',
+        'GENERAL_ERROR'
       );
       setError(errorInfo);
     } finally {
-      stopProgressPolling();
       setIsLoading(false);
-      setJobId(null);
+      setIsCancelling(false);
+      cancelRef.current = false;
     }
   };
 
@@ -362,8 +354,10 @@ function ThreadLink() {
     setTokenCount(0);
     setError('');
     setStats(null);
-    stopProgressPolling();
-  };  const openSettings = () => {
+    cancelRef.current = false;
+  };
+
+  const openSettings = () => {
     setShowSettings(true);
   };
 
@@ -373,9 +367,7 @@ function ThreadLink() {
 
   const openInfo = () => {
     setShowInfo(true);
-  };
-
-  const toggleSection = (section) => {
+  };  const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -413,17 +405,16 @@ function ThreadLink() {
       return () => clearTimeout(timer);
     }
   }, [outputText, isProcessed]);
-
-  // Cleanup on unmount
+  // Update progress bar width
   useEffect(() => {
-    return () => {
-      stopProgressPolling();
-    };
-  }, []);
+    if (progressBarRef.current && loadingProgress.totalDrones && loadingProgress.totalDrones > 0) {
+      const progressPercent = Math.min(100, ((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100);
+      progressBarRef.current.style.width = `${progressPercent}%`;
+    }
+  }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);
 
   return (
-    <>
-      <style>{`
+    <>      <style>{`
         input[type="range"]::-webkit-slider-thumb {
           appearance: none;
           height: 20px;
@@ -450,7 +441,8 @@ function ThreadLink() {
         {/* Settings Modal */}
         {showSettings && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">              <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">Settings</h3>
+            <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">Settings</h3>
               <div className="space-y-6">
                 {/* Model Selection */}
                 <div className="flex items-center justify-between">
@@ -458,7 +450,6 @@ function ThreadLink() {
                     <label htmlFor="model-select" className="text-sm text-[var(--text-secondary)] select-none cursor-default">
                       Model
                     </label>
-
                   </div>
                   <select
                     id="model-select"
@@ -468,16 +459,25 @@ function ThreadLink() {
                   >
                     <optgroup label="Google">
                       <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                      <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                      <option value="gemini-pro">Gemini Pro</option>
                     </optgroup>
                     <optgroup label="OpenAI">
-                      <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
-                      <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                      <option value="gpt-4">GPT-4</option>
+                      <option value="gpt-4o">GPT-4o</option>
+                      <option value="gpt-4o-mini">GPT-4o Mini</option>
+                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                     </optgroup>
                     <optgroup label="Anthropic">
+                      <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
                       <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                      <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                      <option value="claude-3-opus-20240229">Claude 3 Opus</option>
                     </optgroup>
                   </select>
-                </div>                {/* Processing Speed Toggle */}
+                </div>
+
+                {/* Processing Speed Toggle */}
                 {showProcessingSpeed && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -515,7 +515,9 @@ function ThreadLink() {
                       </span>
                     </div>
                   </div>
-                )}                {/* Recency Mode Toggle */}
+                )}
+
+                {/* Recency Mode Toggle */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <label className="text-sm text-[var(--text-secondary)] select-none cursor-default">
@@ -551,7 +553,9 @@ function ThreadLink() {
                       On
                     </span>
                   </div>
-                </div>                {/* Recency Strength Slider */}
+                </div>
+
+                {/* Recency Strength Slider */}
                 {recencyMode && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -585,7 +589,9 @@ function ThreadLink() {
                       </div>
                     </div>
                   </div>
-                )}                {/* Advanced Settings */}
+                )}
+
+                {/* Advanced Settings */}
                 <div className="border-t border-[var(--divider)] pt-4">
                   <button
                     onClick={() => setShowAdvanced(!showAdvanced)}
@@ -596,7 +602,8 @@ function ThreadLink() {
                   </button>
                   
                   {showAdvanced && (
-                    <div className="mt-4 space-y-4">                      {/* LLM Temperature */}
+                    <div className="mt-4 space-y-4">
+                      {/* LLM Temperature */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <label htmlFor="adv-temperature" className="text-sm text-[var(--text-secondary)] select-none cursor-default">
@@ -621,7 +628,9 @@ function ThreadLink() {
                           onChange={(e) => setAdv_temperature(parseFloat(e.target.value))}
                           className="w-24 px-3 py-1 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm cursor-text"
                         />
-                      </div>                      {/* Drone Density */}
+                      </div>
+
+                      {/* Drone Density */}
                       {!recencyMode && (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
@@ -648,7 +657,9 @@ function ThreadLink() {
                             className="w-24 px-3 py-1 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm cursor-text"
                           />
                         </div>
-                      )}                      {/* Danger Zone */}
+                      )}
+
+                      {/* Danger Zone */}
                       <div className="border-t border-red-500/30 pt-4 mt-6">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
@@ -679,7 +690,9 @@ function ThreadLink() {
                     </div>
                   )}
                 </div>
-              </div>                <div className="flex gap-3 mt-6">
+              </div>
+
+              <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowSettings(false)}
                   className="flex-1 px-4 py-2 bg-[var(--highlight-blue)] text-white rounded-lg select-none cursor-pointer"
@@ -695,22 +708,25 @@ function ThreadLink() {
               </div>
             </div>
           </div>
-        )}        {/* API Keys Modal */}
+        )}
+
+        {/* API Keys Modal */}
         {showAPIKeys && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
               <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">API Key Management</h3>
-                <div className="space-y-6">                {/* Google API Key */}
+              <div className="space-y-6">
+                {/* Google API Key */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label htmlFor="google-api-key" className="text-sm text-[var(--text-secondary)] select-none cursor-default">
                       Google API Key
                     </label>
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs text-[var(--text-secondary)] select-none cursor-default">Save to Cache</span>
+                      <span className="text-xs text-[var(--text-secondary)] select-none cursor-default">Save to Browser</span>
                       <button
                         onClick={() => setGoogleCacheEnabled(!googleCacheEnabled)}
-                        title="Toggle cache for Google API Key"
+                        title="Toggle browser storage for Google API Key"
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors select-none cursor-pointer ${
                           googleCacheEnabled ? 'bg-[var(--highlight-blue)]' : 'bg-[var(--divider)]'
                         }`}
@@ -729,11 +745,11 @@ function ThreadLink() {
                       value={googleAPIKey}
                       onChange={(e) => setGoogleAPIKey(e.target.value)}
                       className="flex-1 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm font-mono cursor-text"
-                    />
-                    <button
+                    />                    <button
                       onClick={() => {
                         setGoogleAPIKey('');
                         setGoogleCacheEnabled(false);
+                        removeAPIKey('google');
                       }}
                       title="Clear Google API Key"
                       className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer"
@@ -741,17 +757,19 @@ function ThreadLink() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                </div>                {/* OpenAI API Key */}
+                </div>
+
+                {/* OpenAI API Key */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label htmlFor="openai-api-key" className="text-sm text-[var(--text-secondary)] select-none cursor-default">
                       OpenAI API Key
                     </label>
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs text-[var(--text-secondary)] select-none cursor-default">Save to Cache</span>
+                      <span className="text-xs text-[var(--text-secondary)] select-none cursor-default">Save to Browser</span>
                       <button
                         onClick={() => setOpenaiCacheEnabled(!openaiCacheEnabled)}
-                        title="Toggle cache for OpenAI API Key"
+                        title="Toggle browser storage for OpenAI API Key"
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors select-none cursor-pointer ${
                           openaiCacheEnabled ? 'bg-[var(--highlight-blue)]' : 'bg-[var(--divider)]'
                         }`}
@@ -770,11 +788,11 @@ function ThreadLink() {
                       value={openaiAPIKey}
                       onChange={(e) => setOpenaiAPIKey(e.target.value)}
                       className="flex-1 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm font-mono cursor-text"
-                    />
-                    <button
+                    />                    <button
                       onClick={() => {
                         setOpenaiAPIKey('');
                         setOpenaiCacheEnabled(false);
+                        removeAPIKey('openai');
                       }}
                       title="Clear OpenAI API Key"
                       className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer"
@@ -782,17 +800,19 @@ function ThreadLink() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                </div>                {/* Anthropic API Key */}
+                </div>
+
+                {/* Anthropic API Key */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label htmlFor="anthropic-api-key" className="text-sm text-[var(--text-secondary)] select-none cursor-default">
                       Anthropic API Key
                     </label>
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs text-[var(--text-secondary)] select-none cursor-default">Save to Cache</span>
+                      <span className="text-xs text-[var(--text-secondary)] select-none cursor-default">Save to Browser</span>
                       <button
                         onClick={() => setAnthropicCacheEnabled(!anthropicCacheEnabled)}
-                        title="Toggle cache for Anthropic API Key"
+                        title="Toggle browser storage for Anthropic API Key"
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors select-none cursor-pointer ${
                           anthropicCacheEnabled ? 'bg-[var(--highlight-blue)]' : 'bg-[var(--divider)]'
                         }`}
@@ -811,11 +831,11 @@ function ThreadLink() {
                       value={anthropicAPIKey}
                       onChange={(e) => setAnthropicAPIKey(e.target.value)}
                       className="flex-1 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm font-mono cursor-text"
-                    />
-                    <button
+                    />                    <button
                       onClick={() => {
                         setAnthropicAPIKey('');
                         setAnthropicCacheEnabled(false);
+                        removeAPIKey('anthropic');
                       }}
                       title="Clear Anthropic API Key"
                       className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer"
@@ -824,10 +844,14 @@ function ThreadLink() {
                     </button>
                   </div>
                 </div>
-              </div>                
+              </div>
+
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => setShowAPIKeys(false)}
+                  onClick={() => {
+                    saveAPIKeys();
+                    setShowAPIKeys(false);
+                  }}
                   className="flex-1 px-4 py-2 bg-[var(--highlight-blue)] text-white rounded-lg select-none cursor-pointer"
                 >
                   Save
@@ -841,11 +865,13 @@ function ThreadLink() {
               </div>
             </div>
           </div>
-        )}        
+        )}
+
         {/* Info Panel Modal */}
         {showInfo && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">              {/* Header */}
+            <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-medium text-[var(--text-primary)] select-none cursor-default">ThreadLink User Guide</h2>
                 <button
@@ -855,10 +881,13 @@ function ThreadLink() {
                 >
                   <X size={20} className="text-[var(--text-secondary)]" />
                 </button>
-              </div>{/* Scrollable Content */}
+              </div>
+
+              {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto pr-2 space-y-3">
                 {/* Section 1: What is ThreadLink? */}
-                <div className="border border-[var(--divider)] rounded-lg">                  <button
+                <div className="border border-[var(--divider)] rounded-lg">
+                  <button
                     onClick={() => toggleSection('what')}
                     className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
                   >
@@ -868,7 +897,9 @@ function ThreadLink() {
                       <p className="text-sm text-[var(--text-secondary)] cursor-default">LLMs forget. ThreadLink doesn't.</p>
                     </div>
                     {expandedSections.what ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </button>{expandedSections.what && (
+                  </button>
+
+                  {expandedSections.what && (
                     <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-3">
                       <p>
                         Modern AI is powerful but fundamentally amnesiac. ThreadLink is the antidote. It's a high-signal engine that turns sprawling chat logs and raw text into a clean, portable context card.
@@ -887,12 +918,14 @@ function ThreadLink() {
                       </ul>
                       <p>
                         It's not just a summarizer. <strong className="text-[var(--text-primary)]">It's a memory implant for your work.</strong>
-                      </p>                    </div>
+                      </p>
+                    </div>
                   )}
                 </div>
 
                 {/* Section 2: How to Use ThreadLink */}
-                <div className="border border-[var(--divider)] rounded-lg">                  <button
+                <div className="border border-[var(--divider)] rounded-lg">
+                  <button
                     onClick={() => toggleSection('howto')}
                     className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
                   >
@@ -902,7 +935,10 @@ function ThreadLink() {
                       <p className="text-sm text-[var(--text-secondary)] cursor-default">Garbage In, Garbage Out.</p>
                     </div>
                     {expandedSections.howto ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </button>{expandedSections.howto && (                    <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-3 cursor-default">
+                  </button>
+
+                  {expandedSections.howto && (
+                    <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-3 cursor-default">
                       <p>
                         The quality of your context card depends entirely on the quality of the text you provide. For best results, follow this simple process to capture a clean, complete session log.
                       </p>
@@ -942,8 +978,11 @@ function ThreadLink() {
                       </div>
                     </div>
                   )}
-                </div>                {/* Section 3: Understanding Compression */}
-                <div className="border border-[var(--divider)] rounded-lg">                  <button
+                </div>
+
+                {/* Section 3: Understanding Compression */}
+                <div className="border border-[var(--divider)] rounded-lg">
+                  <button
                     onClick={() => toggleSection('compression')}
                     className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
                   >
@@ -953,7 +992,9 @@ function ThreadLink() {
                       <p className="text-sm text-[var(--text-secondary)]">The Suitcase Analogy: Pillows vs. Gold Bricks</p>
                     </div>
                     {expandedSections.compression ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </button>                  {expandedSections.compression && (
+                  </button>
+                  
+                  {expandedSections.compression && (
                     <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-3">
                       <p>
                         The effectiveness of condensation is a direct function of the source text's information density. The compression level you choose sets a target ratio, but the final output is determined by the content itself.
@@ -976,8 +1017,12 @@ function ThreadLink() {
                         <li><strong className="text-[var(--text-primary)]">Aggressive:</strong> Maximum compression. Ideal for extracting key points from verbose content.</li>
                       </ul>
                     </div>
-                  )}</div>                {/* Section 4: Context Card Strategy */}
-                <div className="border border-[var(--divider)] rounded-lg">                  <button
+                  )}
+                </div>
+
+                {/* Section 4: Context Card Strategy */}
+                <div className="border border-[var(--divider)] rounded-lg">
+                  <button
                     onClick={() => toggleSection('strategy')}
                     className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
                   >
@@ -987,7 +1032,9 @@ function ThreadLink() {
                       <p className="text-sm text-[var(--text-secondary)]">Precision vs. Focus: The Core Trade-off</p>
                     </div>
                     {expandedSections.strategy ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </button>                  {expandedSections.strategy && (
+                  </button>
+                  
+                  {expandedSections.strategy && (
                     <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-3">
                       <p>
                         The size of your final context card is a strategic choice. There is no single "best" size; it's a trade-off between the richness of the context and the cost and focus of the next LLM session.
@@ -1016,8 +1063,11 @@ function ThreadLink() {
                       </div>
                     </div>
                   )}
-                </div>                {/* Section 5: Meet Your Drones */}
-                <div className="border border-[var(--divider)] rounded-lg">                  <button
+                </div>
+
+                {/* Section 5: Meet Your Drones */}
+                <div className="border border-[var(--divider)] rounded-lg">
+                  <button
                     onClick={() => toggleSection('drones')}
                     className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
                   >
@@ -1028,7 +1078,9 @@ function ThreadLink() {
                     </div>
                     {expandedSections.drones ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                   </button>
-                  {expandedSections.drones && (                    <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-4">
+                  
+                  {expandedSections.drones && (
+                    <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-4">
                       <div className="space-y-2">
                         <p className="text-sm">
                           Different AI models have distinct personalities and operational limits. Choosing the right one—and understanding how ThreadLink handles it—is critical for getting the result you want.
@@ -1079,8 +1131,11 @@ function ThreadLink() {
                       </div>
                     </div>
                   )}
-                </div>                {/* Section 6: Recency Mode */}
-                <div className="border border-[var(--divider)] rounded-lg">                  <button
+                </div>
+
+                {/* Section 6: Recency Mode */}
+                <div className="border border-[var(--divider)] rounded-lg">
+                  <button
                     onClick={() => toggleSection('recency')}
                     className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
                   >
@@ -1090,11 +1145,15 @@ function ThreadLink() {
                       <p className="text-sm text-[var(--text-secondary)]">Focus on What Matters Now.</p>
                     </div>
                     {expandedSections.recency ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </button>                  {expandedSections.recency && (
+                  </button>
+                  
+                  {expandedSections.recency && (
                     <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-3">
                       <p>
                         Recency Mode creates a temporally weighted briefing that automatically adjusts summary resolution based on when information appeared in your conversation. Think of it as a zoom lens that focuses sharper on recent events while maintaining a wide-angle view of the overall context.
-                      </p>                      <div className="bg-[var(--bg-primary)] border border-[var(--divider)] rounded p-3 space-y-2">
+                      </p>
+                      
+                      <div className="bg-[var(--bg-primary)] border border-[var(--divider)] rounded p-3 space-y-2">
                         <p className="font-medium text-[var(--text-primary)]">How It Works: Temporal Bands</p>
                         <p className="text-sm">
                           Recency Mode divides your conversation into three distinct chronological bands and changes how it processes each one by adjusting the "drone density" (the number of summarization jobs per chunk of text).
@@ -1121,8 +1180,12 @@ function ThreadLink() {
                         <li><strong className="text-[var(--text-primary)]">Strong:</strong> Aggressive recency bias. Heavily focuses on latest developments.</li>
                       </ul>
                     </div>
-                  )}                </div>                {/* Section 7: Advanced Controls */}
-                <div className="border border-[var(--divider)] rounded-lg">                  <button
+                  )}
+                </div>
+
+                {/* Section 7: Advanced Controls */}
+                <div className="border border-[var(--divider)] rounded-lg">
+                  <button
                     onClick={() => toggleSection('advanced')}
                     className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
                   >
@@ -1132,7 +1195,9 @@ function ThreadLink() {
                       <p className="text-sm text-[var(--text-secondary)]">Fine-tuning the engine for specific missions.</p>
                     </div>
                     {expandedSections.advanced ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </button>                  {expandedSections.advanced && (
+                  </button>
+                  
+                  {expandedSections.advanced && (
                     <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-4">
                       <p>
                         These settings provide direct control over the cost, performance, and granularity of the condensation pipeline. Adjust them only if you understand the trade-offs.
@@ -1179,8 +1244,11 @@ function ThreadLink() {
                       </div>
                     </div>
                   )}
-                </div>                {/* Section 8: Privacy & The Project */}
-                <div className="border border-[var(--divider)] rounded-lg">                  <button
+                </div>
+
+                {/* Section 8: Privacy & The Project */}
+                <div className="border border-[var(--divider)] rounded-lg">
+                  <button
                     onClick={() => toggleSection('privacy')}
                     className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
                   >
@@ -1190,7 +1258,9 @@ function ThreadLink() {
                       <p className="text-sm text-[var(--text-secondary)]">Your Keys, Your Data.</p>
                     </div>
                     {expandedSections.privacy ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </button>                  {expandedSections.privacy && (
+                  </button>
+                  
+                  {expandedSections.privacy && (
                     <div className="px-4 pb-3 pt-2 text-[var(--text-secondary)] space-y-3">
                       <p>
                         ThreadLink is built with a privacy-first, BYOK, open-source philosophy. Your conversations and API keys remain exclusively yours.
@@ -1206,7 +1276,9 @@ function ThreadLink() {
                       </div>
                       <p>
                         The complete ThreadLink source code is available on GitHub for review. You can see exactly how every feature works, verify our privacy claims, and even run your own instance if desired.
-                      </p>                      <div className="bg-blue-500 bg-opacity-10 border border-blue-500 rounded p-3 mt-4">
+                      </p>
+                      
+                      <div className="bg-blue-500 bg-opacity-10 border border-blue-500 rounded p-3 mt-4">
                         <p className="text-blue-400">
                           <a 
                             href="https://github.com/skragus/threadlink" 
@@ -1214,7 +1286,7 @@ function ThreadLink() {
                             rel="noopener noreferrer"
                             className="hover:text-blue-300 transition-colors"
                           >
-                            <strong>GitHub:</strong> github.com/skragus/threadlink - yes, I’d like a star
+                            <strong>GitHub:</strong> github.com/skragus/threadlink - yes, I'd like a star
                           </a>
                         </p>
                       </div>
@@ -1223,7 +1295,7 @@ function ThreadLink() {
                 </div>
               </div>
 
-              {/* Footer */}              
+              {/* Footer */}
               <div className="mt-6 pt-4 border-t border-[var(--divider)]">
                 <button
                   onClick={() => setShowInfo(false)}
@@ -1234,17 +1306,20 @@ function ThreadLink() {
               </div>
             </div>
           </div>
-        )}       
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between px-12 pt-6 pb-4 border-b border-[var(--divider)] ">
           <div className="flex items-center gap-8 read-only:cursor-default disabled:cursor-default">
             <h1 className="text-3xl font-outfit leading-none flex items-center select-none cursor-default">
               <span className="text-[#736C9E] tracking-[0.01em] font-normal">Thread</span>
               <span className="text-[#505C88] tracking-[-0.03em] font-medium">Link</span>
-            </h1>            <p className="text-sm font-outfit font-normal text-[#7D87AD] opacity-75 whitespace-nowrap hidden md:block select-none read-only:pointer-events-none disabled:pointer-events-none">
+            </h1>
+            <p className="text-sm font-outfit font-normal text-[#7D87AD] opacity-75 whitespace-nowrap hidden md:block select-none read-only:pointer-events-none disabled:pointer-events-none">
               Condense, copy, continue — without breaking flow.
             </p>
-          </div><div className="flex gap-2">
+          </div>
+          <div className="flex gap-2">
             <button 
               onClick={openInfo}
               aria-label="Open help documentation"
@@ -1267,7 +1342,9 @@ function ThreadLink() {
               <Settings size={20} className="opacity-50" />
             </button>
           </div>
-        </div>        {/* Error Display */}
+        </div>
+
+        {/* Error Display */}
         {error && (
           <div ref={errorRef} className="mx-12 mt-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded text-red-400 text-sm select-none cursor-default">
             {error}
@@ -1279,8 +1356,11 @@ function ThreadLink() {
           <div ref={statsRef} className="mx-12 mt-4 p-3 bg-green-500 bg-opacity-10 border border-green-500 rounded text-green-400 text-sm select-none cursor-default">
             Processed in {stats.executionTime}s • {stats.compressionRatio}:1 compression • {stats.successfulDrones}/{stats.totalDrones} drones successful
           </div>
-        )}{/* Main content area */}
-        <div className="flex-grow flex flex-col justify-center px-12 py-4 relative resize-none">          <textarea
+        )}
+
+        {/* Main content area */}
+        <div className="flex-grow flex flex-col justify-center px-12 py-4 relative resize-none">
+          <textarea
             ref={outputTextareaRef}
             className={`w-full flex-grow bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''} ${isProcessed || isLoading ? 'cursor-default' : 'cursor-text'}`}
             placeholder="Paste your AI conversation here..."
@@ -1295,7 +1375,8 @@ function ThreadLink() {
             target="_blank" 
             rel="noopener noreferrer"
             className="absolute bottom-7 right-14 z-10"
-          >            <img 
+          >
+            <img 
               src="src/assets/bolt-badge.png"
               alt="Powered by Bolt.new" 
               className="w-20 h-auto opacity-10 hover:opacity-50 transition-opacity"
@@ -1325,13 +1406,10 @@ function ThreadLink() {
                       <div className="flex justify-between text-sm text-[var(--text-secondary)] mb-2">
                         <span>Progress: {loadingProgress.completedDrones || 0}/{loadingProgress.totalDrones} drones</span>
                         <span>{Math.round(((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-[var(--divider)] rounded-full h-2">
+                      </div>                      <div className="w-full bg-[var(--divider)] rounded-full h-2">
                         <div 
+                          ref={progressBarRef}
                           className="bg-[var(--highlight-blue)] h-2 rounded-full transition-all duration-300 ease-out"
-                          style={{ 
-                            width: `${Math.min(100, ((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100)}%` 
-                          }}
                         />
                       </div>
                     </div>
@@ -1350,7 +1428,7 @@ function ThreadLink() {
                     disabled={isCancelling || loadingProgress.phase === 'finalizing'}
                     className="h-[38px] bg-gray-700 text-gray-300 px-4 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm select-none"
                   >
-                    {isCancelling ? 'Cancel' : 'Cancel'}
+                    {isCancelling ? 'Cancelling...' : 'Cancel'}
                   </button>
                 </div>
               </div>
@@ -1361,7 +1439,8 @@ function ThreadLink() {
         {/* Footer */}
         <div className="border-t border-[#181920] bg-[var(--bg-primary)] pb-4">
           <div className="px-12 py-4">
-            <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">              <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] select-none cursor-default">
+            <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
+              <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] select-none cursor-default">
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="font-mono w-32">{formatTokenCount(tokenCount)}</span>
                   <span className="mx-2">•</span>
@@ -1369,7 +1448,7 @@ function ThreadLink() {
                     id="compression-ratio-select"
                     value={compressionRatio}
                     onChange={handleCompressionChange}
-                    className="px-2 py-1 bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] shrink-0 text-sm cursor-pointer"
+                    className="px-2 py-1 bg-[var(--card-bg)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm cursor-pointer min-w-[120px]"
                   >
                     <option value="light" className="cursor-pointer">Light</option>
                     <option value="balanced" className="cursor-pointer">Balanced</option>
@@ -1378,7 +1457,8 @@ function ThreadLink() {
                 </div>
               </div>
               
-              <div className="flex gap-3 shrink-0">                {inputText && !isProcessed && (
+              <div className="flex gap-3 shrink-0">
+                {inputText && !isProcessed && (
                   <button 
                     onClick={handleCondense}
                     disabled={isLoading}
@@ -1414,7 +1494,8 @@ function ThreadLink() {
         </div>
 
         {/* Bottom footer */}
-        <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] py-1">          <p className="text-xs text-center text-[var(--text-secondary)] opacity-70 flex items-center justify-center flex-wrap gap-x-2 select-none cursor-default">
+        <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] py-1">
+          <p className="text-xs text-center text-[var(--text-secondary)] opacity-70 flex items-center justify-center flex-wrap gap-x-2 select-none cursor-default">
             <span>Open Source</span>
             <span>·</span>
             <span>BYOK</span>

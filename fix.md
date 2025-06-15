@@ -24,3 +24,6 @@ welcome message + api require message
 blur background on loading messages
 
 info menu open section should scroll jump to it
+
+bolt badge covers scroll bar
+

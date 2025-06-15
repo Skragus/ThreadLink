@@ -1,9 +1,9 @@
-import React from 'react';
-import ThreadLink from './components/ThreadLink';
+import ThreadLink from './ThreadLink';
+import './App.css';
 
 function App() {
   return (
-    <div>
+    <div className="App">
       <ThreadLink />
     </div>
   );
