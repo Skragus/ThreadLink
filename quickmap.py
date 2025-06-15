@@ -63,6 +63,7 @@ BLACKLIST_DIRS = {
     ".serverless",
     ".webpack",
     ".parcel-cache",
+    "_archive",
 }
 
 BLACKLIST_FILES = {
