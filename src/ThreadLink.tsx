@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // Import components
-import { Header } from './components/Header';
-import { Footer } from './components/Footer';
-import { TextEditor } from './components/TextEditor';
-import { SettingsModal } from './components/SettingsModal';
-import { APIKeysModal } from './components/APIKeysModal';
-import { InfoPanel } from './components/InfoPanel';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import TextEditor from './components/TextEditor';
+import APIKeysModal from './components/APIKeysModal';
+import { SettingsModal } from './components/SettingModal';
+import InfoPanel from './components/InfoPanel';
 
 // Import types
 import { 

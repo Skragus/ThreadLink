@@ -1,4 +1,4 @@
-import ThreadLink from './src/ThreadLink';
+import ThreadLink from './ThreadLink';
 import './App.css';
 
 function App() {

@@ -2,7 +2,7 @@
 
 // Import from the browser module
 // @ts-ignore - JavaScript module without TypeScript declarations
-import { estimateTokens as estimateTokensFromAPI } from '../src/lib/client-api.js';
+import { estimateTokens as estimateTokensFromAPI } from '../lib/client-api.js';
 
 export const estimateTokens = estimateTokensFromAPI;
 

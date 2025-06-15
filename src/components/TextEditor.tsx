@@ -86,3 +86,5 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     </>
   );
 };
+
+export default TextEditor;
