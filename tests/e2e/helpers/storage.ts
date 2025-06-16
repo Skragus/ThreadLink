@@ -6,7 +6,15 @@ export async function getStorage(page: Page, key: string) {
     return await page.evaluate((k) => {
       if (typeof localStorage !== 'undefined') {
         const value = localStorage.getItem(k);
-        return value ? JSON.parse(value) : null;
+        if (value === null) return null;
+        
+        // Try JSON.parse first (for complex objects), fall back to raw string
+        try {
+          return JSON.parse(value);
+        } catch {
+          // Return raw string value (for API keys stored as plain strings)
+          return value;
+        }
       }
       return null;
     }, key);

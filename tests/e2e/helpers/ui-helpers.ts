@@ -76,9 +76,9 @@ export class ThreadLinkPage {
     // Wait for the API key dialog to appear
     await this._page.getByRole('dialog', { name: /api.+key/i }).waitFor({ timeout: 5000 });
     
-    // Select the provider
-    const providerSelect = this._page.locator(`select[data-provider="${provider}"], input[data-provider="${provider}"]`);
-    await providerSelect.fill(apiKey);
+    // Find the input by id (e.g., "google-api-key", "openai-api-key", "anthropic-api-key")
+    const providerInput = this._page.locator(`#${provider}-api-key`);
+    await providerInput.fill(apiKey);
     
     // Save the API key
     const saveButton = this._page.getByRole('button', { name: 'Save' });

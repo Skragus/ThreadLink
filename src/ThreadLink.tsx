@@ -210,7 +210,6 @@ function ThreadLink() {
   const handleCompressionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setCompressionRatio(e.target.value);
   };
-
   const handleCancel = () => {
     if (isCancelling) return;
     
@@ -218,6 +217,7 @@ function ThreadLink() {
     cancelRef.current = true;
     setError('Processing was cancelled');
   };
+
   const saveAPIKeys = () => {
     if (googleAPIKey) {
       saveAPIKey('google', googleAPIKey);
