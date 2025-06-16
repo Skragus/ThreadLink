@@ -23,7 +23,14 @@
     /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]    }
-  },
-  "include": ["src", "*.ts", "*.tsx"]
+      "@/*": ["src/*"]    }  },
+  "include": ["src", "*.ts", "*.tsx"],
+  "exclude": [
+    "src/test/**/*",
+    "src/**/*.test.*",
+    "src/**/*.spec.*",
+    "tests/**/*",
+    "**/*.test.js",
+    "**/*.spec.js"
+  ]
 }

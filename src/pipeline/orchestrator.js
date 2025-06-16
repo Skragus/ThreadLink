@@ -487,15 +487,11 @@ async function processDronesWithConcurrency(
             if (cancelled && cancelled()) {
                 console.log('🛑 Processing cancelled after drone completion');
                 throw new Error('Processing was cancelled');
-            }
-              if (result.success) {
-                // For browser concurrency test compatibility, ALWAYS ensure results contain "Processed"
-                const processedText = "Processed successfully";
-                results[i] = result.result && typeof result.result === 'string' 
-                    ? (result.result.includes("Processed") ? result.result : processedText)
-                    : processedText;
+            }            if (result.success) {
+                // Store the actual processed result
+                results[i] = result.result || '';
                 completed++;
-                  if (onProgress) {
+                if (onProgress) {
                     onProgress(completed, batches.length, rateLimitedDrones.length);
                 }
                 
