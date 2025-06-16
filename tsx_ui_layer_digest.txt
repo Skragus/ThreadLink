@@ -62,6 +62,21 @@ If you fail to fix a test in the target file after THREE (3) consecutive attempt
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Of course. Here is the optimal, sequential order for running your test suite.
 
 This order is designed to build confidence by starting with the foundational unit tests and then moving to the more complex, user-facing E2E tests.

@@ -32,7 +32,7 @@ import {
 // @ts-ignore - JavaScript modules without TypeScript declarations
 import { runCondensationPipeline } from '../src/pipeline/orchestrator.js';
 // @ts-ignore - JavaScript modules without TypeScript declarations
-import { getAPIKey, saveAPIKey, removeAPIKey, getCustomPrompt, saveCustomPrompt, getUseCustomPrompt, saveUseCustomPrompt } from '../src/lib/storage.js';
+import { getAPIKey, saveAPIKey, removeAPIKey, getCustomPrompt, saveCustomPrompt, getUseCustomPrompt, saveUseCustomPrompt, getSettings, saveSettings } from '../src/lib/storage.js';
 // @ts-ignore - JavaScript modules without TypeScript declarations
 import { MODEL_PROVIDERS } from '../src/lib/client-api.js';
 // @ts-ignore - JavaScript modules without TypeScript declarations
@@ -111,8 +111,21 @@ function ThreadLink() {
   // Processing Speed logic
   const isAnthropicModel = model.includes('claude');
 
-  // Initialize API keys from storage on mount  useEffect(() => {
-      useEffect(() => {
+  // Function to save current settings to localStorage
+  const saveCurrentSettings = () => {
+    const currentSettings = {
+      model,
+      temperature: adv_temperature,
+      processingSpeed,
+      recencyMode,
+      recencyStrength,
+      droneDensity: adv_droneDensity,
+      maxDrones: adv_maxDrones
+    };
+    saveSettings(currentSettings);
+  };
+  // Initialize API keys from storage on mount
+  useEffect(() => {
     const loadedGoogleKey = getAPIKey('google');
     const loadedOpenAIKey = getAPIKey('openai');
     const loadedAnthropicKey = getAPIKey('anthropic');
@@ -127,6 +140,18 @@ function ThreadLink() {
     
     if (loadedUseCustomPrompt) setUseCustomPrompt(loadedUseCustomPrompt);
     if (loadedCustomPrompt) setCustomPrompt(loadedCustomPrompt);
+
+    // Load settings from localStorage
+    const savedSettings = getSettings();
+    if (savedSettings) {
+      if (savedSettings.model) setModel(savedSettings.model);
+      if (savedSettings.temperature !== undefined) setAdv_temperature(savedSettings.temperature);
+      if (savedSettings.processingSpeed) setProcessingSpeed(savedSettings.processingSpeed);
+      if (savedSettings.recencyMode !== undefined) setRecencyMode(savedSettings.recencyMode);
+      if (savedSettings.recencyStrength !== undefined) setRecencyStrength(savedSettings.recencyStrength);
+      if (savedSettings.droneDensity !== undefined) setAdv_droneDensity(savedSettings.droneDensity);
+      if (savedSettings.maxDrones !== undefined) setAdv_maxDrones(savedSettings.maxDrones);
+    }
   }, []);
 
   // Auto-reset processing speed when switching to Anthropic
@@ -453,7 +478,10 @@ function ThreadLink() {
           setUseCustomPrompt={setUseCustomPrompt}
           customPrompt={customPrompt}
           setCustomPrompt={setCustomPrompt}
-          onClose={() => setShowSettings(false)}
+          onClose={() => {
+            saveCurrentSettings();
+            setShowSettings(false);
+          }}
         />
 
         <APIKeysModal

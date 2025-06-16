@@ -44,7 +44,7 @@ test.describe('Persistence Recovery & Storage Scenarios', () => {
 
     // Reload the page
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'ThreadLink' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Thread Link' })).toBeVisible();
 
     // Re-open modal and verify key is present
     await openApiKeys(page);
@@ -130,7 +130,7 @@ test.describe('Persistence Recovery & Storage Scenarios', () => {
     // The app should not have a fatal crash.
     expect(uncaughtError).toBeNull();
     // A simple assertion to confirm the page is still interactive
-    await expect(page.getByRole('heading', { name: 'ThreadLink' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Thread Link' })).toBeVisible();
   });
 
   test('should clear in-progress job state on reload', async ({ page }) => {
