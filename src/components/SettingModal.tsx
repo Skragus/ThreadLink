@@ -76,12 +76,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
     setShowPromptEditor(false);
   };
-
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
-          <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">Settings</h3>
+        <div role="dialog" aria-labelledby="settings-title" aria-modal="true" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
+          <h3 id="settings-title" className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">Settings</h3>
           <div className="space-y-6">
             {/* Model Selection */}
             <div className="flex items-center justify-between">

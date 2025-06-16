@@ -87,25 +87,11 @@ export class ThreadLinkPage {
     // Wait for dialog to close
     await this._page.getByRole('dialog', { name: /api.+key/i }).waitFor({ state: 'hidden', timeout: 5000 });
   }
-
   // Settings Management
   async setCompressionLevel(level: string) {
-    // Click settings button
-    await this.settingsButton.click();
-    
-    // Wait for settings dialog
-    await this._page.getByRole('dialog', { name: /settings/i }).waitFor({ timeout: 5000 });
-    
-    // Select compression level
+    // Compression level is on the main page, not in settings
     const compressionSelect = this._page.getByRole('combobox', { name: /compression/i });
     await compressionSelect.selectOption(level);
-    
-    // Save settings
-    const saveButton = this._page.getByRole('button', { name: 'Save' });
-    await saveButton.click();
-    
-    // Wait for dialog to close
-    await this._page.getByRole('dialog', { name: /settings/i }).waitFor({ state: 'hidden', timeout: 5000 });
   }
 
   async selectModel(model: string) {
