@@ -800,13 +800,19 @@ function createContextCard(droneResults, sessionStats = {}, originalPayloads = [
     
     // Join all parts with separators
     const content = contentParts.join('\n\n---\n\n');
-    
-    // Calculate statistics
-    const finalContentTokens = estimateTokens(content);
+      // Calculate statistics
     const successfulDronesCount = droneResults.filter(
         result => result && typeof result === 'string' && !result.startsWith('[Drone')
     ).length;
     const failedDronesCount = droneResults.length - successfulDronesCount;
+
+    // For all-failed scenario, calculate tokens based only on successful content, not failure traces
+    let finalContentTokens;
+    if (successfulDronesCount === 0) {
+        finalContentTokens = 0; // No successful content
+    } else {
+        finalContentTokens = estimateTokens(content);
+    }
 
     // Update session stats
     sessionStats.finalContentTokens = finalContentTokens;

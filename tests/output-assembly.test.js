@@ -24,14 +24,19 @@ vi.mock('../src/pipeline/config.js', () => ({
   calculateDroneOutputTarget: vi.fn(() => 500),
 }));
 
-describe('ThreadLink Output Assembly Pipeline (Browser Environment)', () => {
-  beforeEach(() => {
+describe('ThreadLink Output Assembly Pipeline (Browser Environment)', () => {  beforeEach(() => {
     vi.clearAllMocks();
     
     // Suppress console output
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    
+    // Mock window.fs for browser environment tests
+    global.window = global.window || {};
+    global.window.fs = {
+      readFile: vi.fn()
+    };
   });
 
   afterEach(() => {
