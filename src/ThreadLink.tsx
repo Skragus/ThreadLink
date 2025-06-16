@@ -518,14 +518,10 @@ function ThreadLink() {
           anthropicCacheEnabled={anthropicCacheEnabled}
           setGoogleAPIKey={setGoogleAPIKey}
           setOpenaiAPIKey={setOpenaiAPIKey}
-          setAnthropicAPIKey={setAnthropicAPIKey}
-          setGoogleCacheEnabled={setGoogleCacheEnabled}
+          setAnthropicAPIKey={setAnthropicAPIKey}          setGoogleCacheEnabled={setGoogleCacheEnabled}
           setOpenaiCacheEnabled={setOpenaiCacheEnabled}
           setAnthropicCacheEnabled={setAnthropicCacheEnabled}
-          onSave={() => {
-            saveAPIKeys();
-            setShowAPIKeys(false);
-          }}
+          onSave={saveAPIKeys} // Pass the function directly
           onClose={() => setShowAPIKeys(false)}
           onDeleteKey={handleDeleteKey}
         />        <InfoPanel

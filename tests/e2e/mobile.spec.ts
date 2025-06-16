@@ -199,9 +199,6 @@ test.describe('Mobile Experience', () => {
 
 // A separate describe block for network throttling tests.
 test.describe('Mobile on Slow Network', () => {
-  // Use mobile device with network throttling
-  test.use({ ...devices['iPhone 12'] });
-  
   test.beforeEach(async ({ page, context }) => {
     // Simulate slow 3G connection
     await context.route('**/*', async (route) => {

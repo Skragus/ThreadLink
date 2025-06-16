@@ -120,26 +120,32 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
     cacheEnabled: boolean,
     setCacheEnabled: (enabled: boolean) => void
   ) => (
-    <div className="space-y-3">
+    <div className="space-y-3" style={{ pointerEvents: 'none' }}>
       <div className="flex items-center justify-between">
         <label htmlFor={`${provider}-api-key`} className="text-sm text-[var(--text-secondary)] select-none cursor-default">
           {label}
-        </label>
-        <div className="flex items-center space-x-2">
-          <span className="text-xs text-[var(--text-secondary)] select-none cursor-default">Save to Browser</span>
-          <button
+        </label>        <div className="flex items-center space-x-2">
+          <span className="text-xs text-[var(--text-secondary)] select-none cursor-default" style={{ pointerEvents: 'none' }}>Save to Browser</span>          <button
             onClick={() => setCacheEnabled(!cacheEnabled)}
             title={`Toggle browser storage for ${label}`}
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors select-none cursor-pointer ${
               cacheEnabled ? 'bg-[var(--highlight-blue)]' : 'bg-[var(--divider)]'
             }`}
+            style={{ 
+              pointerEvents: 'auto', 
+              position: 'relative', 
+              zIndex: 15,
+              touchAction: 'manipulation',
+              userSelect: 'none',
+              WebkitUserSelect: 'none'
+            }}
           >
             <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform select-none ${
               cacheEnabled ? 'translate-x-5' : 'translate-x-1'
             }`} />
           </button>
         </div>
-      </div>      <div className="relative flex space-x-2">        <input
+      </div>      <div className="relative flex space-x-2" style={{ pointerEvents: 'none' }}>        <input
           id={`${provider}-api-key`}
           type="password"
           placeholder={placeholder}
@@ -154,21 +160,39 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
             }));
           }}
           className="flex-1 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm font-mono cursor-text"
-          style={{ pointerEvents: 'auto' }}
+          style={{ 
+            pointerEvents: 'auto', 
+            maxWidth: 'calc(100% - 70px)',
+            width: 'calc(100% - 70px)',
+            flexShrink: 1,
+            position: 'relative',
+            zIndex: 1
+          }}
         />        <button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onDeleteKey(provider);
+            // Attempt to blur any active input, might help on some mobile browsers
+            // if focus is somehow interfering, though stopPropagation should handle most cases.
+            (document.activeElement as HTMLElement)?.blur();
           }}
           onTouchEnd={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onDeleteKey(provider);
+            (document.activeElement as HTMLElement)?.blur();
           }}
           title={`Clear ${label}`}
-          className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer flex-shrink-0"
-          style={{ pointerEvents: 'auto', position: 'relative', zIndex: 20 }}
+          className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer flex-shrink-0"          style={{ 
+            pointerEvents: 'auto', 
+            position: 'relative', 
+            zIndex: 9999, 
+            minWidth: '48px',
+            touchAction: 'manipulation',
+            userSelect: 'none',
+            WebkitUserSelect: 'none'
+          }}
         >
           <Trash2 size={16} />
         </button>
@@ -177,17 +201,23 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
         <p className="text-xs text-red-400 mt-1">{validationErrors[provider]}</p>
       )}
     </div>
-  );
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">      <div role="dialog" aria-labelledby="api-keys-title" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
+  );  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+      onClick={(e) => {
+        // Only close if clicking the backdrop itself, not its children
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >      <div role="dialog" aria-labelledby="api-keys-title" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4" style={{ pointerEvents: 'auto' }}>
         <h3 id="api-keys-title" className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">API Key Management</h3>
           {storageError && (
-          <div role="alert" aria-label="storage" className="mb-4 p-3 bg-red-500 text-white rounded">
+          <div role="alert" aria-label="storage" className="mb-4 p-3 bg-red-500 text-white rounded" style={{ pointerEvents: 'auto' }}>
             {storageError}
-          </div>
-        )}
+          </div>        )}
         
-        <div className="space-y-6">
+        <div className="space-y-6" style={{ pointerEvents: 'none' }}>
           {renderAPIKeySection(
             'google',
             'Google API Key',
@@ -221,12 +251,14 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
           <button
             onClick={handleSave}
             className="flex-1 px-4 py-2 bg-[var(--highlight-blue)] text-white rounded-lg select-none cursor-pointer"
+            style={{ pointerEvents: 'auto' }}
           >
             Save
           </button>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-[var(--text-secondary)] text-white rounded-lg select-none cursor-pointer"
+            style={{ pointerEvents: 'auto' }}
           >
             Cancel
           </button>

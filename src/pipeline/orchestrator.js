@@ -1015,8 +1015,7 @@ export async function runCondensationPipeline(options = {}) {
             progress: 60
         });
         
-        console.log("📜 Preparing drone input strings...");
-        const finalDroneInputs = prepareDroneInputs(
+        console.log("📜 Preparing drone input strings...");        const finalDroneInputs = prepareDroneInputs(
             droneBatchesOfSegments,
             {
                 customDroneDensity: effectiveDroneDensity,
@@ -1025,6 +1024,38 @@ export async function runCondensationPipeline(options = {}) {
                 recencyStrength: recencyStrength
             }
         );
+
+        if (!finalDroneInputs || finalDroneInputs.length === 0) {
+            console.warn("Pipeline resulted in no drone inputs. This might be due to very small or empty input text.");
+            // For very short inputs, return a minimal successful response rather than failing
+            const endTime = Date.now();
+            const totalTime = ((endTime - startTime) / 1000).toFixed(1);
+            
+            progressTracker.setComplete(jobId, "Input was too short to process.");
+            
+            return {
+                success: true,
+                contextCard: "# ThreadLink Context Card\n\nInput text was too short to process. Please provide more content for meaningful condensation.",
+                droneResults: [],
+                sessionStats: {
+                    totalInputTokens: initialTokens,
+                    finalContentTokens: 0,
+                    compressionRatio: '0.0',
+                    estimatedDrones: 0,
+                    successfulDrones: 0
+                },
+                executionTime: totalTime,
+                stats: {
+                    initialTokens,
+                    cleanedTokens,
+                    finalTokens: 0,
+                    compressionRatio: '0.0',
+                    totalDrones: 0,
+                    successfulDrones: 0,
+                    executionTime: totalTime
+                }
+            };
+        }
 
         // STAGE 7: Drone Processing
         progressTracker.setLaunching(jobId, finalDroneInputs.length);

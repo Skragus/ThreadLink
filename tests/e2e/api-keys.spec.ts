@@ -23,11 +23,11 @@ test.describe('API Key Management', () => {
     const googleToggle = modal.locator('button[title*="Toggle browser storage for Google API Key"]');
     const openaiToggle = modal.locator('button[title*="Toggle browser storage for OpenAI API Key"]');
     const anthropicToggle = modal.locator('button[title*="Toggle browser storage for Anthropic API Key"]');
-    
-    // Enable storage for all providers
-    await googleToggle.click();
-    await openaiToggle.click(); 
-    await anthropicToggle.click();
+      // Enable storage for all providers
+    // Mobile Chrome has pointer event interception issues, force the clicks
+    await googleToggle.click({ force: true });
+    await openaiToggle.click({ force: true }); 
+    await anthropicToggle.click({ force: true });
     
     // THEN: Fill all three inputs
     await page.locator('#google-api-key').fill(TEST_KEYS.valid.google);
@@ -93,10 +93,10 @@ test.describe('API Key Management', () => {
     // Open modal again
     await threadlink.apiKeyButton.click();
     const modal = page.locator('[role="dialog"]');
-    
-    // Find delete button for Google (using title attribute)
+      // Find delete button for Google (using title attribute)
     const deleteButton = modal.locator('button[title*="Clear Google API Key"]');
-    await deleteButton.click();
+    // Mobile Chrome has pointer event interception issues, force the click
+    await deleteButton.click({ force: true });
     
     // Verify input is cleared
     const googleInput = modal.locator('#google-api-key');
@@ -206,8 +206,7 @@ test.describe('API Key Management', () => {
     await expect(page.getByTestId('stats-display')).toBeVisible({ timeout: 10000 });    // The final assertion - SECURITY CHECK: API key should not appear in URLs
     expect(keyFoundInUrl).toBe(false);
   });
-  
-  test('should show a friendly error if localStorage quota is exceeded', async ({ page }) => {
+    test('should show a friendly error if localStorage quota is exceeded', async ({ page }) => {
     // Mock localStorage.setItem to throw a QuotaExceededError
     await page.evaluate(() => {
       window.localStorage.setItem = () => {
@@ -219,6 +218,12 @@ test.describe('API Key Management', () => {
     await threadlink.apiKeyButton.click();
     const modal = page.locator('[role="dialog"]');
     await modal.waitFor({ state: 'visible' });
+      // FIRST: Enable cache toggle so that saving will actually be attempted
+    const googleToggle = modal.locator('button[title*="Toggle browser storage for Google API Key"]');
+    // Mobile Chrome has pointer event interception issues, force the click
+    await googleToggle.click({ force: true });
+    
+    // THEN: Fill the key
     await page.locator('#google-api-key').fill('this-key-will-fail-to-save');
     
     // Try to save - this should trigger the storage error
