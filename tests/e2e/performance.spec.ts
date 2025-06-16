@@ -217,3 +217,4 @@ test.describe('Performance Tests', () => {
     await page.getByRole('button', { name: 'Cancel & Edit Settings' }).click();
   });
 });
+

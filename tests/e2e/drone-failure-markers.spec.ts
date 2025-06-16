@@ -193,10 +193,12 @@ test.describe('Drone Failure Markers', () => {
     
     // Download
     const downloadPromise = page.waitForEvent('download');
-    const downloadButton = page.locator('button.getByRole('button', { name: 'Download' })');
+    const downloadButton = page.getByRole('button', { name: '' });
     await downloadButton.click();
     const download = await downloadPromise;
     const content = await download.path().then(path => require('fs').readFileSync(path, 'utf8'));
     expect(content).toContain('[⚠ Drone');
   });
 });
+
+

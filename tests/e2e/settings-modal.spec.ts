@@ -12,7 +12,7 @@ async function openAdvancedSettings(page: Page) {
 // Helper to enable the custom prompt editor and accept the warning
 async function enableAndOpenCustomPromptEditor(page: Page) {
   // The toggle is a button next to the label
-  const customPromptToggle = page.locator('label.getByRole('button', { name: 'Custom System Prompt' }) + div > button');
+  const customPromptToggle = page.locator('label').getByRole('button', { name: '' }).locator('+ div > button');
   await customPromptToggle.click();
   
   // Handle the first-time warning modal
@@ -123,7 +123,7 @@ test.describe('Settings Modal & Advanced Configuration', () => {
     
     // --- State Change: Disable Custom Prompt ---
     await openAdvancedSettings(page);
-    const customPromptToggle = page.locator('label.getByRole('button', { name: 'Custom System Prompt' }) + div > button');
+    const customPromptToggle = page.locator('label').getByRole('button', { name: '' }).locator('+ div > button');
     await customPromptToggle.click(); // This disables it
     await page.getByRole('button', { name: 'Save' }).click();
 
@@ -135,3 +135,5 @@ test.describe('Settings Modal & Advanced Configuration', () => {
     expect(lastReceivedPrompt).toContain('You are a drone');
   });
 });
+
+

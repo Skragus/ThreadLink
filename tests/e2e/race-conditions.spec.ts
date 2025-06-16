@@ -194,7 +194,7 @@ test.describe('Race Conditions and Concurrent Operations', () => {
     await deleteButton.click();
     
     // Save changes
-    await page.locator('button.getByRole('button', { name: 'Save' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Processing should either:
     // 1. Continue with the key that was already in use
@@ -247,3 +247,5 @@ test.describe('Race Conditions and Concurrent Operations', () => {
     await expect(threadlink.loadingOverlay).not.toBeVisible();
   });
 });
+
+

@@ -248,3 +248,4 @@ test.describe('Mobile on Slow Network', () => {
     await expect(outputTextarea).toHaveValue(/Success on 3G/);
   });
 });
+

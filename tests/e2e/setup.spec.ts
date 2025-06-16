@@ -44,3 +44,4 @@ test.describe('Setup and Initial Load', () => {
     await expect(threadlink.apiKeyButton).toBeVisible();
   });
 });
+

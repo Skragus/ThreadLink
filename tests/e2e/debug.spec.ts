@@ -40,3 +40,5 @@ test('debug page elements', async ({ page }) => {
     console.log(`Root HTML (first 500 chars): ${rootContent.substring(0, 500)}`);
   }
 });
+
+

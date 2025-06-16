@@ -2,7 +2,6 @@
 import { test, expect } from '@playwright/test';
 import { ThreadLinkPage } from './helpers/ui-helpers';
 import { TEST_DATA, TEST_KEYS } from './helpers/test-data';
-import { setupAPIMocks } from './helpers/api-mock';
 
 test.describe('Custom Prompt Editor', () => {
   let threadlink: ThreadLinkPage;
@@ -21,7 +20,7 @@ test.describe('Custom Prompt Editor', () => {
     await expect(customPromptToggle).not.toBeVisible();
     
     // Expand advanced settings
-    const advancedButton = page.locator('button.getByRole('button', { name: 'Advanced Settings' })');
+    const advancedButton = page.getByRole('button', { name: '' });
     await advancedButton.click();
     
     // Now should see danger zone
@@ -35,7 +34,7 @@ test.describe('Custom Prompt Editor', () => {
 
   test('entering custom prompt editor shows warnings', async ({ page }) => {
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Click the custom prompt toggle
     const toggle = page.locator('[data-testid="custom-prompt-toggle"]');
@@ -50,13 +49,13 @@ test.describe('Custom Prompt Editor', () => {
     await expect(warningIcons).toHaveCount(1);
     
     // Should have back button
-    const backButton = page.locator('button.getByRole('button', { name: '< Back' })');
+    const backButton = page.getByRole('button', { name: '' });
     await expect(backButton).toBeVisible();
   });
 
   test('editor pre-populated with default prompt', async ({ page }) => {
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
@@ -70,7 +69,7 @@ test.describe('Custom Prompt Editor', () => {
 
   test('custom prompt must include {TARGET_TOKENS} placeholder', async ({ page }) => {
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
@@ -80,7 +79,7 @@ test.describe('Custom Prompt Editor', () => {
     await editor.fill('Just summarize this text please');
     
     // Try to apply
-    const applyButton = page.locator('button.getByRole('button', { name: 'Apply & Close' })');
+    const applyButton = page.getByRole('button', { name: '' });
     await applyButton.click();
     
     // Should show validation error
@@ -111,7 +110,7 @@ test.describe('Custom Prompt Editor', () => {
 
     // Set custom prompt
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     const customPromptText = 'Extract only action items from this text. Target: {TARGET_TOKENS} tokens.';
@@ -119,7 +118,7 @@ test.describe('Custom Prompt Editor', () => {
     await editor.clear();
     await editor.fill(customPromptText);
     
-    await page.locator('button.getByRole('button', { name: 'Apply & Close' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Process some text
     await threadlink.pasteText('Meeting notes: TODO: Update docs. ACTION: Review PR.');
@@ -134,7 +133,7 @@ test.describe('Custom Prompt Editor', () => {
 
   test('back button discards changes', async ({ page }) => {
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     // Make changes
@@ -144,7 +143,7 @@ test.describe('Custom Prompt Editor', () => {
     await editor.fill('This is a test prompt that should be discarded');
     
     // Click back
-    await page.locator('button.getByRole('button', { name: '< Back' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Toggle should be OFF
     const toggle = page.locator('[data-testid="custom-prompt-toggle"]');
@@ -158,25 +157,25 @@ test.describe('Custom Prompt Editor', () => {
     expect(currentPrompt).toBe(originalPrompt);
   });
 
-  test('custom prompt persists across sessions', async ({ page, context }) => {
+  test('custom prompt persists across sessions', async ({ page }) => {
     const customPrompt = 'My persistent custom prompt with {TARGET_TOKENS} tokens target.';
     
     // Set custom prompt
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
     await editor.clear();
     await editor.fill(customPrompt);
-    await page.locator('button.getByRole('button', { name: 'Apply & Close' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Reload page
     await page.reload();
     
     // Check it persisted
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Toggle should be ON
     const toggle = page.locator('[data-testid="custom-prompt-toggle"]');
@@ -190,7 +189,7 @@ test.describe('Custom Prompt Editor', () => {
 
   test('visual danger zone styling', async ({ page }) => {
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Check danger zone has appropriate styling
     const dangerZone = page.locator('text="DANGER ZONE"').locator('..');
@@ -208,7 +207,7 @@ test.describe('Custom Prompt Editor', () => {
 
   test('prompt length affects cost warning', async ({ page }) => {
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
@@ -228,13 +227,13 @@ test.describe('Custom Prompt Editor', () => {
   test('custom prompt error handling', async ({ page }) => {
     // Set custom prompt that causes LLM to fail
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
     await editor.clear();
     await editor.fill('INVALID INSTRUCTION {TARGET_TOKENS} THAT WILL FAIL');
-    await page.locator('button.getByRole('button', { name: 'Apply & Close' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Mock API to simulate prompt rejection
     await page.route('**/v1beta/models/*/generateContent', async (route) => {
@@ -264,13 +263,13 @@ test.describe('Custom Prompt Editor', () => {
     
     // Now enable custom prompt
     await threadlink.settingsButton.click();
-    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
+    await page.getByRole('button', { name: '' }).click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
     await editor.clear();
     await editor.fill('List only the nouns from this text. Target: {TARGET_TOKENS} tokens.');
-    await page.locator('button.getByRole('button', { name: 'Apply & Close' })').click();
+    await page.getByRole('button', { name: '' }).click();
     
     // Reset and process again
     await threadlink.resetButton.click();
@@ -284,3 +283,5 @@ test.describe('Custom Prompt Editor', () => {
     expect(customOutput).not.toBe(defaultOutput);
   });
 });
+
+
