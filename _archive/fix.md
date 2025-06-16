@@ -30,3 +30,5 @@ bolt badge covers scroll bar
 bolt badge not showing on netlify
 
 add more description of targetToken var in prompt editor
+
+improve boilerplate cleaner using sites from askweve extensions permissions
