@@ -1,0 +1,1783 @@
+
+
+================================================================================// FILE: src/App.tsx
+function App() {
+  return (
+    <>
+      <ThreadLink />
+    </>
+  )
+}
+App
+
+// FILE: src/ThreadLink.tsx
+// ThreadLink.tsx - Refactored Main Component
+// Import components
+// Import types
+// Import utilities
+// Import browser-based modules
+// @ts-ignore - JavaScript modules without TypeScript declarations
+// @ts-ignore - JavaScript modules without TypeScript declarations
+// @ts-ignore - JavaScript modules without TypeScript declarations
+// @ts-ignore - JavaScript modules without TypeScript declarations
+function ThreadLink() {
+  // Main app state
+  const [inputText, setInputText] = useState('');
+  const [outputText, setOutputText] = useState('');
+  const [isProcessed, setIsProcessed] = useState(false);
+  const [tokenCount, setTokenCount] = useState(0);
+  const [compressionRatio, setCompressionRatio] = useState('balanced');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState<Stats | null>(null);
+  // Loading progress state
+  const [loadingProgress, setLoadingProgress] = useState<LoadingProgress>({
+    phase: 'preparing',
+    message: 'Preparing drone batches'
+  });
+  const [isCancelling, setIsCancelling] = useState(false);
+  const cancelRef = useRef<boolean>(false);
+  // Settings
+  const [model, setModel] = useState('gemini-1.5-flash');
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAPIKeys, setShowAPIKeys] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [processingSpeed, setProcessingSpeed] = useState('balanced');
+  const [recencyMode, setRecencyMode] = useState(false);
+  const [recencyStrength, setRecencyStrength] = useState(1);
+  const [showAdvanced, setShowAdvanced] = useState(false);  const [adv_temperature, setAdv_temperature] = useState(0.5);
+  const [adv_droneDensity, setAdv_droneDensity] = useState(2);
+  const [adv_maxDrones, setAdv_maxDrones] = useState(50);
+  // Custom prompt state
+  const [useCustomPrompt, setUseCustomPrompt] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
+  // Configuration override modal state
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideModalData, setOverrideModalData] = useState({ 
+    calculatedDrones: 0, 
+    maxDrones: 0 
+  });
+  // API Keys state
+  const [googleAPIKey, setGoogleAPIKey] = useState('');
+  const [openaiAPIKey, setOpenaiAPIKey] = useState('');
+  const [anthropicAPIKey, setAnthropicAPIKey] = useState('');
+  // Cache toggle states
+  const [googleCacheEnabled, setGoogleCacheEnabled] = useState(false);
+  const [openaiCacheEnabled, setOpenaiCacheEnabled] = useState(false);
+  const [anthropicCacheEnabled, setAnthropicCacheEnabled] = useState(false);
+  // Info Panel expandable sections state
+  const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
+    what: false,
+    howto: false,
+    compression: false,
+    strategy: false,
+    drones: false,
+    recency: false,
+    advanced: false,
+    privacy: false
+  });
+  // Refs
+  const errorRef = useRef<HTMLDivElement>(null);
+  const statsRef = useRef<HTMLDivElement>(null);
+  const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const loadingStartTime = useRef<number>(0);
+  // Processing Speed logic
+  const isAnthropicModel = model.includes('claude');
+  // Initialize API keys from storage on mount  useEffect(() => {
+      useEffect(() => {
+    const loadedGoogleKey = getAPIKey('google');
+    const loadedOpenAIKey = getAPIKey('openai');
+    const loadedAnthropicKey = getAPIKey('anthropic');
+    if (loadedGoogleKey) setGoogleAPIKey(loadedGoogleKey);
+    if (loadedOpenAIKey) setOpenaiAPIKey(loadedOpenAIKey);
+    if (loadedAnthropicKey) setAnthropicAPIKey(loadedAnthropicKey);
+    // Load custom prompt settings
+    const loadedUseCustomPrompt = getUseCustomPrompt();
+    const loadedCustomPrompt = getCustomPrompt();
+    if (loadedUseCustomPrompt) setUseCustomPrompt(loadedUseCustomPrompt);
+    if (loadedCustomPrompt) setCustomPrompt(loadedCustomPrompt);
+  }, []);
+  // Auto-reset processing speed when switching to Anthropic
+  useEffect(() => {
+    if (isAnthropicModel && processingSpeed === 'fast') {
+      setProcessingSpeed('balanced');
+    }
+  }, [model, isAnthropicModel, processingSpeed]);
+  const calculateConcurrency = () => {
+    if (isAnthropicModel) return 1;
+    if (processingSpeed === 'fast') return 6;
+    return 3;
+  };
+  const displayText = isProcessed ? outputText : inputText;
+  // Update token count based on displayed text
+  useEffect(() => {
+    setTokenCount(estimateTokens(displayText));
+  }, [displayText]);
+  // Scroll to stats after processing
+  useEffect(() => {
+    if (isProcessed && stats) {
+      const timer = setTimeout(() => {
+        requestAnimationFrame(() => {
+          if (statsRef.current) {
+            statsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isProcessed, stats]);
+  // Scroll textarea to top after processing
+  useEffect(() => {
+    if (outputTextareaRef.current && isProcessed) {
+      const timer = setTimeout(() => {
+        if (outputTextareaRef.current) {
+          outputTextareaRef.current.scrollTop = 0;
+        }
+      }, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [outputText, isProcessed]);
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setInputText(text);
+    setError('');
+    setTokenCount(estimateTokens(text));
+  };
+  const handleCompressionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCompressionRatio(e.target.value);
+  };
+  const handleCancel = () => {
+    if (isCancelling) return;
+    setIsCancelling(true);
+    cancelRef.current = true;
+    setError('Processing was cancelled');
+  };
+  const saveAPIKeys = () => {
+    if (googleAPIKey) {
+      saveAPIKey('google', googleAPIKey);
+    } else {
+      removeAPIKey('google');
+    }
+    if (openaiAPIKey) {
+      saveAPIKey('openai', openaiAPIKey);
+    } else {
+      removeAPIKey('openai');
+    }
+    if (anthropicAPIKey) {
+      saveAPIKey('anthropic', anthropicAPIKey);
+    } else {
+      removeAPIKey('anthropic');
+    }
+    // Save custom prompt settings
+    saveUseCustomPrompt(useCustomPrompt);
+    if (customPrompt) {
+      saveCustomPrompt(customPrompt);
+    }
+  };
+  const handleCondense = async () => {
+    // Validation checks
+    if (!inputText.trim()) {
+      setError('Please paste some text to condense');
+      return;
+    }
+    const provider = MODEL_PROVIDERS[model];
+    if (!provider) {
+      setError(`Unknown model: ${model}`);
+      return;
+    }
+    const apiKey = getAPIKey(provider);
+    if (!apiKey) {
+      setError(`Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key`);
+      setShowAPIKeys(true);
+      return;
+    }
+    // Calculate the number of drones that would be created
+    const inputTokens = estimateTokens(inputText);
+    let calculatedDrones;
+    if (recencyMode) {
+      // In recency mode, drone count is calculated differently
+      calculatedDrones = Math.ceil(inputTokens / 3000); // Example calculation
+    } else {
+      // Normal mode uses drone density
+      calculatedDrones = calculateEstimatedDrones(inputTokens, adv_droneDensity, null);
+    }
+    // Check if we would exceed max drones
+    if (calculatedDrones > adv_maxDrones) {
+      // Show the override confirmation modal
+      setOverrideModalData({
+        calculatedDrones,
+        maxDrones: adv_maxDrones
+      });
+      setShowOverrideModal(true);
+      return; // Don't proceed until user confirms
+    }
+    // If no override needed, proceed directly
+    proceedWithCondensation();
+  };
+    // Create a separate function for the actual condensation
+  const proceedWithCondensation = async () => {
+    setIsLoading(true);
+    setError('');
+    setStats(null);
+    cancelRef.current = false;
+    setIsCancelling(false);
+    const targetTokens = calculateTargetTokens(tokenCount, compressionRatio);
+    const calculatedConcurrency = calculateConcurrency();
+    loadingStartTime.current = Date.now();
+    const recencyStrengthValue = recencyMode ? 
+      (recencyStrength === 0 ? 25 : recencyStrength === 1 ? 50 : 90) : 0;
+    try {
+      const provider = MODEL_PROVIDERS[model];
+      const apiKey = getAPIKey(provider);
+      const settings: PipelineSettings = {
+        model: model,
+        temperature: adv_temperature,
+        maxConcurrency: calculatedConcurrency,
+        customTargetTokens: targetTokens,
+        processingSpeed: processingSpeed,
+        recencyMode: recencyMode,
+        recencyStrength: recencyStrengthValue,
+        droneDensity: recencyMode ? undefined : adv_droneDensity,
+        maxDrones: adv_maxDrones,
+        // Add custom prompt settings
+        useCustomPrompt: useCustomPrompt,
+        customPrompt: useCustomPrompt ? customPrompt : undefined
+      };
+      const result: PipelineResult = await runCondensationPipeline({
+        rawText: inputText,
+        apiKey: apiKey,
+        settings: settings,
+        onProgress: (update: ProgressUpdate) => {
+          const elapsedTime = (Date.now() - loadingStartTime.current) / 1000;
+          setLoadingProgress({
+            phase: update.phase || 'processing',
+            message: update.message || 'Processing...',
+            completedDrones: update.completedDrones,
+            totalDrones: update.totalDrones,
+            elapsedTime: elapsedTime,
+            progress: update.progress
+          });
+        },
+        cancelled: () => cancelRef.current
+      } as any);
+      if (result.success && result.contextCard) {
+        setOutputText(result.contextCard);
+        setStats({
+          executionTime: result.executionTime || '0',
+          compressionRatio: result.sessionStats?.compressionRatio || result.stats?.compressionRatio || '0',
+          successfulDrones: result.sessionStats?.successfulDrones || result.stats?.successfulDrones || 0,
+          totalDrones: result.sessionStats?.totalDrones || result.stats?.totalDrones || 0,
+          initialTokens: result.stats?.initialTokens,
+          finalTokens: result.stats?.finalTokens || result.sessionStats?.finalContentTokens
+        });
+        setIsProcessed(true);
+        console.log('✅ Processing complete:', result.stats);
+      } else {
+        const errorInfo = getErrorDisplay(result.error || 'Processing failed', result.errorType);
+        setError(errorInfo);
+        console.error('❌ Processing Failed:', errorInfo);
+      }
+    } catch (err: any) {
+      console.error('❌ Caught an exception during processing:', err);
+      const errorInfo = getErrorDisplay(
+        err.message || 'An unexpected error occurred.',
+        'UNKNOWN'
+      );
+      setError(errorInfo);
+    } finally {
+      setIsLoading(false);
+      setIsCancelling(false);
+    }
+  };
+  // Add handlers for the override modal
+  const handleOverrideProceed = () => {
+    setShowOverrideModal(false);
+    proceedWithCondensation();
+  };
+  const handleOverrideCancel = () => {
+    setShowOverrideModal(false);
+    setShowSettings(true); // Open settings so user can adjust
+  };
+  const handleCopy = async () => {
+    const textToCopy = isProcessed ? outputText : inputText;
+    await navigator.clipboard.writeText(textToCopy);
+    setIsCopied(true);
+    setTimeout(() => {
+      setIsCopied(false);
+    }, 2000);
+  };
+  const handleReset = () => {
+    setInputText('');
+    setOutputText('');
+    setIsProcessed(false);
+    setTokenCount(0);
+    setError('');
+    setStats(null);
+    cancelRef.current = false;
+  };
+  const toggleSection = (section: keyof ExpandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+  const handleDeleteKey = (provider: 'google' | 'openai' | 'anthropic') => {
+    switch (provider) {
+      case 'google':
+        setGoogleAPIKey('');
+        setGoogleCacheEnabled(false);
+        removeAPIKey('google');
+        break;
+      case 'openai':
+        setOpenaiAPIKey('');
+        setOpenaiCacheEnabled(false);
+        removeAPIKey('openai');
+        break;
+      case 'anthropic':
+        setAnthropicAPIKey('');
+        setAnthropicCacheEnabled(false);
+        removeAPIKey('anthropic');
+        break;
+    }
+  };
+  return (
+    <>
+      <style>{`
+        input[type="range"]::-webkit-slider-thumb {
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: var(--highlight-blue);
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: var(--highlight-blue);
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          border: none;
+        }
+      `}</style>
+      <div>        <SettingsModal
+          isOpen={showSettings}
+          model={model}
+          setModel={setModel}
+          processingSpeed={processingSpeed}
+          setProcessingSpeed={setProcessingSpeed}
+          recencyMode={recencyMode}
+          setRecencyMode={setRecencyMode}
+          recencyStrength={recencyStrength}
+          setRecencyStrength={setRecencyStrength}
+          showAdvanced={showAdvanced}
+          setShowAdvanced={setShowAdvanced}
+          advTemperature={adv_temperature}
+          setAdvTemperature={setAdv_temperature}
+          advDroneDensity={adv_droneDensity}
+          setAdvDroneDensity={setAdv_droneDensity}
+          advMaxDrones={adv_maxDrones}
+          setAdvMaxDrones={setAdv_maxDrones}
+          // Add custom prompt props
+          useCustomPrompt={useCustomPrompt}
+          setUseCustomPrompt={setUseCustomPrompt}
+          customPrompt={customPrompt}
+          setCustomPrompt={setCustomPrompt}
+          onClose={() => setShowSettings(false)}
+        />
+        <APIKeysModal
+          isOpen={showAPIKeys}
+          googleAPIKey={googleAPIKey}
+          openaiAPIKey={openaiAPIKey}
+          anthropicAPIKey={anthropicAPIKey}
+          googleCacheEnabled={googleCacheEnabled}
+          openaiCacheEnabled={openaiCacheEnabled}
+          anthropicCacheEnabled={anthropicCacheEnabled}
+          setGoogleAPIKey={setGoogleAPIKey}
+          setOpenaiAPIKey={setOpenaiAPIKey}
+          setAnthropicAPIKey={setAnthropicAPIKey}
+          setGoogleCacheEnabled={setGoogleCacheEnabled}
+          setOpenaiCacheEnabled={setOpenaiCacheEnabled}
+          setAnthropicCacheEnabled={setAnthropicCacheEnabled}
+          onSave={() => {
+            saveAPIKeys();
+            setShowAPIKeys(false);
+          }}
+          onClose={() => setShowAPIKeys(false)}
+          onDeleteKey={handleDeleteKey}
+        />        <InfoPanel
+          isOpen={showInfo}
+          expandedSections={expandedSections}
+          onToggleSection={toggleSection}
+          onClose={() => setShowInfo(false)}
+        />
+        <ConfigurationOverrideModal
+          isOpen={showOverrideModal}
+          calculatedDrones={overrideModalData.calculatedDrones}
+          maxDrones={overrideModalData.maxDrones}
+          onProceed={handleOverrideProceed}
+          onCancel={handleOverrideCancel}
+        />
+        <Header
+          onInfoClick={() => setShowInfo(true)}
+          onAPIKeysClick={() => setShowAPIKeys(true)}
+          onSettingsClick={() => setShowSettings(true)}
+        />
+        <TextEditor
+          displayText={displayText}
+          isLoading={isLoading}
+          isProcessed={isProcessed}
+          error={error}
+          stats={stats}
+          loadingProgress={loadingProgress}
+          isCancelling={isCancelling}
+          errorRef={errorRef}
+          statsRef={statsRef}
+          outputTextareaRef={outputTextareaRef}
+          onTextChange={handleTextChange}
+          onCancel={handleCancel}
+        />
+        <Footer
+          tokenCount={tokenCount}
+          compressionRatio={compressionRatio}
+          onCompressionChange={handleCompressionChange}
+          inputText={inputText}
+          isProcessed={isProcessed}
+          isLoading={isLoading}
+          isCopied={isCopied}
+          onCondense={handleCondense}
+          onCopy={handleCopy}
+          onReset={handleReset}
+        />
+      </div>
+    </>
+  );
+}
+ThreadLink;
+
+// FILE: src/components/APIKeysModal.tsx
+// components/APIKeysModal.tsx - API Keys Modal Component
+const APIKeysModal: React.FC<APIKeysModalProps> = ({
+  isOpen,
+  googleAPIKey,
+  openaiAPIKey,
+  anthropicAPIKey,
+  googleCacheEnabled,
+  openaiCacheEnabled,
+  anthropicCacheEnabled,
+  setGoogleAPIKey,
+  setOpenaiAPIKey,
+  setAnthropicAPIKey,
+  setGoogleCacheEnabled,
+  setOpenaiCacheEnabled,
+  setAnthropicCacheEnabled,
+  onSave,
+  onClose,
+  onDeleteKey
+}) => {
+  if (!isOpen) return null;
+  const renderAPIKeySection = (
+    provider: 'google' | 'openai' | 'anthropic',
+    label: string,
+    placeholder: string,
+    value: string,
+    setValue: (key: string) => void,
+    cacheEnabled: boolean,
+    setCacheEnabled: (enabled: boolean) => void
+  ) => (
+    <div>
+      <div>
+        <label htmlFor={`${provider}-api-key`}>
+          {label}
+        </label>
+        <div>
+          <span>Save to Browser</span>
+          <button
+            onClick={() => setCacheEnabled(!cacheEnabled)}
+            title={`Toggle browser storage for ${label}`}`}
+          >
+            <span`} />
+          </button>
+        </div>
+      </div>
+      <div>
+        <input
+          id={`${provider}-api-key`}
+          type="password"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button
+          onClick={() => onDeleteKey(provider)}
+          title={`Clear ${label}`}
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+  );
+  return (
+    <div>
+      <div>
+        <h3>API Key Management</h3>
+        <div>
+          {renderAPIKeySection(
+            'google',
+            'Google API Key',
+            'AIza...',
+            googleAPIKey,
+            setGoogleAPIKey,
+            googleCacheEnabled,
+            setGoogleCacheEnabled
+          )}
+          {renderAPIKeySection(
+            'openai',
+            'OpenAI API Key',
+            'sk-...',
+            openaiAPIKey,
+            setOpenaiAPIKey,
+            openaiCacheEnabled,
+            setOpenaiCacheEnabled
+          )}
+          {renderAPIKeySection(
+            'anthropic',
+            'Anthropic API Key',
+            'sk-ant-...',
+            anthropicAPIKey,
+            setAnthropicAPIKey,
+            anthropicCacheEnabled,
+            setAnthropicCacheEnabled
+          )}
+        </div>
+        <div>
+          <button
+            onClick={onSave || onClose}
+          >
+            Save
+          </button>
+          <button
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+APIKeysModal;
+
+// FILE: src/components/ConfigurationOverrideModal.tsx
+const ConfigurationOverrideModal: React.FC<ConfigurationOverrideModalProps> = ({
+  isOpen,
+  calculatedDrones,
+  maxDrones,
+  onProceed,
+  onCancel
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div>
+      <div>
+        {}
+        <div>
+          <div>
+            <div>
+              <AlertTriangle />
+            </div>
+          </div>
+          <h3>
+            Settings Conflict Detected
+          </h3>
+        </div>
+        {}
+        <div>
+          <p>
+            Your <span>'Drone Density'</span> setting 
+            calculated a need for <span>{calculatedDrones}</span> drones.
+          </p>
+          <p>
+            However, your <span>'Max Drones'</span> safety 
+            limit is set to <span>{maxDrones}</span>.
+          </p>
+          <p>
+            Processing will proceed using only <span>{maxDrones}</span> drones. 
+            This may result in a less detailed summary than you intended.
+          </p>
+        </div>
+        {}
+        <div>
+          <div>
+            <span>Requested:</span>
+            <span>{calculatedDrones} drones</span>
+          </div>
+          <div>
+            <span>Will use:</span>
+            <span>{maxDrones} drones</span>
+          </div>
+        </div>
+        {}
+        <div>
+          <button
+            onClick={onProceed}
+          >
+            Proceed Anyway
+          </button>
+          <button
+            onClick={onCancel}
+          >
+            Cancel & Edit Settings
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// FILE: src/components/CustomPromptEditor.tsx
+// components/CustomPromptEditor.tsx - Custom Prompt Editor Component
+// @ts-ignore - JavaScript modules without TypeScript declarations
+const CustomPromptEditor: React.FC<CustomPromptEditorProps> = ({
+  isOpen,
+  customPrompt,
+  onSave,
+  onBack
+}) => {  const [promptText, setPromptText] = useState(customPrompt);
+  const [showInitialWarning, setShowInitialWarning] = useState(true);
+  useEffect(() => {
+    // If no custom prompt exists, populate with default from config
+    if (!customPrompt) {
+      setPromptText(DEFAULT_DRONE_PROMPT);
+    } else {
+      setPromptText(customPrompt);
+    }
+  }, [customPrompt]);
+  if (!isOpen) return null;
+  const handleApplyAndClose = () => {
+    onSave(promptText);
+    onBack();
+  };
+  const handleBack = () => {
+    // Confirm if there are unsaved changes
+    if (promptText !== customPrompt) {
+      const confirmed = window.confirm('You have unsaved changes. Are you sure you want to go back?');
+      if (!confirmed) return;
+    }
+    onBack();
+  };
+  return (
+    <div>
+      <div>
+        {}
+        {showInitialWarning && (
+          <div>
+            <div>
+              <div>
+                <AlertTriangle size={32} />
+                <h3>FIRST TIME WARNING</h3>
+                <AlertTriangle size={32} />
+              </div>
+              <div>
+                <p>
+                  You are about to access <strong>ADVANCED SYSTEM PROMPT EDITING</strong>.
+                </p>
+                <div>
+                  <p>
+                    <strong>⚠️ RISKS:</strong>
+                  </p>
+                  <ul>
+                    <li>Complete processing failure</li>
+                    <li>Dramatically increased API costs</li>
+                    <li>Unpredictable or corrupted output</li>
+                    <li>No technical support for custom prompts</li>
+                  </ul>
+                </div>
+                <p>
+                  This will override the core logic that makes ThreadLink work. Only proceed if you understand prompt engineering and accept full responsibility for any issues.
+                </p>
+              </div>
+              <div>
+                <button
+                  onClick={() => setShowInitialWarning(false)}
+                >
+                  I Accept All Risks
+                </button>
+                <button
+                  onClick={onBack}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {}
+        <div>
+          <div>
+            <button
+              onClick={handleBack}
+            >
+              <ChevronLeft size={20} />
+              <span>Back</span>
+            </button>
+            <div>
+              <AlertTriangle size={20} />
+              <span>DANGER ZONE</span>
+              <AlertTriangle size={20} />
+            </div>
+          </div>
+          <div>
+            <h2>
+              <AlertTriangle size={24} />
+              <span>WARNING: CORE LOGIC OVERRIDE</span>
+            </h2>
+            <p>
+              You are changing the fundamental instructions for the AI. Unstable results, higher costs, and processing failures are likely.
+            </p>
+            <div>
+              <p>
+                <strong>Core Logic:</strong> This prompt is sent to EVERY drone that processes your text. 
+                The <code>{'{TARGET_TOKENS}'}</code> variable 
+                will be replaced with the calculated token budget for each drone based on your compression settings.
+              </p>
+            </div>
+          </div>
+        </div>
+        {}
+        <div>
+          <div>
+            <label>
+              System Prompt (sent to every drone):
+            </label>
+            <textarea
+              value={promptText}
+              onChange={(e) => setPromptText(e.target.value)}
+              placeholder="Enter your custom prompt..."
+              spellCheck={false}
+            />
+            <div>
+              {promptText.length} characters | ~{Math.ceil(promptText.length / 4)} tokens (estimate)
+            </div>
+          </div>
+        </div>
+        {}
+        <div>
+          <div>
+            <p>
+              By applying this custom prompt, you accept full responsibility for any unexpected behavior, increased costs, or processing failures.
+            </p>
+            <button
+              onClick={handleApplyAndClose}
+            >
+              Apply & Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// FILE: src/components/Footer.tsx
+// components/Footer.tsx - Footer Component
+const Footer: React.FC<FooterProps> = ({
+  tokenCount,
+  compressionRatio,
+  onCompressionChange,
+  inputText,
+  isProcessed,
+  isLoading,
+  isCopied,
+  onCondense,
+  onCopy,
+  onReset
+}) => {
+  return (
+    <>
+      <div>
+        <div>
+          <div>
+            <div>
+              <div>
+                <span>{formatTokenCount(tokenCount)}</span>
+                <span>•</span>
+                <label htmlFor="compression-ratio-select">
+                  Compression level:
+                </label>
+                <select
+                  id="compression-ratio-select"
+                  value={compressionRatio}
+                  onChange={onCompressionChange}
+                >
+                  <option value="light">Light</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="aggressive">Aggressive</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              {inputText && !isProcessed && (
+                <button 
+                  onClick={onCondense}
+                  disabled={isLoading}`}
+                >
+                  {isLoading ? 'Processing...' : 'Condense'}
+                </button>
+              )}
+              {isProcessed && (
+                <>
+                  <button 
+                    onClick={onCopy}
+                  >
+                    <span>Copy</span>
+                    {isCopied && (
+                      <span>
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                  <button 
+                    onClick={onReset}
+                  >
+                    Reset
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      {}
+      <div>
+        <p>
+          <span>Open Source</span>
+          <span>·</span>
+          <span>BYOK</span>
+          <span>·</span>
+          <span>Privacy-first</span>
+        </p>
+      </div>
+    </>
+  );
+};
+Footer;
+
+// FILE: src/components/Header.tsx
+// components/Header.tsx - Header Component
+const Header: React.FC<HeaderProps> = ({ 
+  onInfoClick, 
+  onAPIKeysClick, 
+  onSettingsClick 
+}) => {
+  return (
+    <div>
+      <div>
+        <h1>
+          <span>Thread</span>
+          <span>Link</span>
+        </h1>
+        <p>
+          Condense, copy, continue — without breaking flow.
+        </p>
+      </div>
+      <div>
+        <button 
+          onClick={onInfoClick}
+          aria-label="Open help documentation"
+        >
+          <Info size={20} />
+        </button>
+        <button 
+          onClick={onAPIKeysClick}
+          aria-label="Manage API keys"
+        >
+          <Key size={20} />
+        </button>
+        <button 
+          onClick={onSettingsClick}
+          aria-label="Open settings"
+        >
+          <Settings size={20} />
+        </button>
+      </div>
+    </div>
+  );
+};
+Header;
+
+// FILE: src/components/InfoPanel.tsx
+// components/InfoPanel.tsx - Info Panel Component
+const InfoPanel: React.FC<InfoPanelProps> = ({
+  isOpen,
+  expandedSections,
+  onToggleSection,
+  onClose
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div>
+      <div>
+        {}
+        <div>
+          <h2>ThreadLink User Guide</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close info panel"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        {}
+        <div>
+          {}
+          <div>
+            <button
+              onClick={() => onToggleSection('what')}
+            >
+              <Sparkles size={20} />
+              <div>
+                <h3>What is ThreadLink?</h3>
+                <p>LLMs forget. ThreadLink doesn't.</p>
+              </div>
+              {expandedSections.what ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </button>
+            {expandedSections.what && (
+              <div>
+                <p>
+                  Modern AI is powerful but fundamentally amnesiac. ThreadLink is the antidote. It's a high-signal engine that turns sprawling chat logs and raw text into a clean, portable context card.
+                </p>
+                <p>
+                  Its purpose is to preserve your momentum. The moment you hit a session cap, need to switch models, or just want to archive a project's history without losing a single thought, ThreadLink is the tool you reach for. It's built for a single, seamless workflow:
+                </p>
+                <p>
+                  <strong>Use it to:</strong>
+                </p>
+                <ul>
+                  <li>Make a conversation with Claude seamlessly continue inside GPT.</li>
+                  <li>Distill a 400,000-token project history into a briefing you can actually read.</li>
+                  <li>Archive the complete context of a feature build.</li>
+                  <li>Turn any messy data dump into actionable intelligence.</li>
+                </ul>
+                <p>
+                  It's not just a summarizer. <strong>It's a memory implant for your work.</strong>
+                </p>
+              </div>
+            )}
+          </div>
+          {}
+          <div>
+            <button
+              onClick={() => onToggleSection('howto')}
+            >
+              <Copy size={20} />
+              <div>
+                <h3>How to Use ThreadLink</h3>
+                <p>Garbage In, Garbage Out.</p>
+              </div>
+              {expandedSections.howto ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </button>
+            {expandedSections.howto && (
+              <div>
+                <p>
+                  The quality of your context card depends entirely on the quality of the text you provide. For best results, follow this simple process to capture a clean, complete session log.
+                </p>
+                <div>
+                  <div>
+                    <span>1</span>
+                    <div>
+                      <h4>Prepare the Interface</h4>
+                      <p>Before copying, collapse any sidebars or panels in your AI chat application to minimize UI clutter.</p>
+                    </div>
+                  </div>
+                  <div>
+                    <span>2</span>
+                    <div>
+                      <h4>Load the Full History</h4>
+                      <p>Most chat apps use lazy loading. Scroll all the way to the top of the conversation to ensure the entire history is loaded into the page.</p>
+                    </div>
+                  </div>
+                  <div>
+                    <span>3</span>
+                    <div>
+                      <h4>Select All</h4>
+                      <p>Use your keyboard (<strong>Ctrl+A</strong> on Windows, <strong>Cmd+A</strong> on Mac) to select the entire conversation from top to bottom.</p>
+                    </div>
+                  </div>
+                  <div>
+                    <span>4</span>
+                    <div>
+                      <h4>Copy and Paste</h4>
+                      <p>Copy the selected text (<strong>Ctrl+C</strong> / <strong>Cmd+C</strong>), paste it into ThreadLink, and you're ready to condense.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {}
+          <div>
+            <button
+              onClick={() => onToggleSection('compression')}
+            >
+              <Package size={20} />
+              <div>
+                <h3>Understanding Compression</h3>
+                <p>The Suitcase Analogy: Pillows vs. Gold Bricks</p>
+              </div>
+              {expandedSections.compression ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </button>
+            {expandedSections.compression && (
+              <div>
+                <p>
+                  The effectiveness of condensation is a direct function of the source text's information density. The compression level you choose sets a target ratio, but the final output is determined by the content itself.
+                </p>
+                <ul>
+                  <li><strong>Low-Density Text (Pillows):</strong> Rambling conversations or marketing copy can be compressed heavily (20:1 or more). There is a lot of "air" (redundancy) to squeeze out.</li>
+                  <li><strong>High-Density Text (Gold Bricks):</strong> Source code or technical specifications resist aggressive compression. The system will prioritize preserving critical information over hitting an arbitrary ratio.</li>
+                </ul>
+                <div>
+                  <h4>Compression Level Settings</h4>
+                  <p>
+                    This setting controls the summarization pressure your drones will apply.
+                  </p>
+                </div>
+                <ul>
+                  <li><strong>Light:</strong> Preserves nuance and detail. Best for content where every word matters.</li>
+                  <li><strong>Balanced:</strong> Default setting. Optimal trade-off between brevity and completeness.</li>
+                  <li><strong>Aggressive:</strong> Maximum compression. Ideal for extracting key points from verbose content.</li>
+                </ul>
+              </div>
+            )}
+          </div>
+          {}
+          <div>
+            <button
+              onClick={() => onToggleSection('strategy')}
+            >
+              <Scale size={20} />
+              <div>
+                <h3>Context Card Strategy</h3>
+                <p>Precision vs. Focus: The Core Trade-off</p>
+              </div>
+              {expandedSections.strategy ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </button>
+            {expandedSections.strategy && (
+              <div>
+                <p>
+                  The size of your final context card is a strategic choice. There is no single "best" size; it's a trade-off between the richness of the context and the cost and focus of the next LLM session.
+                </p>
+                <ul>
+                  <li><strong>Large Context Cards (e.g., 15k+ tokens):</strong> These act as <strong>high-fidelity archives</strong>. They are excellent for deep analysis or creating a comprehensive project bible, but can sometimes cause the receiving LLM to get lost in less relevant details.</li>
+                  <li><strong>Small Context Cards (e.g., &lt; 5k tokens):</strong> These act as <strong>high-signal tactical briefings</strong>. They are cheaper, faster, and force the summary to focus only on the most critical information. The trade-off is that nuance and secondary context are deliberately sacrificed.</li>
+                </ul>
+                <div>
+                  <h4>The Reality of "Soft Targets"</h4>
+                  <p>
+                    It is critical to understand that the compression level you set is a <strong>strong suggestion</strong>, not a hard command. Our testing has shown that models, especially on dense technical text, will <strong>exceed the target if they determine it's necessary to preserve critical context</strong>. This is a feature of the system's "context-first" philosophy.
+                  </p>
+                </div>
+                <div>
+                  <h4>How to Achieve Higher Compression</h4>
+                  <p>
+                    If your first context card is larger than desired, you have two primary strategies for achieving a more aggressive condensation:
+                  </p>
+                  <ol>
+                    <li><strong>Pre-Filter Your Input (Manual):</strong> The most effective method. Before you click "Condense," manually delete sections of the source text that you know are less important—conversational filler, redundant examples, off-topic tangents. This focuses the drones' attention only on what truly matters.</li>
+                    <li><strong>Recursive Condensation (The Two-Pass Method):</strong> For maximum compression, you can run ThreadLink on its own output. Take the first context card you generated, paste it back into ThreadLink as a new input, and condense it again.</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+          </div>
+          {}
+          <div>
+            <button
+              onClick={() => onToggleSection('drones')}
+            >
+              <Bot size={20} />
+              <div>
+                <h3>Meet Your Drones</h3>
+                <p>Every Model Has a Personality. Choose the Right Specialist.</p>
+              </div>
+              {expandedSections.drones ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </button>
+            {expandedSections.drones && (
+              <div>
+                <div>
+                  <p>
+                    Different AI models have distinct personalities and operational limits. Choosing the right one—and understanding how ThreadLink handles it—is critical for getting the result you want.
+                  </p>
+                </div>
+                <div>
+                  <div>
+                    <h4>Google Gemini</h4>
+                    <ul>
+                      <li><strong>Personality:</strong> Tends to be verbose. Excels at preserving narrative flow but will often exceed its token target to provide rich, descriptive summaries.</li>
+                      <li><strong>Speed:</strong> Very fast</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4>OpenAI GPT</h4>
+                    <ul>
+                      <li><strong>Personality:</strong> Generally the most balanced approach. Follows instructions and constraints reliably, offering a good middle ground for most tasks.</li>
+                      <li><strong>Speed:</strong> Fast</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4>Anthropic Claude</h4>
+                    <ul>
+                      <li><strong>Personality:</strong> Precise and ruthlessly concise. It adheres well to token limits and will aggressively cut text to meet its target. Ideal for summaries where brevity is key.</li>
+                      <li><strong>Speed:</strong> Slow</li>
+                    </ul>
+                  </div>
+                </div>
+                <div>
+                  <h4>Processing Speed</h4>
+                  <p>This setting controls how many drones are dispatched to work in parallel.</p>
+                  <div>
+                    <div>
+                      <p><strong>Normal:</strong> The default, safe setting (e.g., 3 concurrent jobs). It's a balance of speed and reliability.</p>
+                    </div>
+                    <div>
+                      <p><strong>Fast:</strong> A more aggressive setting (e.g., 6 concurrent jobs). It can significantly speed up processing on large sessions but increases the risk of hitting API rate limits.</p>
+                    </div>
+                    <div>
+                      <p><strong>A Note on Anthropic:</strong> Claude's API has very strict rate limits. To ensure your job completes successfully, ThreadLink automatically disables the "Fast" setting and processes jobs one at a time.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {}
+          <div>
+            <button
+              onClick={() => onToggleSection('recency')}
+            >
+              <Focus size={20} />
+              <div>
+                <h3>Recency Mode: The Temporal Zoom Lens</h3>
+                <p>Focus on What Matters Now.</p>
+              </div>
+              {expandedSections.recency ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </button>
+            {expandedSections.recency && (
+              <div>
+                <p>
+                  Recency Mode creates a temporally weighted briefing that automatically adjusts summary resolution based on when information appeared in your conversation. Think of it as a zoom lens that focuses sharper on recent events while maintaining a wide-angle view of the overall context.
+                </p>
+                <div>
+                  <p>How It Works: Temporal Bands</p>
+                  <p>
+                    Recency Mode divides your conversation into three distinct chronological bands and changes how it processes each one by adjusting the "drone density" (the number of summarization jobs per chunk of text).
+                  </p>
+                  <ul>
+                    <li><strong>Recent (Last 20%):</strong> Processed at High Resolution.<br/>
+                    <span>The system deploys more, smaller drone jobs. This captures fine-grained details and specific facts from the end of the conversation.</span></li>
+                    <li><strong>Mid (Middle 50%):</strong> Processed at Standard Resolution.<br/>
+                    <span>This section receives normal processing, providing a balanced summary of the core discussion.</span></li>
+                    <li><strong>Oldest (First 30%):</strong> Processed at Low Resolution.<br/>
+                    <span>The system uses fewer, larger drone jobs. This forces it to create a high-level, thematic overview while discarding less critical early details.</span></li>
+                  </ul>
+                </div>
+                <p>The Result:</p>
+                <p>
+                  Your context card begins with a high-level overview of earlier discussion, gradually increasing in detail as it approaches the present. This creates a natural narrative flow that mirrors how human memory works – general impressions of the past, vivid details of the present.
+                </p>
+                <p>Recency Strength Settings:</p>
+                <ul>
+                  <li><strong>Subtle:</strong> Gentle gradient. Maintains more detail throughout.</li>
+                  <li><strong>Balanced:</strong> Standard temporal weighting. Ideal for most projects.</li>
+                  <li><strong>Strong:</strong> Aggressive recency bias. Heavily focuses on latest developments.</li>
+                </ul>
+              </div>
+            )}
+          </div>
+          {}
+          <div>
+            <button
+              onClick={() => onToggleSection('advanced')}
+            >
+              <Settings size={20} />
+              <div>
+                <h3>Advanced Controls</h3>
+                <p>Fine-tuning the engine for specific missions.</p>
+              </div>
+              {expandedSections.advanced ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </button>
+            {expandedSections.advanced && (
+              <div>
+                <p>
+                  These settings provide direct control over the cost, performance, and granularity of the condensation pipeline. Adjust them only if you understand the trade-offs.
+                </p>
+                <div>
+                  <div>
+                    <h4>LLM Temperature</h4>
+                    <p>
+                      Temperature controls the "randomness" or "creativity" of the drone's output. It's a value between 0.0 and 2.0.
+                    </p>
+                    <ul>
+                      <li><strong>Low Temperature (e.g., 0.2 - 0.5):</strong> The drone will be more focused, deterministic, and predictable. Its summaries will be more like a factual report, sticking very closely to the source text.</li>
+                      <li><strong>High Temperature (e.g., 0.8 - 1.2):</strong> The drone will take more creative risks. Its summaries may be more narrative, making interpretive leaps to connect ideas. This can result in a more readable, story-like output, but carries a higher risk of losing precision or introducing subtle inaccuracies.</li>
+                    </ul>
+                    <p>
+                      For most technical summarization, a lower temperature is recommended.
+                    </p>
+                  </div>
+                  <div>
+                    <h4>Drone Density</h4>
+                    <p>
+                      This setting controls the "resolution" of the condensation process by defining how many drones are assigned per 10,000 tokens of source text.
+                    </p>
+                    <ul>
+                      <li><strong>Low Density (e.g., 1-2):</strong> Each drone gets a large chunk of text. This is cheaper and results in a more high-level, thematic summary.</li>
+                      <li><strong>High Density (e.g., 4-5):</strong> Each drone gets a smaller, more focused chunk. This is more expensive but results in a more detailed and granular context card.</li>
+                    </ul>
+                    <p>
+                      <strong>Note:</strong> This setting is disabled when Recency Mode is active. Recency Mode uses its own dynamic logic to vary the drone density automatically.
+                    </p>
+                  </div>
+                  <div>
+                    <h4>Runaway Cost Protection (Max Drones)</h4>
+                    <p>
+                      This is a hard safety limit on the total number of drones a single job can create. Its primary purpose is to prevent accidental, runaway API costs when processing extremely large documents with a high Drone Density setting.
+                    </p>
+                    <p>
+                      <strong>Recommendation:</strong> Only increase this limit if you are intentionally processing a massive session (e.g., 500k+ tokens) and have accepted the potential cost implications.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {}
+          <div>
+            <button
+              onClick={() => onToggleSection('privacy')}
+            >
+              <Shield size={20} />
+              <div>
+                <h3>Privacy & The Project</h3>
+                <p>Your Keys, Your Data.</p>
+              </div>
+              {expandedSections.privacy ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </button>
+            {expandedSections.privacy && (
+              <div>
+                <p>
+                  ThreadLink is built with a privacy-first, BYOK, open-source philosophy. Your conversations and API keys remain exclusively yours.
+                </p>
+                <div>
+                  <p>BYOK (Bring Your Own Key) Architecture:</p>
+                  <ul>
+                    <li>Your API keys are never seen or stored by our servers</li>
+                    <li>All API calls go directly from your browser to the LLM provider</li>
+                    <li>No intermediary servers handle your sensitive data</li>
+                    <li>Complete transparency in how your data flows</li>
+                  </ul>
+                </div>
+                <p>
+                  The complete ThreadLink source code is available on GitHub for review. You can see exactly how every feature works, verify our privacy claims, and even run your own instance if desired.
+                </p>
+                <div>
+                  <p>
+                    <a 
+                      href="https://github.com/skragus/threadlink" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <strong>GitHub:</strong> github.com/skragus/threadlink - yes, I'd like a star
+                    </a>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        {}
+        <div>
+          <button
+            onClick={onClose}
+          >
+            Got it, thanks!
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+InfoPanel;
+
+// FILE: src/components/LoadingOverlay.tsx
+// components/LoadingOverlay.tsx - Loading Overlay Component
+const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
+  loadingProgress,
+  isCancelling,
+  onCancel
+}) => {
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  // Update progress bar width
+  useEffect(() => {
+    if (progressBarRef.current && loadingProgress.totalDrones && loadingProgress.totalDrones > 0) {
+      const progressPercent = Math.min(100, ((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100);
+      progressBarRef.current.style.width = `${progressPercent}%`;
+    }
+  }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);
+  return (
+    <div>
+      <div>
+        <div>
+          {}
+          <div>
+            <div>
+              {loadingProgress.message}
+            </div>
+            {loadingProgress.elapsedTime !== undefined && (
+              <div>
+                {loadingProgress.elapsedTime.toFixed(1)}s elapsed
+              </div>
+            )}
+          </div>
+          {}
+          {loadingProgress.phase === 'processing' && loadingProgress.totalDrones && (
+            <div>
+              <div>
+                <span>Progress: {loadingProgress.completedDrones || 0}/{loadingProgress.totalDrones} drones</span>
+                <span>{Math.round(((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100)}%</span>
+              </div>
+              <div>
+                <div 
+                  ref={progressBarRef}
+                />
+              </div>
+            </div>
+          )}
+          {}
+          {loadingProgress.phase !== 'processing' && (
+            <div>
+              <Loader2 size={24} />
+            </div>
+          )}
+          {}
+          <button
+            onClick={onCancel}
+            disabled={isCancelling || loadingProgress.phase === 'finalizing'}
+          >
+            {isCancelling ? 'Cancelling...' : 'Cancel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+LoadingOverlay;
+
+// FILE: src/components/SettingModal.tsx
+const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  model,
+  setModel,
+  processingSpeed,
+  setProcessingSpeed,
+  recencyMode,
+  setRecencyMode,
+  recencyStrength,
+  setRecencyStrength,
+  showAdvanced,
+  setShowAdvanced,
+  advTemperature,
+  setAdvTemperature,
+  advDroneDensity,
+  setAdvDroneDensity,
+  advMaxDrones,
+  setAdvMaxDrones,
+  // Add custom prompt props
+  useCustomPrompt,
+  setUseCustomPrompt,
+  customPrompt,
+  setCustomPrompt,
+  onClose
+}) => {
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+  if (!isOpen) return null;
+  const isAnthropicModel = model.includes('claude');
+  const showProcessingSpeed = !isAnthropicModel;
+  const handleCustomPromptToggle = () => {
+    if (!useCustomPrompt) {
+      // When turning ON, open the editor
+      setShowPromptEditor(true);
+    } else {
+      // When turning OFF, just disable it
+      setUseCustomPrompt(false);
+    }
+  };
+  const handlePromptEditorClose = (saved: boolean) => {
+    if (saved) {
+      setUseCustomPrompt(true);
+    }
+    setShowPromptEditor(false);
+  };
+  return (
+    <>
+      <div>
+        <div>
+          <h3>Settings</h3>
+          <div>
+            {}
+            <div>
+              <div>
+                <label htmlFor="model-select">
+                  Model
+                </label>
+              </div>
+              <select
+                id="model-select"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                <optgroup label="Google">
+                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                  <option value="gemini-pro">Gemini Pro</option>
+                </optgroup>
+                <optgroup label="OpenAI">
+                  <option value="gpt-4">GPT-4</option>
+                  <option value="gpt-4o">GPT-4o</option>
+                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                </optgroup>
+                <optgroup label="Anthropic">
+                  <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                  <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                  <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                  <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                </optgroup>
+              </select>
+            </div>
+            {}
+            {showProcessingSpeed && (
+              <div>
+                <div>
+                  <label>
+                    Processing Speed
+                  </label>
+                  <div>
+                    <div>
+                      i
+                    </div>
+                    <div>
+                      Fast mode uses higher concurrency for faster processing
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <span`}>
+                    Normal
+                  </span>
+                  <button
+                    onClick={() => setProcessingSpeed(processingSpeed === 'balanced' ? 'fast' : 'balanced')}
+                    title={`Switch to ${processingSpeed === 'balanced' ? 'fast' : 'balanced'} processing`}`}
+                  >
+                    <span`}
+                    />
+                  </button>
+                  <span`}>
+                    Fast
+                  </span>
+                </div>
+              </div>
+            )}
+            {}
+            <div>
+              <div>
+                <label>
+                  Recency Mode
+                </label>
+                <div>
+                  <div>
+                    i
+                  </div>
+                  <div>
+                    Prioritizes more recent content in conversations
+                  </div>
+                </div>
+              </div>
+              <div>
+                <span`}>
+                  Off
+                </span>
+                <button
+                  onClick={() => setRecencyMode(!recencyMode)}
+                  title={`${recencyMode ? 'Disable' : 'Enable'} recency mode`}`}
+                >
+                  <span`}
+                  />
+                </button>
+                <span`}>
+                  On
+                </span>
+              </div>
+            </div>
+            {}
+            {recencyMode && (
+              <div>
+                <div>
+                  <label>
+                    Recency Strength
+                  </label>
+                  <div>
+                    <div>
+                      i
+                    </div>
+                    <div>
+                      How strongly to weight recent vs older content
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="1"
+                    value={recencyStrength}
+                    onChange={(e) => setRecencyStrength(parseInt(e.target.value))}
+                    title="Adjust recency strength"
+                  />
+                  <div>
+                    <span>Subtle</span>
+                    <span>Balanced</span>
+                    <span>Strong</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {}
+            <div>
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+              >
+                {showAdvanced ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                <span>Advanced Settings</span>
+              </button>
+              {showAdvanced && (
+                <div>
+                  {}
+                  <div>
+                    <div>
+                      <label htmlFor="adv-temperature">
+                        LLM Temperature
+                      </label>
+                      <div>
+                        <div>
+                          i
+                        </div>
+                        <div>
+                          Controls creativity. 0.2 = deterministic, 1.0 = creative
+                        </div>
+                      </div>
+                    </div>
+                    <input
+                      id="adv-temperature"
+                      type="number"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={advTemperature}
+                      onChange={(e) => setAdvTemperature(parseFloat(e.target.value))}
+                    />
+                  </div>
+                  {}
+                  {!recencyMode && (
+                    <div>
+                      <div>
+                        <label htmlFor="adv-drone-density">
+                          Drone Density
+                        </label>
+                        <div>
+                          <div>
+                            i
+                          </div>
+                          <div>
+                            Drones per 10k tokens. Controls cost vs. granularity
+                          </div>
+                        </div>
+                      </div>
+                      <input
+                        id="adv-drone-density"
+                        type="number"
+                        min="1"
+                        max="20"
+                        step="1"
+                        value={advDroneDensity}
+                        onChange={(e) => setAdvDroneDensity(parseInt(e.target.value))}
+                      />
+                    </div>
+                  )}                  {}
+                  <div>
+                    <h4>
+                      <AlertTriangle size={16} />
+                      <span>DANGER ZONE</span>
+                    </h4>
+                    {}
+                    <div>
+                      <div>
+                        <label htmlFor="adv-max-drones">
+                          Max Drones Limit
+                        </label>
+                        <div>
+                          <div>
+                            i
+                          </div>
+                          <div>
+                            Hard safety limit on total drones per job
+                          </div>
+                        </div>
+                      </div>
+                      <input
+                        id="adv-max-drones"
+                        type="number"
+                        min="10"
+                        max="200"
+                        step="10"
+                        value={advMaxDrones}
+                        onChange={(e) => setAdvMaxDrones(parseInt(e.target.value))}
+                      />
+                    </div>
+                    {}
+                    <div>
+                      <div>
+                        <label>
+                          Custom System Prompt
+                        </label>
+                        {useCustomPrompt && (
+                          <AlertTriangle size={14} />
+                        )}
+                        <div>
+                          <div>
+                            !
+                          </div>
+                          <div>
+                            Override ALL drone system prompts - USE WITH EXTREME CAUTION
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <span`}>
+                          Off
+                        </span>
+                        <button
+                          onClick={handleCustomPromptToggle}
+                          title={`${useCustomPrompt ? 'Disable' : 'Enable'} custom system prompt`}`}
+                        >
+                          <span`}
+                          />
+                        </button>
+                        <span`}>
+                          On
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div>
+            <button
+              onClick={onClose}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>      {}
+      <CustomPromptEditor
+        isOpen={showPromptEditor}
+        customPrompt={customPrompt}
+        onSave={(prompt: string) => {
+          setCustomPrompt(prompt);
+          handlePromptEditorClose(true);
+        }}
+        onBack={() => handlePromptEditorClose(false)}
+      />
+    </>
+  );
+};
+
+// FILE: src/components/TextEditor.tsx
+// components/TextEditor.tsx - Text Editor Component
+const TextEditor: React.FC<TextEditorProps> = ({
+  displayText,
+  isLoading,
+  isProcessed,
+  error,
+  stats,
+  loadingProgress,
+  isCancelling,
+  errorRef,
+  statsRef,
+  outputTextareaRef,
+  onTextChange,
+  onCancel
+}) => {
+  return (
+    <>
+      {}
+      {error && (
+        <div ref={errorRef}>
+          {error}
+        </div>
+      )}
+      {}
+      {stats && (
+        <div ref={statsRef}>
+          Processed in {stats.executionTime}s • {stats.compressionRatio}:1 compression • {stats.successfulDrones}/{stats.totalDrones} drones successful
+        </div>
+      )}
+      {}
+      <div>
+        <textarea
+          ref={outputTextareaRef} ${isProcessed || isLoading ? 'cursor-default' : 'cursor-text'}`}
+          placeholder="Paste your AI conversation here..."
+          value={displayText}
+          onChange={onTextChange}
+          readOnly={isProcessed || isLoading}
+        />
+        {}
+        <a 
+          href="https://bolt.new" 
+          target="_blank" 
+          rel="noopener noreferrer"
+        >
+          <img 
+            src="src/assets/bolt-badge.png"
+            alt="Powered by Bolt.new"
+          />
+        </a>
+        {}
+        {isLoading && (
+          <LoadingOverlay 
+            loadingProgress={loadingProgress}
+            isCancelling={isCancelling}
+            onCancel={onCancel}
+          />
+        )}
+      </div>
+    </>
+  );
+};
+TextEditor;
+
+// FILE: src/main.tsx
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)

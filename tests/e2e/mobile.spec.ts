@@ -100,4 +100,150 @@ test.describe('Mobile Experience', () => {
     const copyButton = threadlink.copyButton;
     await expect(copyButton).toContainText('✓');
   });
+
+  // Helper to set up the page with a specific text input.
+  async function setupForCondensation(page: any, text: string) {
+    await page.goto('/');
+    // Set a dummy API key to simplify test setup.
+    await page.evaluate(() => localStorage.setItem('threadlink_api_key_google', 'DUMMY_KEY'));
+    await page.reload();
+    await page.getByPlaceholder('Paste your AI conversation here...').fill(text);
+  }
+
+  // Mocked Gemini API endpoint
+  const googleApiEndpoint = 'https://generativelanguage.googleapis.com/**';
+
+  test('should handle orientation change from portrait to landscape mid-processing', async ({ page }) => {
+    // Mock a slow API response to ensure the process is running during the orientation change.
+    await page.route(googleApiEndpoint, async (route) => {
+      await page.waitForTimeout(2000); // Wait 2 seconds before responding
+      route.fulfill({ status: 200, body: '{"candidates": [{"content": {"parts": [{"text": "Success after rotation."}]}}]}'});
+    });
+
+    await setupForCondensation(page, 'Testing orientation change...');
+    await page.getByRole('button', { name: 'Condense' }).click();
+
+    // Verify the loading overlay is visible in portrait mode.
+    const loadingOverlay = page.locator('.loading-overlay-container');
+    await expect(loadingOverlay).toBeVisible();
+
+    // Change orientation to landscape.
+    await page.setViewportSize({ width: 844, height: 390 });
+
+    // The loading overlay should still be visible and correctly rendered.
+    await expect(loadingOverlay).toBeVisible();
+
+    // The process should eventually complete successfully.
+    const outputTextarea = page.locator('textarea[readonly]');
+    await expect(outputTextarea).toBeVisible({ timeout: 10000 });
+    await expect(outputTextarea).toHaveValue(/Success after rotation/);
+  });
+  
+  test('should handle app-switching without losing processing state', async ({ page, context }) => {
+    // This test simulates a user switching to another app (or tab) and then returning.
+    
+    // Mock a slow API response.
+    await page.route(googleApiEndpoint, async (route) => {
+      await page.waitForTimeout(4000); // A 4-second process
+      route.fulfill({ status: 200, body: '{"candidates": [{"content": {"parts": [{"text": "Success after backgrounding."}]}}]}'});
+    });
+
+    await setupForCondensation(page, 'Testing app switching...');
+    await page.getByRole('button', { name: 'Condense' }).click();
+    await expect(page.locator('.loading-overlay-container')).toBeVisible();
+
+    // Simulate switching away for 2 seconds.
+    const newPage = await context.newPage();
+    await newPage.goto('about:blank');
+    await newPage.waitForTimeout(2000);
+    
+    // Bring the original app page back to the foreground.
+    await page.bringToFront();
+    
+    // The processing should continue and complete successfully.
+    const outputTextarea = page.locator('textarea[readonly]');
+    await expect(outputTextarea).toBeVisible({ timeout: 10000 });
+    await expect(outputTextarea).toHaveValue(/Success after backgrounding/);
+  });
+  
+  test('should allow text selection in the editor on touch devices', async ({ page, context }) => {
+    // Grant clipboard permissions to the browser context to verify selection via copy.
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    
+    const text = 'Select this specific text.';
+    await page.goto('/');
+    const editor = page.getByPlaceholder('Paste your AI conversation here...');
+    await editor.fill(text);
+    
+    // Simulate a touch-drag to select text.
+    // We get the bounding box to calculate start and end points for the drag.
+    const box = await editor.boundingBox();
+    expect(box).not.toBeNull();
+
+    await page.mouse.move(box!.x + 10, box!.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + 150, box!.y + 10); // Drag horizontally
+    await page.mouse.up();
+
+    // Trigger a copy command to get the selected text.
+    await page.keyboard.press('Control+C'); // Or 'Meta+C' on macOS context
+
+    // Read the clipboard content to verify the selection.
+    const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+    
+    // The clipboard should contain the text we tried to select.
+    expect(clipboardText).toContain('Select this specific');
+  });
+});
+
+// A separate describe block for network throttling tests.
+test.describe('Mobile on Slow Network', () => {
+  // Use mobile device with network throttling
+  test.use({ ...devices['iPhone 12'] });
+  
+  test.beforeEach(async ({ page, context }) => {
+    // Simulate slow 3G connection
+    await context.route('**/*', async (route) => {
+      // Add delay to simulate slow network
+      await new Promise(resolve => setTimeout(resolve, 200));
+      route.continue();
+    });
+    
+    await page.goto('/');
+    await setupAPIMocks(page);
+  });
+
+  // Helper to set up the page with a specific text input.
+  async function setupForCondensation(page: any, text: string) {
+    await page.goto('/');
+    // Set a dummy API key to simplify test setup.
+    await page.evaluate(() => localStorage.setItem('threadlink_api_key_google', 'DUMMY_KEY'));
+    await page.reload();
+    await page.getByPlaceholder('Paste your AI conversation here...').fill(text);
+  }
+
+  // Mocked Gemini API endpoint
+  const googleApiEndpoint = 'https://generativelanguage.googleapis.com/**';
+  
+  test('should be responsive and usable on a slow 3G connection', async ({ page }) => {
+    // Increase the timeout for this test as the network is very slow.
+    test.setTimeout(90000); // 90 seconds
+    
+    // Mock the API but with a fast response time, so we test the network leg, not the API processing time.
+    await page.route(googleApiEndpoint, route => route.fulfill({ 
+      status: 200, 
+      body: '{"candidates": [{"content": {"parts": [{"text": "Success on 3G."}]}}]}'
+    }));
+
+    await setupForCondensation(page, 'Testing on slow 3G...');
+
+    // The button click should work and show a loading state immediately.
+    await page.getByRole('button', { name: 'Condense' }).click();
+    await expect(page.locator('.loading-overlay-container')).toBeVisible();
+    
+    // The process will take longer due to network speed, but it should eventually complete.
+    const outputTextarea = page.locator('textarea[readonly]');
+    await expect(outputTextarea).toBeVisible({ timeout: 60000 });
+    await expect(outputTextarea).toHaveValue(/Success on 3G/);
+  });
 });

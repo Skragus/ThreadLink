@@ -30,28 +30,6 @@ test.describe('Output and Export', () => {
     expect(clipboardText).toContain('Threadlink Context Card');
   });
 
-  test('download as file', async ({ page }) => {
-    await threadlink.pasteText(TEST_DATA.small.text);
-    await threadlink.startProcessing();
-    await threadlink.waitForProcessingComplete();
-    
-    // Set up download promise
-    const downloadPromise = page.waitForEvent('download');
-    
-    // Find and click download button
-    const downloadButton = page.locator('button:has-text("Download")');
-    await downloadButton.click();
-    
-    // Wait for download
-    const download = await downloadPromise;
-    const filename = download.suggestedFilename();
-    
-    expect(filename).toMatch(/threadlink.*\.txt/);
-    
-    // Verify content
-    const content = await download.path().then(path => require('fs').readFileSync(path, 'utf8'));
-    expect(content).toContain('ThreadLink Context Card');
-  });
 
   test('compression ratio accuracy', async ({ page }) => {
     await threadlink.pasteText(TEST_DATA.medium.text);

@@ -95,4 +95,115 @@ test.describe('API Key Management', () => {
     const errorMessage = modal.locator('text=/invalid|error/i');
     await expect(errorMessage).toBeVisible();
   });
+
+  test('should save, overwrite, and persist an API key', async ({ page }) => {
+    const openaiInput = page.locator('input[placeholder*="OpenAI"]');
+    const initialKey = 'sk-key-v1-initial';
+    const overwrittenKey = 'sk-key-v2-overwritten';
+
+    // 1. Save initial key
+    await threadlink.apiKeyButton.click();
+    const modal = page.locator('[role="dialog"]');
+    await modal.waitFor({ state: 'visible' });
+    await openaiInput.fill(initialKey);
+    await page.keyboard.press('Escape');
+
+    // 2. Reopen and verify
+    await threadlink.apiKeyButton.click();
+    await modal.waitFor({ state: 'visible' });
+    await expect(openaiInput).toHaveValue(initialKey);
+
+    // 3. Overwrite with new key
+    await openaiInput.fill(overwrittenKey);
+    await page.keyboard.press('Escape');
+
+    // 4. Reopen and verify the overwritten key
+    await threadlink.apiKeyButton.click();
+    await modal.waitFor({ state: 'visible' });
+    await expect(openaiInput).toHaveValue(overwrittenKey);
+  });
+
+  // This test is designed as a security audit.
+  // It will FAIL if keys are stored in plaintext, which is the desired outcome for identifying a vulnerability.
+  test('should NOT store API keys in plaintext in localStorage', async ({ page }) => {
+    const plaintextKey = `sk-super-secret-key-${Date.now()}`;
+    const storageKeyName = 'threadlink_openai_api_key';
+
+    await threadlink.apiKeyButton.click();
+    const modal = page.locator('[role="dialog"]');
+    await modal.waitFor({ state: 'visible' });
+    await page.locator('input[placeholder*="OpenAI"]').fill(plaintextKey);
+    await page.keyboard.press('Escape');
+
+    // Inspect localStorage directly
+    const storedValue = await page.evaluate(
+      (key) => window.localStorage.getItem(key),
+      storageKeyName
+    );
+      // The test assertion: the stored value must not be the same as the plaintext key.
+    // VULNERABILITY CHECK: API key should not be stored in plaintext
+    expect(storedValue).not.toBe(plaintextKey);
+    // A secure implementation would pass this test. The current implementation will likely fail it.
+  });
+
+  test('should not leak API keys in network request URLs', async ({ page }) => {
+    const googleApiKey = `AIza-test-leak-key-${Date.now()}`;
+    let keyFoundInUrl = false;
+    
+    // Intercept network requests to the LLM provider
+    await page.route('https://generativelanguage.googleapis.com/**', async (route) => {
+      const requestUrl = route.request().url();
+      if (requestUrl.includes(googleApiKey)) {
+        keyFoundInUrl = true;
+      }
+      // Check headers (the correct place for the key)
+      const apiKeyHeader = await route.request().headerValue('x-goog-api-key');
+      expect(apiKeyHeader).toBe(googleApiKey);
+
+      route.fulfill({ status: 200, body: '{"candidates": [{"content": {"parts": [{"text": "Mock response"}]}}]}'});
+    });
+    
+    // Setup: Save the API key
+    await threadlink.addApiKey('google', googleApiKey);
+
+    // Trigger the API call
+    await page.getByPlaceholder('Paste your AI conversation here...').fill('Test for network leak');
+    await page.getByRole('button', { name: 'Condense' }).click();
+
+    // Wait for the process to finish
+    await expect(page.locator('div[ref="statsRef"]')).toBeVisible();    // The final assertion - SECURITY CHECK: API key should not appear in URLs
+    expect(keyFoundInUrl).toBe(false);
+  });
+  
+  test('should show a friendly error if localStorage quota is exceeded', async ({ page }) => {
+    // Mock localStorage.setItem to throw a QuotaExceededError
+    await page.evaluate(() => {
+      window.localStorage.setItem = () => {
+        const error = new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+        throw error;
+      };
+    });
+
+    await threadlink.apiKeyButton.click();
+    const modal = page.locator('[role="dialog"]');
+    await modal.waitFor({ state: 'visible' });
+    await page.locator('input[placeholder*="Google"]').fill('this-key-will-fail-to-save');
+    
+    // Try to save - this should trigger the storage error
+    const saveButton = modal.locator('button:has-text("Save")');
+    if (await saveButton.isVisible()) {
+      await saveButton.click();
+    } else {
+      await page.keyboard.press('Escape'); // If no explicit save button, escape should trigger save
+    }
+
+    // A well-designed app should catch this error and display a message to the user.
+    // This message could be in an alert, or a div near the button.
+    const errorAlert = page.getByRole('alert', { name: /storage/i });
+    await expect(errorAlert).toBeVisible();
+    await expect(errorAlert).toContainText(/Failed to save settings. Your browser storage may be full./i);
+    
+    // The modal should remain open so the user doesn't lose their input.
+    await expect(modal).toBeVisible();
+  });
 });
