@@ -20,7 +20,7 @@ test.describe('Cancellation and State Management', () => {
     await threadlink.startProcessing();
     
     // Cancel quickly during preprocessing
-    await page.waitForTimeout(100);
+    // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
     await threadlink.cancelProcessing();
     
     // Should show cancelled state
@@ -48,9 +48,9 @@ test.describe('Cancellation and State Management', () => {
     for (let i = 0; i < 5; i++) {
       await threadlink.pasteText(TEST_DATA.small.text);
       await threadlink.startProcessing();
-      await page.waitForTimeout(50);
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
       await threadlink.cancelProcessing();
-      await page.waitForTimeout(50);
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
     }
     
     // Should remain stable

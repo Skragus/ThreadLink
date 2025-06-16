@@ -89,7 +89,7 @@ test.describe('Accessibility', () => {
     await expect(modal).toBeVisible();
     
     // First focusable element in modal should have focus
-    await page.waitForTimeout(100);
+    // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
     const focusedInModal = await page.evaluate(() => {
       const activeEl = document.activeElement;
       const modal = document.querySelector('[role="dialog"]');
@@ -266,7 +266,7 @@ test.describe('Accessibility', () => {
       
       if (i < expectedTabOrder.length - 1) {
         await page.keyboard.press('Tab');
-        await page.waitForTimeout(100); // Allow focus to settle
+        // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible(); // Allow focus to settle
       }
     }
     

@@ -5,7 +5,7 @@ test('debug page elements', async ({ page }) => {
   
   // Wait for page to load completely
   await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(3000); // Extra wait
+  // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible(); // Extra wait
   
   // Take a screenshot
   await page.screenshot({ path: 'debug-page.png', fullPage: true });

@@ -47,7 +47,7 @@ test.describe('Edge Cases', () => {
     await expect(threadlink.condenseButton).toBeEnabled();
     
     // Token count should update (eventually)
-    await page.waitForTimeout(2000);
+    // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
     const tokens = await threadlink.getTokenCounts();
     expect(tokens.input).toBeGreaterThan(1000000);
   });
@@ -73,9 +73,9 @@ test.describe('Edge Cases', () => {
     // Rapid process/cancel
     for (let i = 0; i < 5; i++) {
       await threadlink.startProcessing();
-      await page.waitForTimeout(50);
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
       await threadlink.cancelProcessing();
-      await page.waitForTimeout(50);
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
     }
     
     // Should be in stable state

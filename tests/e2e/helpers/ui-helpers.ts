@@ -2,47 +2,47 @@
 import { Page } from '@playwright/test';
 
 export class ThreadLinkPage {
-  constructor(private page: Page) {}
+  constructor(private _page: Page) {}
 
   // Locators
   get textEditor() {
-    return this.page.locator('textarea[placeholder="Paste your AI conversation here..."]');
+    return this._page.getByRole('textbox', { name: /paste.*conversation/i });
   }
 
   get condenseButton() {
-    return this.page.locator('button:has-text("Condense")');
+    return this._page.getByRole('button', { name: 'Condense' });
   }
 
   get cancelButton() {
-    return this.page.locator('button:has-text("Cancel")');
+    return this._page.getByRole('button', { name: 'Cancel' });
   }
 
   get resetButton() {
-    return this.page.locator('button:has-text("Reset")');
+    return this._page.getByRole('button', { name: 'Reset' });
   }
 
   get copyButton() {
-    return this.page.locator('button:has-text("Copy")');
+    return this._page.getByRole('button', { name: 'Copy' });
   }
 
   get apiKeyButton() {
-    return this.page.locator('button[aria-label="Manage API keys"]');
+    return this._page.getByRole('button', { name: 'Manage API keys' });
   }
 
   get settingsButton() {
-    return this.page.locator('button[aria-label="Open settings"]');
+    return this._page.getByRole('button', { name: 'Open settings' });
   }
 
   get infoButton() {
-    return this.page.locator('button[aria-label="Open help documentation"]');
+    return this._page.getByRole('button', { name: 'Open help documentation' });
   }
 
   get loadingOverlay() {
-    return this.page.locator('[data-testid="loading-overlay"]');
+    return this._page.locator('[data-testid="loading-overlay"]');
   }
 
   get progressBar() {
-    return this.page.locator('[data-testid="progress-bar"], .progress-bar');
+    return this._page.locator('[data-testid="progress-bar"], .progress-bar');
   }
 
   // Actions
@@ -74,18 +74,18 @@ export class ThreadLinkPage {
     await this.apiKeyButton.click();
     
     // Wait for the API key dialog to appear
-    await this.page.waitForSelector('[data-testid="api-key-dialog"]', { timeout: 5000 });
+    await this._page.getByRole('dialog', { name: /api.+key/i }).waitFor({ timeout: 5000 });
     
     // Select the provider
-    const providerSelect = this.page.locator(`select[data-provider="${provider}"], input[data-provider="${provider}"]`);
+    const providerSelect = this._page.locator(`select[data-provider="${provider}"], input[data-provider="${provider}"]`);
     await providerSelect.fill(apiKey);
     
     // Save the API key
-    const saveButton = this.page.locator('button:has-text("Save"), button:has-text("Add")');
+    const saveButton = this._page.getByRole('button', { name: 'Save' });
     await saveButton.click();
     
     // Wait for dialog to close
-    await this.page.waitForSelector('[data-testid="api-key-dialog"]', { state: 'hidden', timeout: 5000 });
+    await this._page.getByRole('dialog', { name: /api.+key/i }).waitFor({ state: 'hidden', timeout: 5000 });
   }
 
   // Settings Management
@@ -94,18 +94,18 @@ export class ThreadLinkPage {
     await this.settingsButton.click();
     
     // Wait for settings dialog
-    await this.page.waitForSelector('[data-testid="settings-dialog"]', { timeout: 5000 });
+    await this._page.getByRole('dialog', { name: /settings/i }).waitFor({ timeout: 5000 });
     
     // Select compression level
-    const compressionSelect = this.page.locator('select[data-setting="compression"], [data-testid="compression-level"]');
+    const compressionSelect = this._page.getByRole('combobox', { name: /compression/i });
     await compressionSelect.selectOption(level);
     
     // Save settings
-    const saveButton = this.page.locator('button:has-text("Save")');
+    const saveButton = this._page.getByRole('button', { name: 'Save' });
     await saveButton.click();
     
     // Wait for dialog to close
-    await this.page.waitForSelector('[data-testid="settings-dialog"]', { state: 'hidden', timeout: 5000 });
+    await this._page.getByRole('dialog', { name: /settings/i }).waitFor({ state: 'hidden', timeout: 5000 });
   }
 
   async selectModel(model: string) {
@@ -113,25 +113,25 @@ export class ThreadLinkPage {
     await this.settingsButton.click();
     
     // Wait for settings dialog
-    await this.page.waitForSelector('[data-testid="settings-dialog"]', { timeout: 5000 });
+    await this._page.getByRole('dialog', { name: /settings/i }).waitFor({ timeout: 5000 });
     
     // Select model
-    const modelSelect = this.page.locator('select[data-setting="model"], [data-testid="model-select"]');
+    const modelSelect = this._page.getByRole('combobox', { name: /model/i });
     await modelSelect.selectOption(model);
     
     // Save settings
-    const saveButton = this.page.locator('button:has-text("Save")');
+    const saveButton = this._page.getByRole('button', { name: 'Save' });
     await saveButton.click();
     
     // Wait for dialog to close
-    await this.page.waitForSelector('[data-testid="settings-dialog"]', { state: 'hidden', timeout: 5000 });
+    await this._page.getByRole('dialog', { name: /settings/i }).waitFor({ state: 'hidden', timeout: 5000 });
   }
 
   // Performance and Analytics
   async getTokenCounts() {
     // Look for token count display elements
-    const inputTokens = await this.page.locator('[data-testid="input-tokens"], .token-count-input').textContent();
-    const outputTokens = await this.page.locator('[data-testid="output-tokens"], .token-count-output').textContent();
+    const inputTokens = await this._page.locator('[data-testid="input-tokens"], .token-count-input').textContent();
+    const outputTokens = await this._page.locator('[data-testid="output-tokens"], .token-count-output').textContent();
     
     return {
       input: parseInt(inputTokens?.replace(/\D/g, '') || '0'),

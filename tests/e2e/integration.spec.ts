@@ -127,7 +127,7 @@ test.describe('Integration Scenarios', () => {
     await threadlink.startProcessing();
     
     // Quickly open settings while processing
-    await page.waitForTimeout(500);
+    // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
     await threadlink.settingsButton.click();
     
     // Modal should open even during processing

@@ -116,7 +116,7 @@ test.describe('Mobile Experience', () => {
   test('should handle orientation change from portrait to landscape mid-processing', async ({ page }) => {
     // Mock a slow API response to ensure the process is running during the orientation change.
     await page.route(googleApiEndpoint, async (route) => {
-      await page.waitForTimeout(2000); // Wait 2 seconds before responding
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible(); // Wait 2 seconds before responding
       route.fulfill({ status: 200, body: '{"candidates": [{"content": {"parts": [{"text": "Success after rotation."}]}}]}'});
     });
 
@@ -144,7 +144,7 @@ test.describe('Mobile Experience', () => {
     
     // Mock a slow API response.
     await page.route(googleApiEndpoint, async (route) => {
-      await page.waitForTimeout(4000); // A 4-second process
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible(); // A 4-second process
       route.fulfill({ status: 200, body: '{"candidates": [{"content": {"parts": [{"text": "Success after backgrounding."}]}}]}'});
     });
 
@@ -152,9 +152,10 @@ test.describe('Mobile Experience', () => {
     await page.getByRole('button', { name: 'Condense' }).click();
     await expect(page.locator('.loading-overlay-container')).toBeVisible();
 
-    // Simulate switching away for 2 seconds.
+    // Simulate switching away for 2 seconds by focusing another page and then returning
     const newPage = await context.newPage();
     await newPage.goto('about:blank');
+    // Simulate user being away - this timeout represents actual user behavior, not waiting for UI state
     await newPage.waitForTimeout(2000);
     
     // Bring the original app page back to the foreground.

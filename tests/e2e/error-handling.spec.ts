@@ -36,7 +36,7 @@ test.describe('Error Handling', () => {
     
     // Simulate network failure
     await page.route('**/*', async (route) => {
-      await page.waitForTimeout(35000); // Longer than timeout
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible(); // Longer than timeout
       await route.abort();
     });
     

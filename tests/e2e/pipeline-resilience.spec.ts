@@ -166,7 +166,7 @@ test.describe('Processing Pipeline & Resilience', () => {
     await page.getByRole('button', { name: 'Open settings' }).click();
     await page.getByRole('button', { name: 'Advanced Settings' }).click();
     // This is the toggle button next to "Custom System Prompt"
-    const customPromptToggle = page.locator('label:has-text("Custom System Prompt") + div > button');
+    const customPromptToggle = page.getByRole('button', { name: 'Custom System Prompt' });
     await customPromptToggle.click();
     
     // The editor opens. We enter a massive prompt.

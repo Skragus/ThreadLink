@@ -15,13 +15,13 @@ test.describe('Combined Feature Interactions', () => {
   test('custom prompt with drone failures shows both features', async ({ page }) => {
     // Enable custom prompt
     await threadlink.settingsButton.click();
-    await page.locator('button:has-text("Advanced Settings")').click();
+    await page.locator('button.getByRole('button', { name: 'Advanced Settings' })').click();
     await page.locator('[data-testid="custom-prompt-toggle"]').click();
     
     const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
     await editor.clear();
     await editor.fill('Extract key points. Max {TARGET_TOKENS} tokens.');
-    await page.locator('button:has-text("Apply & Close")').click();
+    await page.locator('button.getByRole('button', { name: 'Apply & Close' })').click();
     
     // Mock mixed success/failure
     let callCount = 0;

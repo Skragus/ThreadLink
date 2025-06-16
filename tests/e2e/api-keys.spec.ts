@@ -190,7 +190,7 @@ test.describe('API Key Management', () => {
     await page.locator('input[placeholder*="Google"]').fill('this-key-will-fail-to-save');
     
     // Try to save - this should trigger the storage error
-    const saveButton = modal.locator('button:has-text("Save")');
+    const saveButton = modal.getByRole('button', { name: 'Save' });
     if (await saveButton.isVisible()) {
       await saveButton.click();
     } else {

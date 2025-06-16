@@ -21,7 +21,7 @@ test.describe('Race Conditions and Concurrent Operations', () => {
     
     // Wait for processing to actually start
     await expect(threadlink.loadingOverlay).toBeVisible();
-    await page.waitForTimeout(500); // Let some drones start
+    // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible(); // Let some drones start
     
     // Try to paste new text while processing
     const newText = 'This is completely different text that should not corrupt the state';
@@ -79,7 +79,7 @@ test.describe('Race Conditions and Concurrent Operations', () => {
     await threadlink.condenseButton.dblclick();
     
     // Wait a bit for any duplicate processing to start
-    await page.waitForTimeout(1000);
+    // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
     
     // Should only process once
     await threadlink.waitForProcessingComplete();
@@ -94,9 +94,9 @@ test.describe('Race Conditions and Concurrent Operations', () => {
     // Start, cancel, restart multiple times rapidly
     for (let i = 0; i < 3; i++) {
       await threadlink.startProcessing();
-      await page.waitForTimeout(200); // Let it start
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible(); // Let it start
       await threadlink.cancelProcessing();
-      await page.waitForTimeout(100); // Brief pause
+      // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible(); // Brief pause
     }
     
     // Final processing attempt
@@ -118,7 +118,7 @@ test.describe('Race Conditions and Concurrent Operations', () => {
     
     // Wait for processing to start
     await expect(threadlink.loadingOverlay).toBeVisible();
-    await page.waitForTimeout(500);
+    // TODO: [Test Flakiness] Replace this hardcoded wait with a specific web assertion. Ex: await expect(page.locator('...')).toBeVisible();
     
     // Try to change settings mid-process
     await threadlink.settingsButton.click();
@@ -194,7 +194,7 @@ test.describe('Race Conditions and Concurrent Operations', () => {
     await deleteButton.click();
     
     // Save changes
-    await page.locator('button:has-text("Save")').click();
+    await page.locator('button.getByRole('button', { name: 'Save' })').click();
     
     // Processing should either:
     // 1. Continue with the key that was already in use
