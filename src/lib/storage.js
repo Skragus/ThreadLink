@@ -8,7 +8,9 @@ const STORAGE_KEYS = {
     ANTHROPIC_KEY: 'threadlink_anthropic_api_key',
     GOOGLE_KEY: 'threadlink_google_api_key',
     SETTINGS: 'threadlink_settings',
-    LAST_USED_MODEL: 'threadlink_last_model'
+    LAST_USED_MODEL: 'threadlink_last_model',
+    CUSTOM_PROMPT: 'threadlink_custom_prompt',
+    USE_CUSTOM_PROMPT: 'threadlink_use_custom_prompt'
 };
 
 /**
@@ -103,6 +105,58 @@ export function getAvailableProviders() {
 }
 
 /**
+ * Save custom prompt to localStorage
+ * @param {string} prompt - Custom prompt text
+ */
+export function saveCustomPrompt(prompt) {
+    try {
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_PROMPT, prompt);
+        console.log('✅ Custom prompt saved');
+    } catch (error) {
+        console.error('Failed to save custom prompt:', error);
+    }
+}
+
+/**
+ * Get custom prompt from localStorage
+ * @returns {string|null} Custom prompt or null if not found
+ */
+export function getCustomPrompt() {
+    try {
+        return localStorage.getItem(STORAGE_KEYS.CUSTOM_PROMPT);
+    } catch (error) {
+        console.error('Failed to get custom prompt:', error);
+        return null;
+    }
+}
+
+/**
+ * Save custom prompt enabled state
+ * @param {boolean} enabled - Whether custom prompt is enabled
+ */
+export function saveUseCustomPrompt(enabled) {
+    try {
+        localStorage.setItem(STORAGE_KEYS.USE_CUSTOM_PROMPT, enabled ? 'true' : 'false');
+        console.log(`✅ Custom prompt ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+        console.error('Failed to save custom prompt state:', error);
+    }
+}
+
+/**
+ * Get custom prompt enabled state
+ * @returns {boolean} Whether custom prompt is enabled
+ */
+export function getUseCustomPrompt() {
+    try {
+        return localStorage.getItem(STORAGE_KEYS.USE_CUSTOM_PROMPT) === 'true';
+    } catch (error) {
+        console.error('Failed to get custom prompt state:', error);
+        return false;
+    }
+}
+
+/**
  * Save settings to localStorage
  * @param {Object} settings - Settings object
  */
@@ -142,7 +196,9 @@ export function getDefaultSettings() {
         recencyStrength: 0,
         droneDensity: 10, // drones per 10k tokens
         maxDrones: 100,
-        targetTokens: null // null means auto-calculate
+        targetTokens: null, // null means auto-calculate
+        useCustomPrompt: false,
+        customPrompt: null
     };
 }
 
@@ -193,7 +249,9 @@ export function exportData() {
     return {
         apiKeys: getAllAPIKeys(),
         settings: getSettings(),
-        lastUsedModel: getLastUsedModel()
+        lastUsedModel: getLastUsedModel(),
+        customPrompt: getCustomPrompt(),
+        useCustomPrompt: getUseCustomPrompt()
     };
 }
 
@@ -214,6 +272,14 @@ export function importData(data) {
     
     if (data.lastUsedModel) {
         saveLastUsedModel(data.lastUsedModel);
+    }
+    
+    if (data.customPrompt !== undefined) {
+        saveCustomPrompt(data.customPrompt);
+    }
+    
+    if (data.useCustomPrompt !== undefined) {
+        saveUseCustomPrompt(data.useCustomPrompt);
     }
     
     console.log('✅ Data imported successfully');

@@ -9,6 +9,7 @@ import TextEditor from './components/TextEditor';
 import APIKeysModal from './components/APIKeysModal';
 import { SettingsModal } from './components/SettingModal';
 import InfoPanel from './components/InfoPanel';
+import { ConfigurationOverrideModal } from './components/ConfigurationOverrideModal';
 
 // Import types
 import { 
@@ -31,9 +32,11 @@ import {
 // @ts-ignore - JavaScript modules without TypeScript declarations
 import { runCondensationPipeline } from '../src/pipeline/orchestrator.js';
 // @ts-ignore - JavaScript modules without TypeScript declarations
-import { getAPIKey, saveAPIKey, removeAPIKey } from '../src/lib/storage.js';
+import { getAPIKey, saveAPIKey, removeAPIKey, getCustomPrompt, saveCustomPrompt, getUseCustomPrompt, saveUseCustomPrompt } from '../src/lib/storage.js';
 // @ts-ignore - JavaScript modules without TypeScript declarations
 import { MODEL_PROVIDERS } from '../src/lib/client-api.js';
+// @ts-ignore - JavaScript modules without TypeScript declarations
+import { calculateEstimatedDrones } from '../src/pipeline/config.js';
 
 function ThreadLink() {
   // Main app state
@@ -63,10 +66,19 @@ function ThreadLink() {
   const [processingSpeed, setProcessingSpeed] = useState('balanced');
   const [recencyMode, setRecencyMode] = useState(false);
   const [recencyStrength, setRecencyStrength] = useState(1);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [adv_temperature, setAdv_temperature] = useState(0.5);
+  const [showAdvanced, setShowAdvanced] = useState(false);  const [adv_temperature, setAdv_temperature] = useState(0.5);
   const [adv_droneDensity, setAdv_droneDensity] = useState(2);
   const [adv_maxDrones, setAdv_maxDrones] = useState(50);
+  // Custom prompt state
+  const [useCustomPrompt, setUseCustomPrompt] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
+
+  // Configuration override modal state
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideModalData, setOverrideModalData] = useState({ 
+    calculatedDrones: 0, 
+    maxDrones: 0 
+  });
 
   // API Keys state
   const [googleAPIKey, setGoogleAPIKey] = useState('');
@@ -99,8 +111,8 @@ function ThreadLink() {
   // Processing Speed logic
   const isAnthropicModel = model.includes('claude');
 
-  // Initialize API keys from storage on mount
-  useEffect(() => {
+  // Initialize API keys from storage on mount  useEffect(() => {
+      useEffect(() => {
     const loadedGoogleKey = getAPIKey('google');
     const loadedOpenAIKey = getAPIKey('openai');
     const loadedAnthropicKey = getAPIKey('anthropic');
@@ -108,6 +120,13 @@ function ThreadLink() {
     if (loadedGoogleKey) setGoogleAPIKey(loadedGoogleKey);
     if (loadedOpenAIKey) setOpenaiAPIKey(loadedOpenAIKey);
     if (loadedAnthropicKey) setAnthropicAPIKey(loadedAnthropicKey);
+    
+    // Load custom prompt settings
+    const loadedUseCustomPrompt = getUseCustomPrompt();
+    const loadedCustomPrompt = getCustomPrompt();
+    
+    if (loadedUseCustomPrompt) setUseCustomPrompt(loadedUseCustomPrompt);
+    if (loadedCustomPrompt) setCustomPrompt(loadedCustomPrompt);
   }, []);
 
   // Auto-reset processing speed when switching to Anthropic
@@ -174,7 +193,6 @@ function ThreadLink() {
     cancelRef.current = true;
     setError('Processing was cancelled');
   };
-
   const saveAPIKeys = () => {
     if (googleAPIKey) {
       saveAPIKey('google', googleAPIKey);
@@ -193,9 +211,15 @@ function ThreadLink() {
     } else {
       removeAPIKey('anthropic');
     }
+    
+    // Save custom prompt settings
+    saveUseCustomPrompt(useCustomPrompt);
+    if (customPrompt) {
+      saveCustomPrompt(customPrompt);
+    }
   };
-
   const handleCondense = async () => {
+    // Validation checks
     if (!inputText.trim()) {
       setError('Please paste some text to condense');
       return;
@@ -214,6 +238,35 @@ function ThreadLink() {
       return;
     }
 
+    // Calculate the number of drones that would be created
+    const inputTokens = estimateTokens(inputText);
+    let calculatedDrones;
+    
+    if (recencyMode) {
+      // In recency mode, drone count is calculated differently
+      calculatedDrones = Math.ceil(inputTokens / 3000); // Example calculation
+    } else {
+      // Normal mode uses drone density
+      calculatedDrones = calculateEstimatedDrones(inputTokens, adv_droneDensity, null);
+    }
+
+    // Check if we would exceed max drones
+    if (calculatedDrones > adv_maxDrones) {
+      // Show the override confirmation modal
+      setOverrideModalData({
+        calculatedDrones,
+        maxDrones: adv_maxDrones
+      });
+      setShowOverrideModal(true);
+      return; // Don't proceed until user confirms
+    }
+
+    // If no override needed, proceed directly
+    proceedWithCondensation();
+  };
+    
+    // Create a separate function for the actual condensation
+  const proceedWithCondensation = async () => {
     setIsLoading(true);
     setError('');
     setStats(null);
@@ -228,6 +281,9 @@ function ThreadLink() {
       (recencyStrength === 0 ? 25 : recencyStrength === 1 ? 50 : 90) : 0;
     
     try {
+      const provider = MODEL_PROVIDERS[model];
+      const apiKey = getAPIKey(provider);
+      
       const settings: PipelineSettings = {
         model: model,
         temperature: adv_temperature,
@@ -237,7 +293,10 @@ function ThreadLink() {
         recencyMode: recencyMode,
         recencyStrength: recencyStrengthValue,
         droneDensity: recencyMode ? undefined : adv_droneDensity,
-        maxDrones: adv_maxDrones
+        maxDrones: adv_maxDrones,
+        // Add custom prompt settings
+        useCustomPrompt: useCustomPrompt,
+        customPrompt: useCustomPrompt ? customPrompt : undefined
       };
 
       const result: PipelineResult = await runCondensationPipeline({
@@ -279,14 +338,24 @@ function ThreadLink() {
       console.error('❌ Caught an exception during processing:', err);
       const errorInfo = getErrorDisplay(
         err.message || 'An unexpected error occurred.',
-        'GENERAL_ERROR'
+        'UNKNOWN'
       );
       setError(errorInfo);
     } finally {
       setIsLoading(false);
       setIsCancelling(false);
-      cancelRef.current = false;
     }
+  };
+
+  // Add handlers for the override modal
+  const handleOverrideProceed = () => {
+    setShowOverrideModal(false);
+    proceedWithCondensation();
+  };
+
+  const handleOverrideCancel = () => {
+    setShowOverrideModal(false);
+    setShowSettings(true); // Open settings so user can adjust
   };
 
   const handleCopy = async () => {
@@ -361,8 +430,7 @@ function ThreadLink() {
         }
       `}</style>
       
-      <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
-        <SettingsModal
+      <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">        <SettingsModal
           isOpen={showSettings}
           model={model}
           setModel={setModel}
@@ -380,6 +448,11 @@ function ThreadLink() {
           setAdvDroneDensity={setAdv_droneDensity}
           advMaxDrones={adv_maxDrones}
           setAdvMaxDrones={setAdv_maxDrones}
+          // Add custom prompt props
+          useCustomPrompt={useCustomPrompt}
+          setUseCustomPrompt={setUseCustomPrompt}
+          customPrompt={customPrompt}
+          setCustomPrompt={setCustomPrompt}
           onClose={() => setShowSettings(false)}
         />
 
@@ -403,13 +476,19 @@ function ThreadLink() {
           }}
           onClose={() => setShowAPIKeys(false)}
           onDeleteKey={handleDeleteKey}
-        />
-
-        <InfoPanel
+        />        <InfoPanel
           isOpen={showInfo}
           expandedSections={expandedSections}
           onToggleSection={toggleSection}
           onClose={() => setShowInfo(false)}
+        />
+
+        <ConfigurationOverrideModal
+          isOpen={showOverrideModal}
+          calculatedDrones={overrideModalData.calculatedDrones}
+          maxDrones={overrideModalData.maxDrones}
+          onProceed={handleOverrideProceed}
+          onCancel={handleOverrideCancel}
         />
 
         <Header

@@ -2,7 +2,6 @@
 import { test, expect } from '@playwright/test';
 import { ThreadLinkPage } from './helpers/ui-helpers';
 import { expectNoConsoleErrors } from './helpers/assertions';
-import { setupAPIMocks } from './helpers/api-mock';
 
 test.describe('Setup and Initial Load', () => {
   test('application loads successfully', async ({ page }) => {

@@ -164,8 +164,9 @@ function isCatastrophicFailure(output, targetTokens) {
 /**
  * Create system prompt for drone condensation
  */
-function createDroneSystemPrompt(targetTokens) {
-    return config.DEFAULT_DRONE_PROMPT.replace('{TARGET_TOKENS}', Math.round(targetTokens));
+function createDroneSystemPrompt(targetTokens, customPrompt = null) {
+    const prompt = customPrompt || config.DEFAULT_DRONE_PROMPT;
+    return prompt.replace('{TARGET_TOKENS}', Math.round(targetTokens));
 }
 
 /**
@@ -177,14 +178,14 @@ async function processDroneBatch(
     totalBatches,
     options = {},
     sessionState = {}
-) {
-    const {
+) {    const {
         model = "gemini-1.5-flash",
         temperature = 0.3,
         targetTokens = 500,
         retries = 2,
         cancelled,
-        apiKey
+        apiKey,
+        customPrompt // Add this
     } = options;
 
     const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash'];    // Check for cancellation
@@ -238,11 +239,9 @@ async function processDroneBatch(
             batchIndex,
             fatalError: true 
         };
-    }
+    }    console.log(`🤖 Drone ${batchIndex + 1}/${totalBatches}: Processing ${estimateTokens(textContent)} tokens → ${targetTokens} tokens`);
 
-    console.log(`🤖 Drone ${batchIndex + 1}/${totalBatches}: Processing ${estimateTokens(textContent)} tokens → ${targetTokens} tokens`);
-
-    const systemPrompt = createDroneSystemPrompt(targetTokens);
+    const systemPrompt = createDroneSystemPrompt(targetTokens, customPrompt);
     const userPrompt = textContent
 
     // Retry loop with intelligent error handling
@@ -409,7 +408,7 @@ async function processDronesWithConcurrency(
     options = {},
     onProgress = null
 ) {
-    const { model = 'gemini-1.5-flash', cancelled, ...droneOptions } = options;
+    const { model = 'gemini-1.5-flash', cancelled, customPrompt, ...droneOptions } = options;
     const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash'];
     
     // Use frontend-provided concurrency if available, otherwise fall back to model config
@@ -478,7 +477,7 @@ async function processDronesWithConcurrency(
             batches[i],
             i,
             batches.length,
-            options,
+            { ...options, customPrompt }, // Pass customPrompt through
             sessionState
         ).then(result => {
             executing.delete(promise);
@@ -589,14 +588,12 @@ async function processDronesWithConcurrency(
         if (cancelled && cancelled()) {
             console.log('🛑 Processing cancelled after waiting for rate limit reset');
             throw new Error('Processing was cancelled');
-        }
-
-        // Retry the rate-limited drone
+        }        // Retry the rate-limited drone
         const retryResult = await processDroneBatch(
             batches[rateLimitedDrone.originalIndex],
             rateLimitedDrone.originalIndex,
             batches.length,
-            { ...droneOptions, retries: modelConfig.maxRetries },
+            { ...droneOptions, retries: modelConfig.maxRetries, customPrompt },
             sessionState
         );
 
@@ -682,35 +679,83 @@ function calculateSessionStats(payloads, customTarget = null, customDroneDensity
 }
 
 /**
- * Create final context card from drone results
+ * Create final context card from drone results with failure traces
+ * @param {Array} droneResults - Array of drone results (success or failure)
+ * @param {Object} sessionStats - Session statistics
+ * @param {Array} originalPayloads - Original drone input payloads for token counts
+ * @returns {string} Final context card with all drone positions accounted for
  */
-function createContextCard(droneResults, sessionStats) {
-    const successfulDroneOutputs = droneResults.filter(result => result && !result.startsWith('[Drone'));
-    const content = successfulDroneOutputs.join('\n\n---\n\n');
+function createContextCard(droneResults, sessionStats, originalPayloads = []) {
+    // Build the content with failure traces in correct positions
+    const contentParts = [];
     
+    for (let i = 0; i < droneResults.length; i++) {
+        const result = droneResults[i];
+        
+        if (result && typeof result === 'string' && !result.startsWith('[Drone')) {
+            // Successful drone output
+            contentParts.push(result);
+        } else {
+            // Failed drone - insert failure trace
+            let tokenCount = '???';
+            
+            // Try to get the original token count for this drone
+            if (originalPayloads[i]) {
+                if (typeof originalPayloads[i] === 'string') {
+                    tokenCount = estimateTokens(originalPayloads[i]);
+                } else if (originalPayloads[i] && typeof originalPayloads[i] === 'object') {
+                    // Handle different payload formats
+                    if (originalPayloads[i].actual_token_count !== undefined) {
+                        tokenCount = originalPayloads[i].actual_token_count;
+                    } else if (originalPayloads[i].token_estimate !== undefined) {
+                        tokenCount = originalPayloads[i].token_estimate;
+                    } else if (originalPayloads[i].text || originalPayloads[i].input_text) {
+                        tokenCount = estimateTokens(originalPayloads[i].text || originalPayloads[i].input_text || '');
+                    }
+                }
+            }
+            
+            // Insert standardized failure trace
+            const failureTrace = `[⚠ Drone ${i + 1} failed — Input size: ${tokenCount} tokens]`;
+            contentParts.push(failureTrace);
+        }
+    }
+    
+    // Join all parts with separators
+    const content = contentParts.join('\n\n---\n\n');
+    
+    // Calculate statistics
     const finalContentTokens = estimateTokens(content);
-    const successfulDronesCount = successfulDroneOutputs.length;
+    const successfulDronesCount = droneResults.filter(
+        result => result && typeof result === 'string' && !result.startsWith('[Drone')
+    ).length;
+    const failedDronesCount = droneResults.length - successfulDronesCount;
 
+    // Update session stats
     sessionStats.finalContentTokens = finalContentTokens;
     sessionStats.successfulDrones = successfulDronesCount;
+    sessionStats.failedDrones = failedDronesCount;
     
     if (sessionStats.totalInputTokens > 0 && finalContentTokens > 0) {
         sessionStats.compressionRatio = (sessionStats.totalInputTokens / finalContentTokens).toFixed(1);
     } else {
         sessionStats.compressionRatio = '0.0';
-        sessionStats.processingFailed = true;
+        sessionStats.processingFailed = successfulDronesCount === 0;
     }
 
     const targetDisplayValue = sessionStats.displayTargetTokens;
     const formatNum = (n) => (typeof n === 'number' ? n.toLocaleString() : '???');
 
-    const header = `# Threadlink Context Card
+    // Build header with failure count if any
+    let header = `# Threadlink Context Card
 Source size: ${formatNum(sessionStats.totalInputTokens)} tokens → Final size: ${formatNum(finalContentTokens)} tokens (target: ${formatNum(targetDisplayValue)} tokens)
-Compression Ratio: ${sessionStats.compressionRatio}:1 | Drones: ${successfulDronesCount}
+Compression Ratio: ${sessionStats.compressionRatio}:1 | Drones: ${successfulDronesCount}/${droneResults.length}`;
 
----
+    if (failedDronesCount > 0) {
+        header += ` (${failedDronesCount} failed)`;
+    }
 
-`;
+    header += `\n\n---\n\n`;
 
     const fullCard = header + content;
     const finalOutputTokensOfCard = estimateTokens(fullCard);
@@ -735,9 +780,7 @@ export async function runCondensationPipeline(options = {}) {
         apiKey,
         onProgress,
         cancelled
-    } = options;
-
-    const {
+    } = options;    const {
         model = 'gemini-1.5-flash',
         temperature = 0.3,
         maxConcurrency,
@@ -746,7 +789,9 @@ export async function runCondensationPipeline(options = {}) {
         recencyMode = false,
         recencyStrength = 0,
         droneDensity,
-        maxDrones = 100
+        maxDrones = 100,
+        useCustomPrompt = false, // Add this
+        customPrompt = null // Add this
     } = settings;
 
     // Generate a unique job ID
@@ -917,9 +962,7 @@ export async function runCondensationPipeline(options = {}) {
         // Process drones with concurrency
         const droneProgressCallback = (completed, total, rateLimited = 0, message = '') => {
             progressTracker.updateDroneProgress(jobId, completed, total, message);
-        };
-
-        const droneResults = await processDronesWithConcurrency(
+        };        const droneResults = await processDronesWithConcurrency(
             finalDroneInputs,
             {
                 model,
@@ -931,7 +974,8 @@ export async function runCondensationPipeline(options = {}) {
                 apiKey,
                 processingSpeed,
                 recencyMode,
-                recencyStrength
+                recencyStrength,
+                customPrompt: useCustomPrompt ? customPrompt : null // Add this
             },
             droneProgressCallback
         );
@@ -939,12 +983,10 @@ export async function runCondensationPipeline(options = {}) {
         // Check for cancellation
         if (cancelled && cancelled()) {
             throw new Error('Processing was cancelled');
-        }
-
-        // STAGE 8: Create final context card
+        }        // STAGE 8: Create final context card
         progressTracker.setFinalizing(jobId);
         
-        const contextCard = createContextCard(droneResults, sessionStats);
+        const contextCard = createContextCard(droneResults, sessionStats, finalDroneInputs);
         
         // Check for total processing failure
         if (sessionStats.successfulDrones === 0) {

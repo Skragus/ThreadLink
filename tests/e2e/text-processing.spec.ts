@@ -46,9 +46,10 @@ test.describe('Text Input and Processing', () => {
     
     // Token count should update
     await expectTokenCount(page, '.token-count', 50000, 70000);
-  });
-
-  test('handle unicode and special characters', async ({ page }) => {
+  });  test('handle unicode and special characters', async ({ page }) => {
+    await page.goto('/');
+    const threadlink = new ThreadLinkPage(page);
+    
     await threadlink.pasteText(TEST_DATA.unicode.text);
     
     // Start processing
