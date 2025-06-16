@@ -26,13 +26,14 @@ export function saveAPIKey(provider, key) {
         anthropic: STORAGE_KEYS.ANTHROPIC_KEY,
         google: STORAGE_KEYS.GOOGLE_KEY
     }[provider];
-    
-    if (storageKey) {
+      if (storageKey) {
         try {
             localStorage.setItem(storageKey, key);
-            console.log(`✅ Saved ${provider} API key`);
-        } catch (error) {
+            console.log(`✅ Saved ${provider} API key`);        } catch (error) {
             console.error(`Failed to save ${provider} API key:`, error);
+            if (error.name === 'QuotaExceededError') {
+                throw error; // Re-throw to be handled by UI layer
+            }
         }
     }
 }

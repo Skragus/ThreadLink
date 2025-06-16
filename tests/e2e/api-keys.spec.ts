@@ -176,7 +176,14 @@ test.describe('API Key Management', () => {
       const apiKeyHeader = await route.request().headerValue('x-goog-api-key');
       expect(apiKeyHeader).toBe(googleApiKey);
 
-      route.fulfill({ status: 200, body: '{"candidates": [{"content": {"parts": [{"text": "Mock response"}]}}]}'});
+      const mockResponseBody = {
+        candidates: [{
+          content: {
+            parts: [{ text: "This is a sufficiently long and valid mock response to ensure that the processing pipeline can complete successfully without triggering quality check failures due to short content." }]
+          }
+        }]
+      };
+      route.fulfill({ status: 200, body: JSON.stringify(mockResponseBody) });
     });
     
     // Setup: Save the API key
@@ -186,8 +193,8 @@ test.describe('API Key Management', () => {
     await page.getByPlaceholder('Paste your AI conversation here...').fill('Test for network leak');
     await page.getByRole('button', { name: 'Condense' }).click();
 
-    // Wait for the process to finish
-    await expect(page.locator('div[ref="statsRef"]')).toBeVisible();    // The final assertion - SECURITY CHECK: API key should not appear in URLs
+    // Wait for the process to finish - look for any sign that processing completed
+    await expect(page.getByTestId('stats-display')).toBeVisible({ timeout: 10000 });    // The final assertion - SECURITY CHECK: API key should not appear in URLs
     expect(keyFoundInUrl).toBe(false);
   });
   

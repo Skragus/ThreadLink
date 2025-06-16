@@ -125,14 +125,22 @@ function ThreadLink() {
     saveSettings(currentSettings);
   };
   // Initialize API keys from storage on mount
-  useEffect(() => {
-    const loadedGoogleKey = getAPIKey('google');
+  useEffect(() => {    const loadedGoogleKey = getAPIKey('google');
     const loadedOpenAIKey = getAPIKey('openai');
     const loadedAnthropicKey = getAPIKey('anthropic');
     
-    if (loadedGoogleKey) setGoogleAPIKey(loadedGoogleKey);
-    if (loadedOpenAIKey) setOpenaiAPIKey(loadedOpenAIKey);
-    if (loadedAnthropicKey) setAnthropicAPIKey(loadedAnthropicKey);
+    if (loadedGoogleKey) {
+      setGoogleAPIKey(loadedGoogleKey);
+      setGoogleCacheEnabled(true);
+    }
+    if (loadedOpenAIKey) {
+      setOpenaiAPIKey(loadedOpenAIKey);
+      setOpenaiCacheEnabled(true);
+    }
+    if (loadedAnthropicKey) {
+      setAnthropicAPIKey(loadedAnthropicKey);
+      setAnthropicCacheEnabled(true);
+    }
     
     // Load custom prompt settings
     const loadedUseCustomPrompt = getUseCustomPrompt();
@@ -216,25 +224,30 @@ function ThreadLink() {
     setIsCancelling(true);
     cancelRef.current = true;
     setError('Processing was cancelled');
-  };
-
-  const saveAPIKeys = () => {
-    if (googleAPIKey) {
-      saveAPIKey('google', googleAPIKey);
-    } else {
-      removeAPIKey('google');
-    }
-    
-    if (openaiAPIKey) {
-      saveAPIKey('openai', openaiAPIKey);
-    } else {
-      removeAPIKey('openai');
-    }
-    
-    if (anthropicAPIKey) {
-      saveAPIKey('anthropic', anthropicAPIKey);
-    } else {
-      removeAPIKey('anthropic');
+  };  const saveAPIKeys = () => {
+    try {
+      if (googleCacheEnabled && googleAPIKey) {
+        saveAPIKey('google', googleAPIKey);
+      } else {
+        removeAPIKey('google');
+      }
+      
+      if (openaiCacheEnabled && openaiAPIKey) {
+        saveAPIKey('openai', openaiAPIKey);
+      } else {
+        removeAPIKey('openai');
+      }
+      
+      if (anthropicCacheEnabled && anthropicAPIKey) {
+        saveAPIKey('anthropic', anthropicAPIKey);
+      } else {
+        removeAPIKey('anthropic');
+      }
+    } catch (error: any) {
+      if (error.name === 'QuotaExceededError') {
+        throw error; // Re-throw to be caught by the modal
+      }
+      console.error("An unexpected error occurred while saving API keys:", error);
     }
     
     // Save custom prompt settings

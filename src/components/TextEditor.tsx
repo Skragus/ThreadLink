@@ -40,11 +40,13 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         <div ref={errorRef} className="mx-12 mt-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded text-red-400 text-sm select-none cursor-default">
           {error}
         </div>
-      )}
-
-      {/* Stats Display */}
+      )}      {/* Stats Display */}
       {stats && (
-        <div ref={statsRef} className="mx-12 mt-4 p-3 bg-green-500 bg-opacity-10 border border-green-500 rounded text-green-400 text-sm select-none cursor-default">
+        <div 
+          ref={statsRef} 
+          data-testid="stats-display"
+          className="mx-12 mt-4 p-3 bg-green-500 bg-opacity-10 border border-green-500 rounded text-green-400 text-sm select-none cursor-default"
+        >
           Processed in {stats.executionTime}s • {stats.compressionRatio}:1 compression • {stats.successfulDrones}/{stats.totalDrones} drones successful
         </div>
       )}

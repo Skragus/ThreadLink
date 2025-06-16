@@ -138,13 +138,13 @@ async function generateGoogleResponse(
     apiKey,
     temperature = 0.7,
     maxTokens = null // Google doesn't use max_tokens in the same way
-) {
-    const endpoint = API_ENDPOINTS.google.replace('{model}', model);
+) {    const endpoint = API_ENDPOINTS.google.replace('{model}', model);
     
-    const response = await fetch(`${endpoint}?key=${apiKey}`, {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
         },
         body: JSON.stringify({
             contents: [{

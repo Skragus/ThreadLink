@@ -1,6 +1,6 @@
 // components/APIKeysModal.tsx - API Keys Modal Component
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Trash2 } from 'lucide-react';
 
 interface APIKeysModalProps {
@@ -44,17 +44,31 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
     openai?: string;
     anthropic?: string;
   }>({});
+  const [storageError, setStorageError] = useState<string>('');
+
+  const handleSave = useCallback(() => {
+    setStorageError('');
+    try {
+      if (onSave) {
+        onSave();
+      }
+      onClose();
+    } catch (error: any) {
+      if (error.name === 'QuotaExceededError') {
+        setStorageError('Failed to save settings. Your browser storage may be full.');
+        // Don't close the modal on error
+      } else {
+        throw error;
+      }
+    }
+  }, [onSave, onClose]);
 
   // Add keyboard handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         e.preventDefault();
-        if (onSave) {
-          onSave();
-        } else {
-          onClose();
-        }
+        handleSave();
       }
     };
 
@@ -62,28 +76,24 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, onSave, onClose]);
+  }, [isOpen, handleSave]); // Add handleSave to dependencies
 
   const validateKey = (provider: string, key: string): string | undefined => {
     if (!key) return undefined;
-    
-    switch (provider) {
-      case 'google':
+      switch (provider) {      case 'google':
         if (!key.startsWith('AIza')) {
-          return 'Google API keys should start with "AIza"';
+          return 'Invalid API key format - Google keys must start with AIza';
         }
         break;
       case 'openai':
         if (!key.startsWith('sk-')) {
-          return 'OpenAI API keys should start with "sk-"';
+          return 'Invalid API key format - OpenAI keys must start with sk-';
         }
         break;
       case 'anthropic':
         if (!key.startsWith('sk-ant-')) {
-          return 'Anthropic API keys should start with "sk-ant-"';
-        }
-        break;
-    }
+          return 'Invalid API key format - Anthropic keys must start with sk-ant-';
+        }        break;    }
     return undefined;
   };
 
@@ -133,11 +143,10 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
             }));
           }}
           className="flex-1 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm font-mono cursor-text"
-        />
-        <button
+        />        <button
           onClick={() => onDeleteKey(provider)}
           title={`Clear ${label}`}
-          className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer"
+          className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer relative z-10"
         >
           <Trash2 size={16} />
         </button>
@@ -148,9 +157,15 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
     </div>
   );
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div role="dialog" aria-labelledby="api-keys-title" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">      <div role="dialog" aria-labelledby="api-keys-title" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
         <h3 id="api-keys-title" className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">API Key Management</h3>
+        
+        {storageError && (
+          <div role="alert" aria-label="storage error" className="mb-4 p-3 bg-red-500 text-white rounded">
+            {storageError}
+          </div>
+        )}
+        
         <div className="space-y-6">
           {renderAPIKeySection(
             'google',
@@ -183,12 +198,7 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
           )}
         </div>        <div className="flex gap-3 mt-6">
           <button
-            onClick={() => {
-              if (onSave) {
-                onSave();
-              }
-              onClose();
-            }}
+            onClick={handleSave}
             className="flex-1 px-4 py-2 bg-[var(--highlight-blue)] text-white rounded-lg select-none cursor-pointer"
           >
             Save
