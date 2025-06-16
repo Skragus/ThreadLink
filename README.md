@@ -41,7 +41,7 @@ This project is built on a **100% client-side, serverless architecture** to guar
     * A resilient **Orchestrator** to manage the drone fleet, handle errors, and stitch the final output.
 
 * **Front-End:**
-    * **React** for the user interface.
+    * **Bolt.new + React** for the user interface.
     * **Vite** for a high-performance build process.
     * **TailwindCSS** for utility-first styling.
 
