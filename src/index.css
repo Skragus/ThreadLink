@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body, * {
+  user-select: none;
+  -webkit-user-select: none; /* For Safari */
+  -moz-user-select: none;    /* For Firefox */
+  -ms-user-select: none;     /* For Internet Explorer/Edge */
+}
+
+:root {
+  --bg-primary: #0D0D12;
+  --box-violet: #393A6B;
+  --card-bg: #1C1E2B;
+  --highlight-blue: #4B5CC4;
+  --text-primary: #C7D0FF;
+  --text-secondary: #7D87AD;
+  --glow-accent: #6E7FFF;
+  --divider: #181920;
+  --link-text: #A3B3F3;
+}
+
+textarea {
+  min-height: 200px;
+}
+
+/* Hide number input spinners */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
