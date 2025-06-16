@@ -12,7 +12,6 @@ test.describe('API Key Management', () => {
     await page.goto('/');
     threadlink = new ThreadLinkPage(page);
   });
-
   test('add API keys for each provider', async ({ page }) => {
     // Add all API keys in a single modal session
     await threadlink.apiKeyButton.click();
@@ -20,7 +19,17 @@ test.describe('API Key Management', () => {
     const modal = page.locator('[role="dialog"]');
     await modal.waitFor({ state: 'visible' });
     
-    // Fill all three inputs
+    // FIRST: Enable cache toggles for all providers (respects user privacy - cache defaults to OFF)
+    const googleToggle = modal.locator('button[title*="Toggle browser storage for Google API Key"]');
+    const openaiToggle = modal.locator('button[title*="Toggle browser storage for OpenAI API Key"]');
+    const anthropicToggle = modal.locator('button[title*="Toggle browser storage for Anthropic API Key"]');
+    
+    // Enable storage for all providers
+    await googleToggle.click();
+    await openaiToggle.click(); 
+    await anthropicToggle.click();
+    
+    // THEN: Fill all three inputs
     await page.locator('#google-api-key').fill(TEST_KEYS.valid.google);
     await page.locator('#openai-api-key').fill(TEST_KEYS.valid.openai);
     await page.locator('#anthropic-api-key').fill(TEST_KEYS.valid.anthropic);
@@ -32,7 +41,7 @@ test.describe('API Key Management', () => {
     // Wait for modal to close
     await modal.waitFor({ state: 'hidden', timeout: 5000 });
     
-    // Verify keys are stored
+    // Verify keys are stored (now that cache is enabled)
     const googleKey = await getStorage(page, 'threadlink_google_api_key');
     const openaiKey = await getStorage(page, 'threadlink_openai_api_key');
     const anthropicKey = await getStorage(page, 'threadlink_anthropic_api_key');

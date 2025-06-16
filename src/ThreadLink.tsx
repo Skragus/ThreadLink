@@ -226,34 +226,45 @@ function ThreadLink() {
     setError('Processing was cancelled');
   };  const saveAPIKeys = () => {
     try {
-      if (googleCacheEnabled && googleAPIKey) {
+      // Save or remove API keys based on cache settings (respects user privacy choice)
+      if (googleAPIKey && googleCacheEnabled) {
         saveAPIKey('google', googleAPIKey);
       } else {
         removeAPIKey('google');
       }
       
-      if (openaiCacheEnabled && openaiAPIKey) {
+      if (openaiAPIKey && openaiCacheEnabled) {
         saveAPIKey('openai', openaiAPIKey);
       } else {
         removeAPIKey('openai');
       }
       
-      if (anthropicCacheEnabled && anthropicAPIKey) {
+      if (anthropicAPIKey && anthropicCacheEnabled) {
         saveAPIKey('anthropic', anthropicAPIKey);
       } else {
         removeAPIKey('anthropic');
       }
     } catch (error: any) {
-      if (error.name === 'QuotaExceededError') {
-        throw error; // Re-throw to be caught by the modal
+      // Re-throw the error so the modal can catch it
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        throw error;
       }
       console.error("An unexpected error occurred while saving API keys:", error);
+      throw error;
     }
     
     // Save custom prompt settings
-    saveUseCustomPrompt(useCustomPrompt);
-    if (customPrompt) {
-      saveCustomPrompt(customPrompt);
+    try {
+      saveUseCustomPrompt(useCustomPrompt);
+      if (customPrompt) {
+        saveCustomPrompt(customPrompt);
+      }
+    } catch (error: any) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        throw error;
+      }
+      console.error("Error saving custom prompt settings:", error);
+      throw error;
     }
   };
   const handleCondense = async () => {

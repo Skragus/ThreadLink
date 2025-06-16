@@ -45,20 +45,32 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
     anthropic?: string;
   }>({});
   const [storageError, setStorageError] = useState<string>('');
-
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     setStorageError('');
     try {
       if (onSave) {
-        onSave();
+        // Call onSave and wait for potential errors
+        await new Promise<void>((resolve, reject) => {
+          try {
+            onSave();
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        });
       }
       onClose();
     } catch (error: any) {
-      if (error.name === 'QuotaExceededError') {
+      console.error('Failed to save API keys:', error);
+      
+      // Check if it's a quota exceeded error
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         setStorageError('Failed to save settings. Your browser storage may be full.');
         // Don't close the modal on error
+        return;
       } else {
-        throw error;
+        setStorageError('Failed to save settings. Please try again.');
+        return;
       }
     }
   }, [onSave, onClose]);
@@ -127,8 +139,7 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
             }`} />
           </button>
         </div>
-      </div>
-      <div className="flex space-x-2">        <input
+      </div>      <div className="relative flex space-x-2">        <input
           id={`${provider}-api-key`}
           type="password"
           placeholder={placeholder}
@@ -143,10 +154,21 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
             }));
           }}
           className="flex-1 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm font-mono cursor-text"
+          style={{ pointerEvents: 'auto' }}
         />        <button
-          onClick={() => onDeleteKey(provider)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDeleteKey(provider);
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDeleteKey(provider);
+          }}
           title={`Clear ${label}`}
-          className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer relative z-10"
+          className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400 transition-colors cursor-pointer flex-shrink-0"
+          style={{ pointerEvents: 'auto', position: 'relative', zIndex: 20 }}
         >
           <Trash2 size={16} />
         </button>
@@ -159,9 +181,8 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">      <div role="dialog" aria-labelledby="api-keys-title" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">
         <h3 id="api-keys-title" className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">API Key Management</h3>
-        
-        {storageError && (
-          <div role="alert" aria-label="storage error" className="mb-4 p-3 bg-red-500 text-white rounded">
+          {storageError && (
+          <div role="alert" aria-label="storage" className="mb-4 p-3 bg-red-500 text-white rounded">
             {storageError}
           </div>
         )}
