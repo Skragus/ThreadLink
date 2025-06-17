@@ -147,20 +147,20 @@ export const CustomPromptEditor: React.FC<CustomPromptEditorProps> = ({
               {promptText.length} characters | ~{Math.ceil(promptText.length / 4)} tokens (estimate)
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
+        </div>        {/* Footer */}
         <div className="border-t border-red-500/30 p-4 bg-red-950/10">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-red-300">
+          <div className="space-y-3">
+            <p className="text-xs text-red-300 pointer-events-none">
               By applying this custom prompt, you accept full responsibility for any unexpected behavior, increased costs, or processing failures.
             </p>
-            <button
-              onClick={handleApplyAndClose}
-              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Apply & Close
-            </button>
+            <div className="flex justify-end">
+              <button
+                onClick={handleApplyAndClose}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors relative z-10"
+              >
+                Apply & Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

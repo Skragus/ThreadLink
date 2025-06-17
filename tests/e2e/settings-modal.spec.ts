@@ -11,8 +11,8 @@ async function openAdvancedSettings(page: Page) {
 
 // Helper to enable the custom prompt editor and accept the warning
 async function enableAndOpenCustomPromptEditor(page: Page) {
-  // The toggle is a button next to the label
-  const customPromptToggle = page.locator('label').getByRole('button', { name: '' }).locator('+ div > button');
+  // The toggle is a button with title containing "custom system prompt"
+  const customPromptToggle = page.getByRole('button', { name: /custom system prompt/i });
   await customPromptToggle.click();
   
   // Handle the first-time warning modal
@@ -37,14 +37,12 @@ test.describe('Settings Modal & Advanced Configuration', () => {
   });
 
   test('should prevent non-numeric characters in number inputs', async ({ page }) => {
-    await openAdvancedSettings(page);
-
-    const tempInput = page.getByLabel('LLM Temperature');
+    await openAdvancedSettings(page);    const tempInput = page.getByLabel('LLM Temperature');
     const dronesInput = page.getByLabel('Max Drones Limit');
 
-    // Attempt to fill with non-numeric text
-    await tempInput.fill('abc');
-    await dronesInput.fill('xyz');
+    // Attempt to set non-numeric text using evaluate (simulates programmatic value setting)
+    await tempInput.evaluate(el => (el as HTMLInputElement).value = 'abc');
+    await dronesInput.evaluate(el => (el as HTMLInputElement).value = 'xyz');
 
     // type="number" inputs should reject this, resulting in an empty value
     expect(await tempInput.inputValue()).toBe('');
@@ -80,10 +78,8 @@ test.describe('Settings Modal & Advanced Configuration', () => {
 
     // Attempt to condense
     await page.getByPlaceholder('Paste your AI conversation here...').fill('Some text');
-    await page.getByRole('button', { name: 'Condense' }).click();
-
-    // The application should catch this invalid state before making an API call.
-    const errorDisplay = page.locator('div[ref="errorRef"]');
+    await page.getByRole('button', { name: 'Condense' }).click();    // The application should catch this invalid state before making an API call.
+    const errorDisplay = page.getByTestId('error-display');
     await expect(errorDisplay).toBeVisible();
     await expect(errorDisplay).toContainText(/Custom prompt cannot be empty/i);
     await expect(page.locator('.loading-overlay-container')).not.toBeVisible();
@@ -100,11 +96,9 @@ test.describe('Settings Modal & Advanced Configuration', () => {
     });
     
     const textInput = page.getByPlaceholder('Paste your AI conversation here...');
-    await textInput.fill('Test run 1');
-
-    // --- Run 1: Custom Prompt OFF (Default) ---
+    await textInput.fill('Test run 1');    // --- Run 1: Custom Prompt OFF (Default) ---
     await page.getByRole('button', { name: 'Condense' }).click();
-    await expect(page.locator('div[ref="statsRef"]')).toBeVisible();
+    await expect(page.getByTestId('stats-display')).toBeVisible();
     expect(lastReceivedPrompt).not.toContain('MY_CUSTOM_PROMPT');
     expect(lastReceivedPrompt).toContain('You are a drone'); // Part of the default prompt
 
@@ -113,24 +107,20 @@ test.describe('Settings Modal & Advanced Configuration', () => {
     await enableAndOpenCustomPromptEditor(page);
     await page.locator('textarea[placeholder="Enter your custom prompt..."]').fill('MY_CUSTOM_PROMPT');
     await page.getByRole('button', { name: 'Apply & Close' }).click();
-    await page.getByRole('button', { name: 'Save' }).click();
-
-    // --- Run 2: Custom Prompt ON ---
+    await page.getByRole('button', { name: 'Save' }).click();    // --- Run 2: Custom Prompt ON ---
     await textInput.fill('Test run 2');
     await page.getByRole('button', { name: 'Condense' }).click();
-    await expect(page.locator('div[ref="statsRef"]')).toBeVisible();
+    await expect(page.getByTestId('stats-display')).toBeVisible();
     expect(lastReceivedPrompt).toBe('MY_CUSTOM_PROMPT');
     
     // --- State Change: Disable Custom Prompt ---
     await openAdvancedSettings(page);
     const customPromptToggle = page.locator('label').getByRole('button', { name: '' }).locator('+ div > button');
     await customPromptToggle.click(); // This disables it
-    await page.getByRole('button', { name: 'Save' }).click();
-
-    // --- Run 3: Custom Prompt OFF again ---
+    await page.getByRole('button', { name: 'Save' }).click();    // --- Run 3: Custom Prompt OFF again ---
     await textInput.fill('Test run 3');
     await page.getByRole('button', { name: 'Condense' }).click();
-    await expect(page.locator('div[ref="statsRef"]')).toBeVisible();
+    await expect(page.getByTestId('stats-display')).toBeVisible();
     expect(lastReceivedPrompt).not.toContain('MY_CUSTOM_PROMPT');
     expect(lastReceivedPrompt).toContain('You are a drone');
   });

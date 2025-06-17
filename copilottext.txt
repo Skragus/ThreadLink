@@ -19,7 +19,7 @@ You will operate in a continuous loop for the **target file only**.
 -   Create the file and its header: `mkdir -p logs && echo "# AUTONOMOUS RUN for [TARGET_FILE_PATH]: $(date)" >> $LOG_FILE`
 -   All subsequent "Log" actions append to this `$LOG_FILE`.
 
-**Step 2: Execute the Target Test File**
+**Step 2: Execute the full Target Test File**
 -   Run the command: `npx playwright test [TARGET_FILE_PATH]`  `// MODIFIED`
 
 **Step 3: Analyze the Outcome**

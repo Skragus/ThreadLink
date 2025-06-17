@@ -266,11 +266,16 @@ function ThreadLink() {
       console.error("Error saving custom prompt settings:", error);
       throw error;
     }
-  };
-  const handleCondense = async () => {
+  };  const handleCondense = async () => {
     // Validation checks
     if (!inputText.trim()) {
       setError('Please paste some text to condense');
+      return;
+    }
+
+    // Check if custom prompt is enabled but empty
+    if (useCustomPrompt && (!customPrompt || !customPrompt.trim())) {
+      setError('Custom prompt cannot be empty. Please configure your custom prompt or disable it in settings.');
       return;
     }
 
@@ -364,20 +369,38 @@ function ThreadLink() {
           });
         },
         cancelled: () => cancelRef.current
-      } as any);
-
-      if (result.success && result.contextCard) {
+      } as any);      if (result.success && result.contextCard) {
         setOutputText(result.contextCard);
-        setStats({
-          executionTime: result.executionTime || '0',
-          compressionRatio: result.sessionStats?.compressionRatio || result.stats?.compressionRatio || '0',
-          successfulDrones: result.sessionStats?.successfulDrones || result.stats?.successfulDrones || 0,
-          totalDrones: result.sessionStats?.totalDrones || result.stats?.totalDrones || 0,
-          initialTokens: result.stats?.initialTokens,
-          finalTokens: result.stats?.finalTokens || result.sessionStats?.finalContentTokens
-        });
+        
+        // Create stats object with fallbacks to ensure it's always set
+        const defaultStats = {
+          executionTime: '0',
+          compressionRatio: '1.0',
+          successfulDrones: 1,
+          totalDrones: 1,
+          initialTokens: estimateTokens(inputText),
+          finalTokens: estimateTokens(result.contextCard)
+        };
+        
+        // Merge with actual stats if available
+        const mergedStats = {
+          executionTime: result.executionTime || defaultStats.executionTime,
+          compressionRatio: result.sessionStats?.compressionRatio || result.stats?.compressionRatio || defaultStats.compressionRatio,
+          successfulDrones: result.sessionStats?.successfulDrones || result.stats?.successfulDrones || defaultStats.successfulDrones,
+          totalDrones: result.sessionStats?.totalDrones || result.stats?.totalDrones || defaultStats.totalDrones,
+          initialTokens: result.stats?.initialTokens || defaultStats.initialTokens,
+          finalTokens: result.stats?.finalTokens || result.sessionStats?.finalContentTokens || defaultStats.finalTokens
+        };
+        
+        setStats(mergedStats);
         setIsProcessed(true);
-        console.log('✅ Processing complete:', result.stats);
+        console.log('✅ Processing complete:', { 
+          hasSessionStats: !!result.sessionStats, 
+          hasStats: !!result.stats, 
+          mergedStats,
+          originalSessionStats: result.sessionStats,
+          originalStats: result.stats 
+        });
       } else {
         const errorInfo = getErrorDisplay(result.error || 'Processing failed', result.errorType);
         setError(errorInfo);

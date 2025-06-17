@@ -34,13 +34,12 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   onCancel
 }) => {
   return (
-    <>
-      {/* Error Display */}
+    <>      {/* Error Display */}
       {error && (
-        <div ref={errorRef} className="mx-12 mt-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded text-red-400 text-sm select-none cursor-default">
+        <div ref={errorRef} data-testid="error-display" className="mx-12 mt-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded text-red-400 text-sm select-none cursor-default">
           {error}
         </div>
-      )}      {/* Stats Display */}
+      )}{/* Stats Display */}
       {stats && (
         <div 
           ref={statsRef} 
