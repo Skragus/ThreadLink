@@ -57,10 +57,11 @@ export class ThreadLinkPage {
 
   async cancelProcessing() {
     await this.cancelButton.click();
-  }
-  async waitForProcessingComplete() {
-    // Wait for the copy button to appear (indicates completion)
-    await this.copyButton.waitFor({ state: 'visible', timeout: 60000 });
+  }  async waitForProcessingComplete() {
+    // Wait for the stats display to appear (indicates completion)
+    await this._page.locator('[data-testid="stats-display"]').waitFor({ state: 'visible', timeout: 60000 });
+    // Also wait for the copy button as a secondary confirmation
+    await this.copyButton.waitFor({ state: 'visible', timeout: 10000 });
   }
 
   async getOutputText(): Promise<string> {
