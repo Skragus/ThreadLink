@@ -7,8 +7,7 @@ interface FooterProps {
   tokenCount: number;
   outputTokenCount: number;
   compressionRatio: string;
-  onCompressionChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  inputText: string;
+  onCompressionChange: (_e: React.ChangeEvent<HTMLSelectElement>) => void;
   isProcessed: boolean;
   isLoading: boolean;
   isCopied: boolean;
@@ -22,7 +21,6 @@ export const Footer: React.FC<FooterProps> = ({
   outputTokenCount,
   compressionRatio,
   onCompressionChange,
-  inputText,
   isProcessed,
   isLoading,
   isCopied,
@@ -55,9 +53,8 @@ export const Footer: React.FC<FooterProps> = ({
                 </select>
               </div>
             </div>
-            
-            <div className="flex gap-3 shrink-0">
-              {inputText && !isProcessed && (
+              <div className="flex gap-3 shrink-0">
+              {!isProcessed && (
                 <button 
                   onClick={onCondense}
                   disabled={isLoading}

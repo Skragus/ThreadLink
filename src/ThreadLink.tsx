@@ -614,7 +614,6 @@ function ThreadLink() {
           outputTokenCount={outputTokenCount}
           compressionRatio={compressionRatio}
           onCompressionChange={handleCompressionChange}
-          inputText={inputText}
           isProcessed={isProcessed}
           isLoading={isLoading}
           isCopied={isCopied}
