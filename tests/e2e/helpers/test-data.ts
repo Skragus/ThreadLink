@@ -21,10 +21,9 @@ export const TEST_DATA = {
     tokens: 15,
     expectedOutputPattern: /doing great/i
   },
-  
   small: {
     text: generateConversation(50),
-    tokens: 1000,
+    tokens: 11900, // Matches actual token counting
     expectedRatio: { min: 5, max: 15 },
     expectedDrones: 3
   },

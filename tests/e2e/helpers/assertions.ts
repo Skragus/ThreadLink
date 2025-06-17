@@ -17,7 +17,7 @@ export async function expectNoConsoleErrors(page: Page) {
 }
 
 export async function expectProgressPhase(page: Page, phase: string) {
-  const phaseElement = page.locator('.progress-phase, [data-testid="progress-phase"]');
+  const phaseElement = page.locator('.progress-phase, [data-testid="loading-message"]');
   await expect(phaseElement).toContainText(phase, { timeout: 10000 });
 }
 

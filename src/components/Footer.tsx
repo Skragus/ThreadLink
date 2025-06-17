@@ -5,6 +5,7 @@ import { formatTokenCount } from '../utils/textProcessing';
 
 interface FooterProps {
   tokenCount: number;
+  outputTokenCount: number;
   compressionRatio: string;
   onCompressionChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   inputText: string;
@@ -18,6 +19,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({
   tokenCount,
+  outputTokenCount,
   compressionRatio,
   onCompressionChange,
   inputText,
@@ -32,10 +34,11 @@ export const Footer: React.FC<FooterProps> = ({
     <>
       <div className="border-t border-[#181920] bg-[var(--bg-primary)] pb-4">
         <div className="px-12 py-4">
-          <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
-            <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] select-none cursor-default">
+          <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">            <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] select-none cursor-default">
               <div className="flex items-center gap-2 shrink-0">
-                <span className="font-mono w-32">{formatTokenCount(tokenCount)}</span>
+                <span className="font-mono w-32" data-testid="input-tokens">{formatTokenCount(tokenCount)}</span>
+                <span className="mx-2">→</span>
+                <span className="font-mono w-32" data-testid="output-tokens">{formatTokenCount(outputTokenCount)}</span>
                 <span className="mx-2">•</span>
                 <label htmlFor="compression-ratio-select" className="whitespace-nowrap cursor-default">
                   Compression level:

@@ -24,14 +24,11 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       progressBarRef.current.style.width = `${progressPercent}%`;
     }
   }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);
-
   return (
-    <div className="absolute inset-0 mx-12 my-4 bg-black bg-opacity-60 rounded-lg flex items-center justify-center">
+    <div className="absolute inset-0 mx-12 my-4 bg-black bg-opacity-60 rounded-lg flex items-center justify-center" data-testid="loading-overlay">
       <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-8 max-w-md w-full mx-4">
-        <div className="flex flex-col items-center space-y-6">
-          {/* Loading Message */}
-          <div className="text-center">
-            <div className="text-lg font-medium text-[var(--text-primary)] mb-2">
+        <div className="flex flex-col items-center space-y-6">          {/* Loading Message */}
+          <div className="text-center">            <div className="text-lg font-medium text-[var(--text-primary)] mb-2" data-testid="loading-message">
               {loadingProgress.message}
             </div>
             {loadingProgress.elapsedTime !== undefined && (
@@ -47,10 +44,10 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
               <div className="flex justify-between text-sm text-[var(--text-secondary)] mb-2">
                 <span>Progress: {loadingProgress.completedDrones || 0}/{loadingProgress.totalDrones} drones</span>
                 <span>{Math.round(((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100)}%</span>
-              </div>
-              <div className="w-full bg-[var(--divider)] rounded-full h-2">
+              </div>              <div className="w-full bg-[var(--divider)] rounded-full h-2">
                 <div 
                   ref={progressBarRef}
+                  data-testid="progress-bar"
                   className="bg-[var(--highlight-blue)] h-2 rounded-full transition-all duration-300 ease-out"
                 />
               </div>
