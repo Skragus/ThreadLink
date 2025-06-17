@@ -333,8 +333,7 @@ function ThreadLink() {
     
     const recencyStrengthValue = recencyMode ? 
       (recencyStrength === 0 ? 25 : recencyStrength === 1 ? 50 : 90) : 0;
-    
-    try {
+      try {
       const provider = MODEL_PROVIDERS[model];
       const apiKey = getAPIKey(provider);
       
@@ -353,12 +352,15 @@ function ThreadLink() {
         customPrompt: useCustomPrompt ? customPrompt : undefined
       };
 
+      console.log('🚀 Starting condensation pipeline...', { settings, apiKey: apiKey ? 'SET' : 'NOT_SET' });
+      
       const result: PipelineResult = await runCondensationPipeline({
         rawText: inputText,
         apiKey: apiKey,
         settings: settings,
         onProgress: (update: ProgressUpdate) => {
           const elapsedTime = (Date.now() - loadingStartTime.current) / 1000;
+          console.log('📊 Progress update:', update);
           setLoadingProgress({
             phase: update.phase || 'processing',
             message: update.message || 'Processing...',
@@ -369,12 +371,14 @@ function ThreadLink() {
           });
         },
         cancelled: () => cancelRef.current
-      } as any);      if (result.success && result.contextCard) {
+      } as any);
+
+      console.log('🏁 Pipeline completed:', { success: result.success, hasContextCard: !!result.contextCard, result });if (result.success && result.contextCard) {
         setOutputText(result.contextCard);
         
         // Create stats object with fallbacks to ensure it's always set
         const defaultStats = {
-          executionTime: '0',
+          executionTime: result.executionTime || '0',
           compressionRatio: '1.0',
           successfulDrones: 1,
           totalDrones: 1,
@@ -382,7 +386,7 @@ function ThreadLink() {
           finalTokens: estimateTokens(result.contextCard)
         };
         
-        // Merge with actual stats if available
+        // Merge with actual stats if available - ensure we ALWAYS have stats
         const mergedStats = {
           executionTime: result.executionTime || defaultStats.executionTime,
           compressionRatio: result.sessionStats?.compressionRatio || result.stats?.compressionRatio || defaultStats.compressionRatio,
@@ -392,12 +396,14 @@ function ThreadLink() {
           finalTokens: result.stats?.finalTokens || result.sessionStats?.finalContentTokens || defaultStats.finalTokens
         };
         
+        // CRITICAL: Always set stats for successful processing
         setStats(mergedStats);
         setIsProcessed(true);
-        console.log('✅ Processing complete:', { 
+        console.log('✅ Processing complete - Stats guaranteed:', { 
           hasSessionStats: !!result.sessionStats, 
           hasStats: !!result.stats, 
           mergedStats,
+          statsSet: true,
           originalSessionStats: result.sessionStats,
           originalStats: result.stats 
         });

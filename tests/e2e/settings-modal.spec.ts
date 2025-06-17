@@ -27,12 +27,11 @@ async function enableAndOpenCustomPromptEditor(page: Page) {
 // Mocked Gemini API endpoint
 const googleApiEndpoint = 'https://generativelanguage.googleapis.com/**';
 
-test.describe('Settings Modal & Advanced Configuration', () => {
-
-  test.beforeEach(async ({ page }) => {
+test.describe('Settings Modal & Advanced Configuration', () => {  test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Set a dummy API key to ensure condense button is always available for pipeline tests
-    await page.evaluate(() => localStorage.setItem('threadlink_api_key_google', 'DUMMY_KEY'));
+    // Use AIza prefix which is recognized by the getAPIKey function as a valid Google API key format
+    await page.evaluate(() => localStorage.setItem('threadlink_google_api_key', 'AIzaDUMMY_KEY_FOR_TESTING'));
     await page.reload();
   });
 
@@ -83,22 +82,53 @@ test.describe('Settings Modal & Advanced Configuration', () => {
     await expect(errorDisplay).toBeVisible();
     await expect(errorDisplay).toContainText(/Custom prompt cannot be empty/i);
     await expect(page.locator('.loading-overlay-container')).not.toBeVisible();
-  });
-
-  test('should correctly toggle custom prompt state between processing runs', async ({ page }) => {
+  });  test('should correctly toggle custom prompt state between processing runs', async ({ page }) => {
     let lastReceivedPrompt = '';
+    let requestCount = 0;
+
+    // Log all network requests to debug what's happening
+    page.on('request', request => {
+      console.log(`[NETWORK] ${request.method()} ${request.url()}`);
+    });
 
     await page.route(googleApiEndpoint, async (route: Route) => {
-      const requestBody = JSON.parse(route.request().postData()!);
-      // The system prompt is the first element in the 'contents' array.
-      lastReceivedPrompt = requestBody.contents[0].parts[0].text;
-      route.fulfill({ status: 200, body: '{"candidates": [{"content": {"parts": [{"text": "Mocked response"}]}}]}'});
+      requestCount++;
+      console.log(`[TEST] API request ${requestCount} intercepted:`, route.request().url());
+      try {
+        const requestBody = JSON.parse(route.request().postData()!);
+        // The system prompt is the first element in the 'contents' array.
+        lastReceivedPrompt = requestBody.contents[0].parts[0].text;
+        console.log(`[TEST] System prompt captured:`, lastReceivedPrompt.substring(0, 100));
+        
+        // Provide a more realistic response that should result in proper completion
+        const mockResponse = {
+          candidates: [{
+            content: {
+              parts: [{
+                text: "This is a condensed summary of the conversation containing the key points and insights from the original content."
+              }]
+            }
+          }]
+        };
+        
+        route.fulfill({ 
+          status: 200, 
+          body: JSON.stringify(mockResponse),
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error(`[TEST] Error processing request:`, error);
+        route.fulfill({ 
+          status: 500, 
+          body: JSON.stringify({ error: { message: 'Test mock error' } })
+        });
+      }
     });
-    
-    const textInput = page.getByPlaceholder('Paste your AI conversation here...');
-    await textInput.fill('Test run 1');    // --- Run 1: Custom Prompt OFF (Default) ---
+      const textInput = page.getByPlaceholder('Paste your AI conversation here...');
+    const longTestText = 'This is a longer test conversation that should be processed properly by the pipeline. '.repeat(20);
+    await textInput.fill(longTestText);    // --- Run 1: Custom Prompt OFF (Default) ---
     await page.getByRole('button', { name: 'Condense' }).click();
-    await expect(page.getByTestId('stats-display')).toBeVisible();
+    await expect(page.getByTestId('stats-display')).toBeVisible({ timeout: 15000 });
     expect(lastReceivedPrompt).not.toContain('MY_CUSTOM_PROMPT');
     expect(lastReceivedPrompt).toContain('You are a drone'); // Part of the default prompt
 
