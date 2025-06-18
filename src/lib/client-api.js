@@ -3,19 +3,24 @@
  * Replaces the Node.js utils.js with direct REST API calls
  */
 
-// Model to provider mapping (same as original)
+// Model to provider mapping (updated to match all available models)
 export const MODEL_PROVIDERS = {
-    // OpenAI models
-    "gpt-4o-mini": "openai",
-    "gpt-4.1-mini": "openai",
-    "gpt-4.1-nano": "openai",
-    
-    // Anthropic models
-    "claude-3-5-haiku-20241022": "anthropic",
-    "claude-3-haiku-20240307": "anthropic",
-    
     // Google models
     "gemini-1.5-flash": "google",
+    "gemini-1.5-pro": "google",
+    "gemini-pro": "google",
+    
+    // OpenAI models
+    "gpt-4": "openai",
+    "gpt-4o": "openai",
+    "gpt-4o-mini": "openai",
+    "gpt-3.5-turbo": "openai",
+    
+    // Anthropic models
+    "claude-3-5-sonnet-20241022": "anthropic",
+    "claude-3-5-haiku-20241022": "anthropic",
+    "claude-3-haiku-20240307": "anthropic",
+    "claude-3-opus-20240229": "anthropic",
 };
 
 // API endpoints
@@ -267,7 +272,7 @@ export function cleanAnthropicIntros(text, options = {}) {
             /^I'll condense [^:]*:\s*/i,
             /^I'll [^.]*\.\s*/i,
             /^I'll [^.]*\.\s*Let's [^:]*:\s*/i,
-            /^[🔬📊💡🚀📈📄🧪🎉💥⚠️✅❌⭐️🔍]+ [^:]*:\s*/i,
+            /^(?:🔬|📊|💡|🚀|📈|📄|🧪|🎉|💥|⚠️|✅|❌|⭐️|🔍)+ [^:]*:\s*/iu,
             /^[A-Z][a-z]+ [A-Z][^:]*Summary[^:]*:\s*/i,
             /^This is [^:]*:\s*/i,
             /^The following is [^:]*:\s*/i,

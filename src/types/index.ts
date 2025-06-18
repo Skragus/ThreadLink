@@ -18,7 +18,7 @@ export interface Stats {
 }
 
 export interface LoadingProgress {
-  phase: 'preparing' | 'launching' | 'processing' | 'finalizing';
+  phase: 'preparing' | 'launching' | 'processing' | 'finalizing' | 'cancelled';
   message: string;
   completedDrones?: number;
   totalDrones?: number;

@@ -1,4 +1,3 @@
-
 // tests/e2e/settings.spec.ts
 import { test, expect } from '@playwright/test';
 import { ThreadLinkPage } from './helpers/ui-helpers';
@@ -12,8 +11,12 @@ test.describe('Settings Configuration', () => {
     await page.goto('/');
     threadlink = new ThreadLinkPage(page);
     await setupAPIMocks(page);
-    await threadlink.addApiKey('google', TEST_KEYS.valid.google);
-  });  test('compression level affects output', async ({ page }) => {
+    await threadlink.addApiKey('google', TEST_KEYS.valid.google);  });  test('compression level settings can be changed', async ({ page }) => {
+    // Note: We cannot test if compression level actually affects output in E2E tests
+    // because we use mock APIs that return fixed responses. Compression level only
+    // sets token count targets for real LLM APIs, which is not applicable in mocked environments.
+    
+    // Compression level dropdown is in the footer, not in settings modal
     const compressionLevels = ['light', 'balanced', 'aggressive'] as const;
     
     // Test that compression level settings can be changed
@@ -21,18 +24,18 @@ test.describe('Settings Configuration', () => {
       await threadlink.setCompressionLevel(level);
       
       // Verify the compression level is set by checking the select value
-      const compressionSelect = page.getByRole('combobox', { name: /compression/i });
+      const compressionSelect = page.getByRole('combobox', { name: 'Compression level:' });
       await expect(compressionSelect).toHaveValue(level);
     }
     
     // Test a specific level change
     await threadlink.setCompressionLevel('aggressive');
-    const aggressiveSelect = page.getByRole('combobox', { name: /compression/i });
+    const aggressiveSelect = page.getByRole('combobox', { name: 'Compression level:' });
     await expect(aggressiveSelect).toHaveValue('aggressive');
     
     // Change to light and verify
     await threadlink.setCompressionLevel('light');
-    const lightSelect = page.getByRole('combobox', { name: /compression/i });
+    const lightSelect = page.getByRole('combobox', { name: 'Compression level:' });
     await expect(lightSelect).toHaveValue('light');
     
     // Add text and verify UI elements are responsive
@@ -143,6 +146,59 @@ test.describe('Settings Configuration', () => {
     await saveButton.click({ force: true });
     
     // Wait for modal to close
+    await expect(modal).toBeHidden();
+  });  test('advanced LLM temperature settings functionality', async ({ page }) => {
+    // Open settings modal
+    await threadlink.settingsButton.click({ force: true });
+    const modal = page.locator('[role="dialog"]');
+    await expect(modal).toBeVisible();
+    
+    // Verify advanced settings are initially hidden
+    const temperatureInput = modal.locator('#adv-temperature');
+    await expect(temperatureInput).not.toBeVisible();
+    
+    // Open advanced settings
+    const advancedToggle = modal.locator('button:has-text("Advanced Settings")');
+    await advancedToggle.click({ force: true });
+    
+    // Wait for temperature input to become visible
+    await expect(temperatureInput).toBeVisible();
+    
+    // Verify temperature input attributes and initial state
+    await expect(temperatureInput).toHaveAttribute('type', 'number');
+    await expect(temperatureInput).toHaveAttribute('min', '0');
+    await expect(temperatureInput).toHaveAttribute('max', '2');
+    await expect(temperatureInput).toHaveAttribute('step', '0.1');
+    
+    // Verify label is present
+    const temperatureLabel = modal.locator('label[for="adv-temperature"]');
+    await expect(temperatureLabel).toHaveText('LLM Temperature');
+    
+    // Test setting different temperature values
+    await temperatureInput.fill('0.2');
+    await expect(temperatureInput).toHaveValue('0.2');
+    
+    await temperatureInput.fill('1.2');
+    await expect(temperatureInput).toHaveValue('1.2');
+    
+    // Test boundary values
+    await temperatureInput.fill('0');
+    await expect(temperatureInput).toHaveValue('0');
+    
+    await temperatureInput.fill('2');
+    await expect(temperatureInput).toHaveValue('2');
+    
+    // Test decimal precision
+    await temperatureInput.fill('0.75');
+    await expect(temperatureInput).toHaveValue('0.75');
+    
+    // Set a final test value
+    await temperatureInput.fill('0.8');
+    await expect(temperatureInput).toHaveValue('0.8');
+    
+    // Close the modal
+    const saveButton = modal.locator('button:text("Save")');
+    await saveButton.click({ force: true });
     await expect(modal).toBeHidden();
   });
 });

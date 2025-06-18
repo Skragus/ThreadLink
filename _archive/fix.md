@@ -36,3 +36,5 @@ improve boilerplate cleaner using sites from askweve extensions permissions
 go over tests with sonnet
 
 fix red squggles in input field
+
+make custom prompt toggle dark when off

@@ -13,7 +13,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',  use: {
-    baseURL: 'http://localhost:5175', // Temporarily using available port
+    baseURL: 'http://localhost:5173', // Match webServer.url for consistency
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',

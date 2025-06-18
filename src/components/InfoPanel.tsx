@@ -22,12 +22,10 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-medium text-[var(--text-primary)] select-none cursor-default">ThreadLink User Guide</h2>
+  return (    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div role="dialog" aria-modal="true" aria-labelledby="info-panel-title" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}        <div className="flex items-center justify-between mb-6">
+          <h2 id="info-panel-title" className="text-2xl font-medium text-[var(--text-primary)] select-none cursor-default">ThreadLink User Guide</h2>
           <button
             onClick={onClose}
             aria-label="Close info panel"

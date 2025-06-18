@@ -44,11 +44,12 @@ function simpleDecrypt(encryptedText, key = 'threadlink_key_2025') {
 }
 
 /**
- * Save API key to localStorage
+ * Save API key to localStorage (only if caching is enabled in the UI)
  * @param {string} provider - 'openai', 'anthropic', or 'google'
  * @param {string} key - API key
+ * @param {boolean} enableCache - Whether to actually save to localStorage
  */
-export function saveAPIKey(provider, key) {
+export function saveAPIKey(provider, key, enableCache = true) {
     if (!provider || !key) return;
     
     const storageKey = {
@@ -56,16 +57,24 @@ export function saveAPIKey(provider, key) {
         anthropic: STORAGE_KEYS.ANTHROPIC_KEY,
         google: STORAGE_KEYS.GOOGLE_KEY
     }[provider];
-      if (storageKey) {
+      if (storageKey && enableCache) {
         try {
             // Encrypt the API key before storing it
             const encryptedKey = simpleEncrypt(key);
             localStorage.setItem(storageKey, encryptedKey);
-            console.log(`✅ Saved ${provider} API key (encrypted)`);        } catch (error) {
+            console.log(`✅ Saved ${provider} API key to browser cache (encrypted)`);        } catch (error) {
             console.error(`Failed to save ${provider} API key:`, error);
             if (error.name === 'QuotaExceededError') {
                 throw error; // Re-throw to be handled by UI layer
             }
+        }
+    } else if (storageKey && !enableCache) {
+        // If caching is disabled, remove any existing key from storage
+        try {
+            localStorage.removeItem(storageKey);
+            console.log(`🗑️ Removed ${provider} API key from browser cache (caching disabled)`);
+        } catch (error) {
+            console.error(`Failed to remove ${provider} API key:`, error);
         }
     }
 }

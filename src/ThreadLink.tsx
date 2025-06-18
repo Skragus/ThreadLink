@@ -108,9 +108,8 @@ function ThreadLink() {
   const statsRef = useRef<HTMLDivElement>(null);
   const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
   const loadingStartTime = useRef<number>(0);
-
   // Processing Speed logic
-  const isAnthropicModel = model.includes('claude');
+  const isAnthropicModel = model.toLowerCase().includes('claude');
 
   // Function to save current settings to localStorage
   const saveCurrentSettings = () => {
@@ -182,14 +181,17 @@ function ThreadLink() {
   useEffect(() => {
     setTokenCount(estimateTokens(displayText));
   }, [displayText]);
-
   // Scroll to stats after processing
   useEffect(() => {
     if (isProcessed && stats) {
       const timer = setTimeout(() => {
         requestAnimationFrame(() => {
-          if (statsRef.current) {
-            statsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (statsRef.current && statsRef.current.scrollIntoView) {
+            try {
+              statsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (error) {
+              console.warn('Could not scroll to stats:', error);
+            }
           }
         });
       }, 50);
@@ -218,40 +220,65 @@ function ThreadLink() {
 
   const handleCompressionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setCompressionRatio(e.target.value);
-  };
-  const handleCancel = () => {
-    if (isCancelling) return;
+  };  const handleCancel = () => {
+    console.log('🛑 handleCancel called - checking if already cancelling');
+    if (isCancelling) {
+      console.log('⚠️ Already cancelling, ignoring redundant cancel request');
+      return;
+    }
     
+    console.log('🛑 Setting cancellation flags: isCancelling=true, cancelRef.current=true');
+    
+    // Set both state flags immediately
     setIsCancelling(true);
     cancelRef.current = true;
+    
+    // Set error message to provide user feedback
     setError('Processing was cancelled');
-  };  const saveAPIKeys = () => {
+    
+    // Reset any progress indicators to avoid lingering progress states
+    setLoadingProgress({
+      phase: 'cancelled',
+      message: 'Processing was cancelled',
+      completedDrones: 0,
+      totalDrones: 0,
+      elapsedTime: 0,
+      progress: 0
+    });
+    
+    console.log('🛑 Cancel state set - UI will update and orchestrator will detect cancelRef.current flag');
+    
+    // Log cancellation state for debugging
+    setTimeout(() => {
+      console.log(`🛑 Cancellation state after 100ms: isCancelling=${isCancelling}, cancelRef.current=${cancelRef.current}`);
+    }, 100);
+    
+    // Make sure the loading state is reset after a short delay
+    // This helps ensure the UI resets properly even if there's an issue with the orchestrator
+    setTimeout(() => {
+      if (isCancelling) {
+        console.log('🛑 Forcing loading state reset after delay');
+        setIsLoading(false);
+        setIsCancelling(false);
+      }
+    }, 5000);
+  };const saveAPIKeys = () => {
     try {
       // Save or remove API keys based on cache settings (respects user privacy choice)
-      // For testing: also save if key exists but cache is disabled
-      if (googleAPIKey && (googleCacheEnabled || process.env.NODE_ENV === 'test')) {
-        saveAPIKey('google', googleAPIKey);
-      } else if (googleAPIKey) {
-        // If key exists but cache disabled, save anyway (for testing compatibility)
-        saveAPIKey('google', googleAPIKey);
+      if (googleAPIKey) {
+        saveAPIKey('google', googleAPIKey, googleCacheEnabled);
       } else {
         removeAPIKey('google');
       }
       
-      if (openaiAPIKey && (openaiCacheEnabled || process.env.NODE_ENV === 'test')) {
-        saveAPIKey('openai', openaiAPIKey);
-      } else if (openaiAPIKey) {
-        // If key exists but cache disabled, save anyway (for testing compatibility)
-        saveAPIKey('openai', openaiAPIKey);
+      if (openaiAPIKey) {
+        saveAPIKey('openai', openaiAPIKey, openaiCacheEnabled);
       } else {
         removeAPIKey('openai');
       }
       
-      if (anthropicAPIKey && (anthropicCacheEnabled || process.env.NODE_ENV === 'test')) {
-        saveAPIKey('anthropic', anthropicAPIKey);
-      } else if (anthropicAPIKey) {
-        // If key exists but cache disabled, save anyway (for testing compatibility)
-        saveAPIKey('anthropic', anthropicAPIKey);
+      if (anthropicAPIKey) {
+        saveAPIKey('anthropic', anthropicAPIKey, anthropicCacheEnabled);
       } else {
         removeAPIKey('anthropic');
       }
@@ -277,7 +304,7 @@ function ThreadLink() {
       console.error("Error saving custom prompt settings:", error);
       throw error;
     }
-  };  const handleCondense = async () => {
+  };const handleCondense = async () => {
     console.log('🔄 handleCondense called with:', { inputText: inputText?.length, model, useCustomPrompt, customPrompt: customPrompt?.length });
     
     // Validation checks
@@ -391,7 +418,13 @@ function ThreadLink() {
             progress: update.progress
           });
         },
-        cancelled: () => cancelRef.current
+        cancelled: () => {
+          const isCancelled = cancelRef.current;
+          if (isCancelled) {
+            console.log('🛑 Cancellation check - returning TRUE - processing should stop');
+          }
+          return isCancelled;
+        }
       } as any);
 
       console.log('🏁 Pipeline completed:', { success: result.success, hasContextCard: !!result.contextCard, result });if (result.success && result.contextCard) {
@@ -456,15 +489,44 @@ function ThreadLink() {
   const handleOverrideCancel = () => {
     setShowOverrideModal(false);
     setShowSettings(true); // Open settings so user can adjust
-  };
-
-  const handleCopy = async () => {
+  };  const handleCopy = async () => {
     const textToCopy = isProcessed ? outputText : inputText;
-    await navigator.clipboard.writeText(textToCopy);
-    setIsCopied(true);
-    setTimeout(() => {
-      setIsCopied(false);
-    }, 2000);
+    
+    // Check if there's any text to copy
+    if (!textToCopy || textToCopy.trim() === '') {
+      setError('No content to copy.');
+      setTimeout(() => {
+        setError('');
+      }, 3000);
+      return;
+    }
+    
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setIsCopied(true);
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+      console.log('✅ Content copied to clipboard successfully');
+    } catch (error) {
+      console.error('❌ Failed to copy to clipboard:', error);
+      
+      // Provide different errors based on the specific clipboard error
+      let errorMessage = 'Failed to copy to clipboard. Please try again.';
+      
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'Clipboard permission denied. Check your browser settings.';
+        } else if (error.name === 'SecurityError') {
+          errorMessage = 'Clipboard access was blocked for security reasons.';
+        }
+      }
+      
+      setError(errorMessage);
+      setTimeout(() => {
+        setError('');
+      }, 3000);
+    }
   };
   const handleReset = () => {
     setInputText('');
@@ -483,25 +545,28 @@ function ThreadLink() {
       [section]: !prev[section]
     }));
   };
-
   const handleDeleteKey = (provider: 'google' | 'openai' | 'anthropic') => {
+    console.log(`🗑️ Deleting ${provider} API key - clearing input, disabling cache, removing from storage`);
+    
     switch (provider) {
       case 'google':
-        setGoogleAPIKey('');
-        setGoogleCacheEnabled(false);
-        removeAPIKey('google');
+        setGoogleAPIKey(''); // Clear the input field
+        setGoogleCacheEnabled(false); // Toggle cache off
+        removeAPIKey('google'); // Remove from browser storage
         break;
       case 'openai':
-        setOpenaiAPIKey('');
-        setOpenaiCacheEnabled(false);
-        removeAPIKey('openai');
+        setOpenaiAPIKey(''); // Clear the input field
+        setOpenaiCacheEnabled(false); // Toggle cache off
+        removeAPIKey('openai'); // Remove from browser storage
         break;
       case 'anthropic':
-        setAnthropicAPIKey('');
-        setAnthropicCacheEnabled(false);
-        removeAPIKey('anthropic');
+        setAnthropicAPIKey(''); // Clear the input field
+        setAnthropicCacheEnabled(false); // Toggle cache off
+        removeAPIKey('anthropic'); // Remove from browser storage
         break;
     }
+    
+    console.log(`✅ ${provider} API key deleted - input cleared, cache disabled, storage wiped`);
   };
 
   return (
@@ -553,6 +618,10 @@ function ThreadLink() {
           setUseCustomPrompt={setUseCustomPrompt}
           customPrompt={customPrompt}
           setCustomPrompt={setCustomPrompt}
+          // Pass current API key states for model filtering
+          googleAPIKey={googleAPIKey}
+          openaiAPIKey={openaiAPIKey}
+          anthropicAPIKey={anthropicAPIKey}
           onClose={() => {
             saveCurrentSettings();
             setShowSettings(false);

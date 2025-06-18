@@ -191,13 +191,14 @@ async function processDroneBatch(
         temperature = 0.3,
         targetTokens = 500,
         retries = 2,
-        cancelled,
-        apiKey,
+        cancelled,        apiKey,
         customPrompt // Add this
     } = options;
-
-    const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash'];    // Check for cancellation
-    if (cancelled && cancelled()) {
+    
+    const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash'];
+    
+    // Check for cancellation - enhanced logging
+    if (cancelled && checkForCancellation(cancelled, `drone-${batchIndex + 1}-before-processing`)) {
         console.log(`🛑 Drone ${batchIndex + 1}: Cancelled before processing`);
         throw new Error('Processing was cancelled');
     }
@@ -259,8 +260,8 @@ async function processDroneBatch(
 
     // Retry loop with intelligent error handling
     for (let attempt = 1; attempt <= retries + 1; attempt++) {
-        // Check for cancellation before each attempt
-        if (cancelled && cancelled()) {
+        // Check for cancellation before each attempt with enhanced logging
+        if (cancelled && checkForCancellation(cancelled, `drone-${batchIndex + 1}-attempt-${attempt}`)) {
             console.log(`🛑 Drone ${batchIndex + 1}: Cancelled during attempt ${attempt}`);
             throw new Error('Processing was cancelled');
         }
@@ -450,11 +451,12 @@ async function processDronesWithConcurrency(
     let currentConcurrency = options.maxConcurrency || modelConfig.safeConcurrency;
     let hasHitRateLimit = false;
     
-    console.log(`🚀 Starting with concurrency: ${currentConcurrency} for model: ${model}`);
-
-    // Check for cancellation before starting
+    console.log(`🚀 Starting with concurrency: ${currentConcurrency} for model: ${model}`);    // Check for cancellation before starting
     if (cancelled && cancelled()) {
+        console.log('🛑 DRONE PROCESSING: Initial cancellation detected before processing any drones');
         throw new Error('Processing was cancelled');
+    } else {
+        console.log('✅ DRONE PROCESSING: Initial cancellation check passed');
     }
 
     const results = new Array(batches.length);
@@ -474,21 +476,23 @@ async function processDronesWithConcurrency(
             }
         }
     };    // Process initial batches
-    for (let i = 0; i < batches.length; i++) {
-        // Check for cancellation before processing each batch
+    for (let i = 0; i < batches.length; i++) {        // Check for cancellation before processing each batch
         if (cancelled && cancelled()) {
-            console.log('🛑 Processing cancelled during batch processing');
+            console.log(`🛑 DRONE PROCESSING: Cancellation detected before processing batch ${i+1}/${batches.length}`);
             throw new Error('Processing was cancelled');
+        } else if (i % 5 === 0) { // Log only every 5th batch to reduce log spam
+            console.log(`✅ DRONE PROCESSING: Cancellation check passed for batch ${i+1}/${batches.length}`);
         }
 
         // Wait if we're at concurrency limit
         while (executing.size >= currentConcurrency) {
             await Promise.race(Array.from(executing));
-            
-            // Check for cancellation after waiting
+              // Check for cancellation after waiting
             if (cancelled && cancelled()) {
-                console.log('🛑 Processing cancelled while waiting for concurrency slot');
+                console.log(`🛑 DRONE PROCESSING: Cancellation detected while waiting for concurrency slot for batch ${i+1}`);
                 throw new Error('Processing was cancelled');
+            } else {
+                console.log(`✅ DRONE PROCESSING: Cancellation check passed after waiting for concurrency slot for batch ${i+1}`);
             }
         }
           // Always save progress to localStorage if available - needed for tests to pass
@@ -856,6 +860,32 @@ Compression Ratio: ${sessionStats.compressionRatio}:1 | Drones: ${successfulDron
  * @param {Function} options.onProgress - Progress callback function
  * @returns {Promise<{success: boolean, contextCard: string, stats: Object}>}
  */
+/**
+ * Helper function to consistently check for cancellation
+ * and provide detailed logging
+ * @param {Function} cancelFn The cancellation check function
+ * @param {string} context Where the cancellation check is happening
+ * @returns {boolean} Whether the operation is cancelled
+ */
+function checkForCancellation(cancelFn, context) {
+    if (!cancelFn) return false;
+    
+    try {
+        const isCancelled = cancelFn();
+        console.log(`🔍 Cancellation check [${context}]: ${isCancelled}`);
+        
+        if (isCancelled) {
+            console.log(`🛑 Operation cancelled at: ${context}`);
+            return true;
+        }
+        
+        return false;
+    } catch (e) {
+        console.log(`⚠️ Error checking cancellation at [${context}]:`, e);
+        return false;
+    }
+}
+
 export async function runCondensationPipeline(options = {}) {
     const {
         rawText,
@@ -863,7 +893,27 @@ export async function runCondensationPipeline(options = {}) {
         apiKey,
         onProgress,
         cancelled
-    } = options;    const {
+    } = options;
+    
+    // Immediately check for cancellation
+    if (cancelled && checkForCancellation(cancelled, 'pipeline-start')) {
+        console.log('🛑 Pipeline cancelled before starting');
+        
+        // Notify with progress update about cancellation
+        if (onProgress) {
+            try {
+                onProgress({
+                    phase: 'cancelled',
+                    message: 'Processing was cancelled',
+                    progress: 0
+                });
+            } catch (e) {
+                console.log('⚠️ Error sending cancellation progress update:', e);
+            }
+        }
+        
+        return { success: false, error: 'Processing was cancelled' };
+    }const {
         model = 'gemini-1.5-flash',
         temperature = 0.3,
         maxConcurrency,
@@ -917,11 +967,12 @@ export async function runCondensationPipeline(options = {}) {
         const tokensSaved = initialTokens - cleanedTokens;
         const percentSaved = ((tokensSaved / initialTokens) * 100).toFixed(1);
         
-        console.log(`📊 Token count: ${initialTokens.toLocaleString()} → ${cleanedTokens.toLocaleString()} tokens (saved ${tokensSaved.toLocaleString()} tokens, ${percentSaved}%)`);
-
-        // Check for cancellation
+        console.log(`📊 Token count: ${initialTokens.toLocaleString()} → ${cleanedTokens.toLocaleString()} tokens (saved ${tokensSaved.toLocaleString()} tokens, ${percentSaved}%)`);        // Check for cancellation
         if (cancelled && cancelled()) {
+            console.log('🛑 MAIN PIPELINE: Cancellation detected at preprocessing stage, aborting...');
             throw new Error('Processing was cancelled');
+        } else {
+            console.log('✅ MAIN PIPELINE: Cancellation check passed at preprocessing stage');
         }
 
         // Calculate effective drone density considering maxDrones

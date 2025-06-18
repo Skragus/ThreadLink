@@ -1,5 +1,10 @@
 // Test setup file for Vitest
-import { vi, beforeEach } from 'vitest';
+import { vi, beforeEach, expect } from 'vitest';
+import '@testing-library/jest-dom';
+
+// Set up Jest DOM matchers with Vitest
+import * as matchers from '@testing-library/jest-dom/matchers';
+expect.extend(matchers);
 
 // Mock window APIs that might not be available in test environment
 Object.defineProperty(window, 'localStorage', {
