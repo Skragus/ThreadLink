@@ -31,3 +31,6 @@ playwright/.cache/
 
 # Python script outputs (temporary analysis files)
 scripts/quickmap_*.md
+
+# Archive folder for development reference (not for distribution)
+_archive/
