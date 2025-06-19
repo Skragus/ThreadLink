@@ -57,10 +57,8 @@ export const TextEditor: React.FC<TextEditorProps> = ({
             <div>{stats.successfulDrones}/{stats.totalDrones} drones successful</div>
           </div>
         </div>
-      )}
-
-      {/* Main content area */}
-      <div className="flex-grow flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-4 relative resize-none">
+      )}      {/* Main content area */}
+      <div className="flex-grow flex flex-col justify-center px-3 sm:px-8 lg:px-12 py-2 sm:py-4 relative resize-none">
         <div className="relative w-full flex-grow">
           <textarea
             ref={outputTextareaRef}
