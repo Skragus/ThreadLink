@@ -51,14 +51,9 @@ body {
   overflow: hidden;
 }
 
-textarea {
-  min-height: 200px;
-}
-
 /* Mobile textarea handling */
 @media (max-width: 640px) {
   textarea {
-    min-height: 60vh; /* Use viewport height for better mobile experience */
     font-size: 16px; /* Prevents zoom on iOS */
   }
 }

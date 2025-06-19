@@ -58,7 +58,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
           </div>
         </div>
       )}      {/* Main content area */}
-      <div className="flex-grow flex flex-col justify-center px-3 sm:px-8 lg:px-12 py-2 sm:py-4 relative resize-none">
+      <div className="flex-grow flex flex-col justify-center px-3 sm:px-8 lg:px-12 py-2 sm:py-4 relative">
         <div className="relative w-full flex-grow">
           <textarea
             ref={outputTextareaRef}
@@ -68,7 +68,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
             onChange={onTextChange}
             readOnly={isProcessed || isLoading}
             spellCheck={false}
-          />          {/* Floating Badge - positioned to avoid scroll bars */}
+          />{/* Floating Badge - positioned to avoid scroll bars */}
           <a 
             href="https://bolt.new" 
             target="_blank" 
