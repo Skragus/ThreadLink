@@ -12,7 +12,6 @@
 9. [API Integration](#api-integration)
 10. [Storage & Privacy](#storage--privacy)
 11. [Performance Optimization](#performance-optimization)
-12. [Testing Framework](#testing-framework)
 
 ---
 
