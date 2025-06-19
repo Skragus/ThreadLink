@@ -1,12 +1,12 @@
-import React from 'react';
-import ThreadLink from './components/ThreadLink';
+import './App.css'
+import ThreadLink from './ThreadLink'
 
 function App() {
   return (
-    <div>
+    <>
       <ThreadLink />
-    </div>
-  );
+    </>
+  )
 }
 
-export default App;
+export default App

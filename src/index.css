@@ -3,10 +3,42 @@
 @tailwind utilities;
 
 body, * {
-  user-select: none;
   -webkit-user-select: none; /* For Safari */
   -moz-user-select: none;    /* For Firefox */
   -ms-user-select: none;     /* For Internet Explorer/Edge */
+  user-select: none;
+}
+
+/* Mobile viewport and touch handling */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  /* Fix mobile viewport height issues */
+  height: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  /* Ensure body takes full height on mobile */
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fix for mobile browsers that don't handle 100vh properly */
+#root {
+  height: 100vh;
+  /* Use dynamic viewport height on supported browsers */
+  height: 100dvh;
+}
+
+/* Mobile safe areas */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
 }
 
 :root {
@@ -21,8 +53,42 @@ body, * {
   --link-text: #A3B3F3;
 }
 
-textarea {
-  min-height: 200px;
+/* Loading progress bar styles */
+.progress-bar {
+  --progress-width: 0%;
+  width: var(--progress-width);
+}
+
+.progress-bar-container {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Mobile textarea handling */
+@media (max-width: 640px) {
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    /* Ensure textarea doesn't get squished on mobile */
+    min-height: 200px;
+  }
+  
+  /* Mobile-specific layout fixes */
+  .mobile-flex-fix {
+    min-height: 0;
+    flex: 1 1 0%;
+  }
+  
+  /* Fix for mobile browser address bar height changes */
+  .h-screen {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height */
+  }
+  
+  /* Ensure flex containers work properly on mobile */
+  .flex-grow {
+    flex-grow: 1;
+    min-height: 0;
+  }
 }
 
 /* Hide number input spinners */
@@ -34,4 +100,12 @@ input[type=number]::-webkit-outer-spin-button {
 
 input[type=number] {
   -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Mobile input handling */
+@media (max-width: 640px) {
+  input, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
 }
