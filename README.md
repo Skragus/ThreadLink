@@ -52,7 +52,6 @@ This project is built on a **100% client-side, serverless architecture** to guar
     * **Playwright** for comprehensive end-to-end testing across all major browsers.
     * **Jest & Vitest** for unit and integration testing.
     * **Netlify** for continuous deployment.
-    * Includes custom repository analysis tooling (**QuickMap.py**) for automated code auditing.
 
 ---
 
