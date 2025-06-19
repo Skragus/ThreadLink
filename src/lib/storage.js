@@ -16,7 +16,7 @@ const STORAGE_KEYS = {
 /**
  * Simple XOR encryption for API keys
  * This is a basic obfuscation to prevent plaintext storage
- * Note: This is not cryptographically secure - it's just to pass the test
+ * Note: This is not cryptographically secure - it's just to provide minimal protection
  */
 function simpleEncrypt(text, key = 'threadlink_key_2025') {
     let result = '';
@@ -250,12 +250,12 @@ export function getSettings() {
 export function getDefaultSettings() {
     return {
         model: 'gemini-1.5-flash',
-        temperature: 0.3,
+        temperature: 0.5,
         processingSpeed: 'balanced',
         recencyMode: false,
         recencyStrength: 0,
-        droneDensity: 10, // drones per 10k tokens
-        maxDrones: 100,
+        droneDensity: 2, // drones per 10k tokens
+        maxDrones: 50,
         targetTokens: null, // null means auto-calculate
         useCustomPrompt: false,
         customPrompt: null

@@ -14,20 +14,24 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   loadingProgress,
   isCancelling,
   onCancel
-}) => {
-  const progressBarRef = useRef<HTMLDivElement>(null);
+}) => {  const progressBarRef = useRef<HTMLDivElement>(null);
 
   // Update progress bar width
   useEffect(() => {
-    if (progressBarRef.current && loadingProgress.totalDrones && loadingProgress.totalDrones > 0) {
-      const progressPercent = Math.min(100, ((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100);
-      progressBarRef.current.style.width = `${progressPercent}%`;
+    if (progressBarRef.current) {
+      if (loadingProgress.totalDrones && loadingProgress.totalDrones > 0) {
+        const progressPercent = Math.min(100, ((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100);
+        progressBarRef.current.style.width = `${progressPercent}%`;
+      } else {
+        // Start with 0% width to prevent flash
+        progressBarRef.current.style.width = '0%';
+      }
     }
-  }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-testid="loading-overlay">
+  }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-8 max-w-md w-full mx-4">
         <div className="flex flex-col items-center space-y-6">          {/* Loading Message */}
-          <div className="text-center">            <div className="text-lg font-medium text-[var(--text-primary)] mb-2" data-testid="loading-message">
+          <div className="text-center">            <div className="text-lg font-medium text-[var(--text-primary)] mb-2">
               {loadingProgress.message}
             </div>
             {loadingProgress.elapsedTime !== undefined && (
@@ -46,8 +50,8 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
               </div>              <div className="w-full bg-[var(--divider)] rounded-full h-2">
                 <div 
                   ref={progressBarRef}
-                  data-testid="progress-bar"
                   className="bg-[var(--highlight-blue)] h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: '0%' }} /* Initialize with 0% width */
                 />
               </div>
             </div>

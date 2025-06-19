@@ -6,8 +6,8 @@
 
 // === CORE USER-FACING SETTINGS ===
 export const TARGET_CONTEXT_CARD_TOKENS = 3000;   // What the user actually wants
-export const DRONES_PER_10K_TOKENS = 2;           // 2 drones per 10k input tokens
-export const MAX_TOTAL_DRONES = 100;              // Hard cap to prevent runaway costs
+export const DRONES_PER_10K_TOKENS = 2;           // 2 drones per 10k input tokens (updated from 10)
+export const MAX_TOTAL_DRONES = 50;               // Hard cap to prevent runaway costs (updated from 100)
 
 // === NEW QUALITY & COMPRESSION GUARDRAILS ===
 export const MAX_COMPRESSION_RATIO = 30;  // Maximum compression ratio allowed
