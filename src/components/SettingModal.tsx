@@ -73,10 +73,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       openai: cached.openai || !!openaiAPIKey,
       anthropic: cached.anthropic || !!anthropicAPIKey
     };
-  }, [googleAPIKey, openaiAPIKey, anthropicAPIKey]);
-  // Check if the current model has its provider API key configured
+  }, [googleAPIKey, openaiAPIKey, anthropicAPIKey]);  // Check if the current model has its provider API key configured
   const currentModelProvider = MODEL_PROVIDERS[model] as keyof typeof availableProviders;
-  const isCurrentModelAvailable = currentModelProvider && availableProviders[currentModelProvider];// All available models - only cheap, fast models for batch processing
+  const isCurrentModelAvailable = currentModelProvider && availableProviders[currentModelProvider];
+
+  // All available models - only cheap, fast models for batch processing  
   const availableModels = useMemo(() => {
     return {
       google: [
@@ -85,9 +86,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       openai: [
         { value: "gpt-4.1-nano", label: "GPT-4.1 Nano" },
         { value: "gpt-4.1-mini", label: "GPT-4.1 Mini" }
-      ],
-      anthropic: [
-        { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" }
       ]
     };
   }, []);
@@ -153,17 +151,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <option key={modelOption.value} value={modelOption.value}>
                       {modelOption.label}
                     </option>
-                  ))}
-                </optgroup>
+                  ))}                </optgroup>
                 <optgroup label="OpenAI">
                   {availableModels.openai.map(modelOption => (
-                    <option key={modelOption.value} value={modelOption.value}>
-                      {modelOption.label}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Anthropic">
-                  {availableModels.anthropic.map(modelOption => (
                     <option key={modelOption.value} value={modelOption.value}>
                       {modelOption.label}
                     </option>

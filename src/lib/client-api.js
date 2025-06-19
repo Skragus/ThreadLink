@@ -6,14 +6,10 @@
 // Model to provider mapping (only cheap, fast models for batch processing)
 export const MODEL_PROVIDERS = {
     // Google models
-    "gemini-1.5-flash": "google",
-    
+    "gemini-1.5-flash": "google",    
     // OpenAI models
     "gpt-4.1-nano": "openai",
-    "gpt-4.1-mini": "openai",
-    
-    // Anthropic models
-    "claude-3-5-haiku-20241022": "anthropic",
+    "gpt-4.1-mini": "openai"
 };
 
 // API endpoints
@@ -54,7 +50,7 @@ async function generateOpenAIResponse(
     userPrompt,
     model,
     apiKey,
-    temperature = 0.7,
+    temperature = 0.5,
     maxTokens = 4096
 ) {
     const response = await fetch(API_ENDPOINTS.openai, {
@@ -94,7 +90,7 @@ async function generateAnthropicResponse(
     userPrompt,
     model,
     apiKey,
-    temperature = 0.7,
+    temperature = 0.5,
     maxTokens = 4096
 ) {
     const response = await fetch(API_ENDPOINTS.anthropic, {
@@ -134,7 +130,7 @@ async function generateGoogleResponse(
     userPrompt,
     model,
     apiKey,
-    temperature = 0.7,
+    temperature = 0.5,
     maxTokens = null // Google doesn't use max_tokens in the same way
 ) {    const endpoint = API_ENDPOINTS.google.replace('{model}', model);
     
@@ -307,9 +303,10 @@ export async function testProviderConnection(provider, apiKey) {
         const testPrompt = "Hello";
         const testSystem = "You are a helpful assistant. Respond with 'OK'.";
         
-        let result;        const testModels = {
+        let result;
+        const testModels = {
             openai: "gpt-3.5-turbo",
-            anthropic: "claude-3-5-haiku-20241022", 
+            anthropic: "claude-3-haiku-20240307", 
             google: "gemini-1.5-flash"
         };
         

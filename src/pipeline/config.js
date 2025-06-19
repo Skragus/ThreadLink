@@ -101,13 +101,7 @@ Your condensed segment will join others to create a comprehensive context card f
 
 // === MODEL CONFIGURATIONS ===
 export const MODEL_CONFIGS = {
-    'claude-3-5-haiku-20241022': { 
-        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
-        rateLimitBackoff: DEFAULT_RATE_LIMIT_BACKOFF_MS,  // 1 minute conservative wait
-        maxRetries: 3,
-        aggressive: false
-    },
-    'gemini-1.5-flash': { 
+    'gemini-1.5-flash': {
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
         rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 30 seconds
         maxRetries: 2,
