@@ -280,7 +280,7 @@ export function getDefaultSettings() {    return {
         temperature: 0.7,
         processingSpeed: 'balanced',
         recencyMode: false,
-        recencyStrength: 0,
+        recencyStrength: 1, // Default to "Balanced" (50%)
         droneDensity: 2, // drones per 10k tokens
         maxDrones: 50,
         targetTokens: null, // null means auto-calculate
