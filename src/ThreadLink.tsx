@@ -568,12 +568,27 @@ function ThreadLink() {
     setError('');
     setStats(null);
     cancelRef.current = false;
-  };
-  const toggleSection = (section: keyof ExpandedSections) => {
+  };  const toggleSection = (section: keyof ExpandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }));
+  };
+
+  // InfoPanel close handler - collapses all sections when closing
+  const handleInfoPanelClose = () => {
+    setShowInfo(false);
+    // Reset all expanded sections to collapsed state
+    setExpandedSections({
+      what: false,
+      howto: false,
+      compression: false,
+      strategy: false,
+      drones: false,
+      recency: false,
+      advanced: false,
+      privacy: false
+    });
   };
   // Welcome banner handlers
   const handleDismissWelcomeBanner = () => {
@@ -683,8 +698,8 @@ function ThreadLink() {
           isOpen={showInfo}
           expandedSections={expandedSections}
           onToggleSection={toggleSection}
-          onClose={() => setShowInfo(false)}
-        />        <ConfigurationOverrideModal
+          onClose={handleInfoPanelClose}
+        /><ConfigurationOverrideModal
           isOpen={showOverrideModal}
           calculatedDrones={overrideModalData.calculatedDrones}
           maxDrones={overrideModalData.maxDrones}
