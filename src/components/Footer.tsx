@@ -18,7 +18,6 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({
   tokenCount,
-  outputTokenCount,
   compressionRatio,
   onCompressionChange,
   isProcessed,
@@ -35,9 +34,6 @@ export const Footer: React.FC<FooterProps> = ({
           <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">            <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] select-none cursor-default">
               <div className="flex items-center gap-2 shrink-0">
                 <span className="font-mono w-32" data-testid="input-tokens">{formatTokenCount(tokenCount)}</span>
-                <span className="mx-2">→</span>
-                <span className="font-mono w-32" data-testid="output-tokens">{formatTokenCount(outputTokenCount)}</span>
-                <span className="mx-2">•</span>
                 <label htmlFor="compression-ratio-select" className="whitespace-nowrap cursor-default">
                   Compression level:
                 </label>

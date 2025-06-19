@@ -252,7 +252,6 @@ test.describe('Custom Prompt Editor', () => {
     // Should show error mentioning custom prompt
     await expect(page.locator('text=/custom prompt|prompt error/i')).toBeVisible({ timeout: 10000 });
   });
-
   test('toggle custom prompt during active session', async ({ page }) => {
     // Process with default prompt first
     await threadlink.pasteText(TEST_DATA.tiny.text);
@@ -281,6 +280,236 @@ test.describe('Custom Prompt Editor', () => {
     
     // Outputs should be different
     expect(customOutput).not.toBe(defaultOutput);
+  });
+
+  test.describe('Advanced Custom Prompt Features', () => {
+    test('custom prompt toggle keyboard navigation', async ({ page }) => {
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      
+      const toggle = page.locator('[data-testid="custom-prompt-toggle"]');
+      
+      // Focus toggle with Tab navigation
+      await page.keyboard.press('Tab');
+      await toggle.focus();
+      
+      // Should be able to activate with Enter or Space
+      await page.keyboard.press('Enter');
+      await expect(page.locator('text="WARNING: CORE LOGIC OVERRIDE"')).toBeVisible();
+      
+      // Close with Escape
+      await page.keyboard.press('Escape');
+      await expect(page.locator('text="WARNING: CORE LOGIC OVERRIDE"')).not.toBeVisible();
+    });
+
+    test('custom prompt editor keyboard shortcuts', async ({ page }) => {
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      await page.locator('[data-testid="custom-prompt-toggle"]').click();
+      
+      const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
+      
+      // Test Ctrl+A (select all)
+      await editor.focus();
+      await page.keyboard.press('Control+a');
+      await page.keyboard.type('New prompt with {TARGET_TOKENS}');
+      
+      // Test Ctrl+Z (undo) - depends on browser support
+      await page.keyboard.press('Control+z');
+      
+      // Content should be modified
+      const value = await editor.inputValue();
+      expect(value.length).toBeGreaterThan(0);
+    });
+
+    test('prompt editor drag and drop functionality', async ({ page }) => {
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      await page.locator('[data-testid="custom-prompt-toggle"]').click();
+      
+      const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
+      
+      // Clear editor and test drag/drop simulation
+      await editor.clear();
+      
+      // Simulate dropping text (browser may prevent this, but test the handler)
+      await editor.dispatchEvent('drop', {
+        dataTransfer: {
+          getData: () => 'Dropped prompt text with {TARGET_TOKENS}'
+        }
+      });
+      
+      // Should handle the drop event gracefully
+      expect(editor).toBeVisible();
+    });
+
+    test('custom prompt with special characters and formatting', async ({ page }) => {
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      await page.locator('[data-testid="custom-prompt-toggle"]').click();
+      
+      const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
+      
+      // Test special characters and formatting
+      const specialPrompt = `
+        Extract information using these criteria:
+        • Priority items (marked with *)
+        • Action items (marked with @)
+        • Questions (marked with ?)
+        
+        Format: JSON with {TARGET_TOKENS} tokens max.
+        Use UTF-8: émojis 🚀, quotes "smart", and symbols ≤≥±
+      `;
+      
+      await editor.clear();
+      await editor.fill(specialPrompt);
+      
+      await page.getByRole('button', { name: '' }).click();
+      
+      // Verify it was saved
+      await page.getByRole('button', { name: /edit prompt/i }).click();
+      const savedValue = await editor.inputValue();
+      expect(savedValue).toContain('UTF-8');
+      expect(savedValue).toContain('🚀');
+    });
+
+    test('prompt editor performance with large text', async ({ page }) => {
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      await page.locator('[data-testid="custom-prompt-toggle"]').click();
+      
+      const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
+      
+      // Create a large prompt (test performance)
+      const largePrompt = 'Analyze this text. '.repeat(1000) + 'Target: {TARGET_TOKENS} tokens.';
+      
+      const startTime = Date.now();
+      await editor.clear();
+      await editor.fill(largePrompt);
+      const endTime = Date.now();
+      
+      // Should handle large text reasonably fast (< 5 seconds)
+      expect(endTime - startTime).toBeLessThan(5000);
+      
+      // Should still be functional
+      await page.getByRole('button', { name: '' }).click();
+      await expect(page.locator('text="WARNING: CORE LOGIC OVERRIDE"')).not.toBeVisible();
+    });
+  });
+
+  test.describe('Settings Modal Integration', () => {
+    test('settings modal toggle states', async ({ page }) => {
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      
+      // Initially OFF
+      const toggle = page.locator('[data-testid="custom-prompt-toggle"]');
+      await expect(toggle).toHaveAttribute('aria-checked', 'false');
+      
+      // Click to enable
+      await toggle.click();
+      
+      // Should open editor, not just toggle
+      await expect(page.locator('text="WARNING: CORE LOGIC OVERRIDE"')).toBeVisible();
+      
+      // Go back without saving
+      await page.getByRole('button', { name: '' }).click();
+      
+      // Should still be OFF
+      await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    });
+
+    test('custom prompt edit button appears when enabled', async ({ page }) => {
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      
+      // Enable custom prompt
+      await page.locator('[data-testid="custom-prompt-toggle"]').click();
+      await page.locator('textarea[data-testid="custom-prompt-editor"]').fill('Test prompt {TARGET_TOKENS}');
+      await page.getByRole('button', { name: '' }).click();
+      
+      // Should now show edit button
+      await expect(page.getByRole('button', { name: /edit prompt/i })).toBeVisible();
+      
+      // Edit button should work
+      await page.getByRole('button', { name: /edit prompt/i }).click();
+      await expect(page.locator('text="WARNING: CORE LOGIC OVERRIDE"')).toBeVisible();
+    });
+
+    test('danger zone visual styling', async ({ page }) => {
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      
+      const dangerZone = page.locator('text="DANGER ZONE"').locator('..');
+      
+      // Should have red/warning styling
+      const borderColor = await dangerZone.evaluate(el => 
+        window.getComputedStyle(el).borderColor
+      );
+      
+      // Should contain red coloring (RGB values)
+      expect(borderColor).toMatch(/rgb.*\([0-9,\s]*[1-9][0-9]{2}.*,.*[0-9,\s]*,.*[0-9,\s]*\)/);
+    });
+  });
+
+  test.describe('Error Handling and Edge Cases', () => {
+    test('network error during prompt save', async ({ page }) => {
+      // Simulate network issues
+      await page.route('**/*', route => route.abort());
+      
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      await page.locator('[data-testid="custom-prompt-toggle"]').click();
+      
+      const editor = page.locator('textarea[data-testid="custom-prompt-editor"]');
+      await editor.fill('Network test prompt {TARGET_TOKENS}');
+      
+      await page.getByRole('button', { name: '' }).click();
+      
+      // Should handle gracefully (no crashes)
+      expect(page.locator('text="WARNING: CORE LOGIC OVERRIDE"')).not.toBeVisible();
+    });
+
+    test('browser storage corruption handling', async ({ page }) => {
+      // Corrupt localStorage
+      await page.evaluate(() => {
+        localStorage.setItem('threadlink_custom_prompt', 'invalid}json{data');
+        localStorage.setItem('threadlink_use_custom_prompt', 'not_boolean');
+      });
+      
+      await page.reload();
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      
+      // Should handle corrupted data gracefully
+      const toggle = page.locator('[data-testid="custom-prompt-toggle"]');
+      await expect(toggle).toBeVisible();
+      
+      // Should default to OFF state
+      await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    });
+
+    test('concurrent prompt editor sessions', async ({ page, browser }) => {
+      // Open second tab to simulate concurrent editing
+      const secondPage = await browser.newPage();
+      await secondPage.goto('/');
+      
+      // First tab: Open prompt editor
+      await threadlink.settingsButton.click();
+      await page.getByRole('button', { name: '' }).click();
+      await page.locator('[data-testid="custom-prompt-toggle"]').click();
+      
+      // Second tab: Try to open settings
+      const threadlink2 = new ThreadLinkPage(secondPage);
+      await threadlink2.settingsButton.click();
+      await secondPage.getByRole('button', { name: '' }).click();
+      
+      // Both should function independently
+      await expect(page.locator('text="WARNING: CORE LOGIC OVERRIDE"')).toBeVisible();
+      await expect(secondPage.locator('[data-testid="custom-prompt-toggle"]')).toBeVisible();
+      
+      await secondPage.close();
+    });
   });
 });
 

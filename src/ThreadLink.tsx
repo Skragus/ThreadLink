@@ -10,6 +10,7 @@ import APIKeysModal from './components/APIKeysModal';
 import { SettingsModal } from './components/SettingModal';
 import InfoPanel from './components/InfoPanel';
 import { ConfigurationOverrideModal } from './components/ConfigurationOverrideModal';
+import WelcomeBanner from './components/WelcomeBanner';
 
 // Import types
 import { 
@@ -90,7 +91,6 @@ function ThreadLink() {
   const [googleCacheEnabled, setGoogleCacheEnabled] = useState(false);
   const [openaiCacheEnabled, setOpenaiCacheEnabled] = useState(false);
   const [anthropicCacheEnabled, setAnthropicCacheEnabled] = useState(false);
-
   // Info Panel expandable sections state
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
     what: false,
@@ -102,6 +102,9 @@ function ThreadLink() {
     advanced: false,
     privacy: false
   });
+
+  // Welcome banner state
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
 
   // Refs
   const errorRef = useRef<HTMLDivElement>(null);
@@ -147,9 +150,7 @@ function ThreadLink() {
     const loadedCustomPrompt = getCustomPrompt();
     
     if (loadedUseCustomPrompt) setUseCustomPrompt(loadedUseCustomPrompt);
-    if (loadedCustomPrompt) setCustomPrompt(loadedCustomPrompt);
-
-    // Load settings from localStorage
+    if (loadedCustomPrompt) setCustomPrompt(loadedCustomPrompt);    // Load settings from localStorage
     const savedSettings = getSettings();
     if (savedSettings) {
       if (savedSettings.model) setModel(savedSettings.model);
@@ -159,7 +160,17 @@ function ThreadLink() {
       if (savedSettings.recencyStrength !== undefined) setRecencyStrength(savedSettings.recencyStrength);
       if (savedSettings.droneDensity !== undefined) setAdv_droneDensity(savedSettings.droneDensity);
       if (savedSettings.maxDrones !== undefined) setAdv_maxDrones(savedSettings.maxDrones);
-    }
+    }    // Check if this is a first-time visit and show welcome banner
+    // Do this check after API keys are loaded
+    setTimeout(() => {
+      const hasVisitedBefore = localStorage.getItem('threadlink_has_visited');
+      const hasAnyApiKeys = googleAPIKey || openaiAPIKey || anthropicAPIKey || 
+                           getAPIKey('google') || getAPIKey('openai') || getAPIKey('anthropic');
+      
+      if (!hasVisitedBefore && !hasAnyApiKeys) {
+        setShowWelcomeBanner(true);
+      }
+    }, 100);
   }, []);
 
   // Auto-reset processing speed when switching to Anthropic
@@ -290,8 +301,7 @@ function ThreadLink() {
       console.error("An unexpected error occurred while saving API keys:", error);
       throw error;
     }
-    
-    // Save custom prompt settings
+      // Save custom prompt settings
     try {
       saveUseCustomPrompt(useCustomPrompt);
       if (customPrompt) {
@@ -303,6 +313,12 @@ function ThreadLink() {
       }
       console.error("Error saving custom prompt settings:", error);
       throw error;
+    }
+
+    // Hide welcome banner when user saves API keys
+    if (googleAPIKey || openaiAPIKey || anthropicAPIKey) {
+      setShowWelcomeBanner(false);
+      localStorage.setItem('threadlink_has_visited', 'true');
     }
   };const handleCondense = async () => {
     console.log('🔄 handleCondense called with:', { inputText: inputText?.length, model, useCustomPrompt, customPrompt: customPrompt?.length });
@@ -331,7 +347,7 @@ function ThreadLink() {
     const apiKey = getAPIKey(provider);
     if (!apiKey) {
       console.log('❌ Validation failed: No API key for provider', provider);
-      setError(`Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key`);
+      setError(`Please configure your API key to get started`);
       setShowAPIKeys(true);
       return;
     }
@@ -538,12 +554,16 @@ function ThreadLink() {
     setStats(null);
     cancelRef.current = false;
   };
-
   const toggleSection = (section: keyof ExpandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }));
+  };
+  // Welcome banner handlers
+  const handleDismissWelcomeBanner = () => {
+    setShowWelcomeBanner(false);
+    localStorage.setItem('threadlink_has_visited', 'true');
   };
   const handleDeleteKey = (provider: 'google' | 'openai' | 'anthropic') => {
     console.log(`🗑️ Deleting ${provider} API key - clearing input, disabling cache, removing from storage`);
@@ -649,9 +669,7 @@ function ThreadLink() {
           expandedSections={expandedSections}
           onToggleSection={toggleSection}
           onClose={() => setShowInfo(false)}
-        />
-
-        <ConfigurationOverrideModal
+        />        <ConfigurationOverrideModal
           isOpen={showOverrideModal}
           calculatedDrones={overrideModalData.calculatedDrones}
           maxDrones={overrideModalData.maxDrones}
@@ -659,37 +677,53 @@ function ThreadLink() {
           onCancel={handleOverrideCancel}
         />
 
-        <Header
-          onInfoClick={() => setShowInfo(true)}
-          onAPIKeysClick={() => setShowAPIKeys(true)}
-          onSettingsClick={() => setShowSettings(true)}
-        />
+        {/* Header Navigation */}
+        <header>
+          <Header
+            onInfoClick={() => setShowInfo(true)}
+            onAPIKeysClick={() => setShowAPIKeys(true)}
+            onSettingsClick={() => setShowSettings(true)}
+          />
+        </header>
 
-        <TextEditor
-          displayText={displayText}
-          isLoading={isLoading}
-          isProcessed={isProcessed}
-          error={error}
-          stats={stats}
-          loadingProgress={loadingProgress}
-          isCancelling={isCancelling}
-          errorRef={errorRef}
-          statsRef={statsRef}
-          outputTextareaRef={outputTextareaRef}
-          onTextChange={handleTextChange}
-          onCancel={handleCancel}
-        />        <Footer
-          tokenCount={tokenCount}
-          outputTokenCount={outputTokenCount}
-          compressionRatio={compressionRatio}
-          onCompressionChange={handleCompressionChange}
-          isProcessed={isProcessed}
-          isLoading={isLoading}
-          isCopied={isCopied}
-          onCondense={handleCondense}
-          onCopy={handleCopy}
-          onReset={handleReset}
-        />
+        {/* Main Content Area */}
+        <main className="flex-grow flex flex-col">
+          <WelcomeBanner
+            isVisible={showWelcomeBanner}
+            onDismiss={handleDismissWelcomeBanner}
+          />
+
+          <TextEditor
+            displayText={displayText}
+            isLoading={isLoading}
+            isProcessed={isProcessed}
+            error={error}
+            stats={stats}
+            loadingProgress={loadingProgress}
+            isCancelling={isCancelling}
+            errorRef={errorRef}
+            statsRef={statsRef}
+            outputTextareaRef={outputTextareaRef}
+            onTextChange={handleTextChange}
+            onCancel={handleCancel}
+          />
+        </main>
+
+        {/* Footer Controls */}
+        <footer>
+          <Footer
+            tokenCount={tokenCount}
+            outputTokenCount={outputTokenCount}
+            compressionRatio={compressionRatio}
+            onCompressionChange={handleCompressionChange}
+            isProcessed={isProcessed}
+            isLoading={isLoading}
+            isCopied={isCopied}
+            onCondense={handleCondense}
+            onCopy={handleCopy}
+            onReset={handleReset}
+          />
+        </footer>
       </div>
     </>
   );

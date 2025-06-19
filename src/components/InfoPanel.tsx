@@ -1,6 +1,6 @@
 // components/InfoPanel.tsx - Info Panel Component
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
   X, ChevronDown, ChevronRight, Sparkles, Copy, 
   Shield, Package, Scale, Bot, Focus, Settings
@@ -20,9 +20,73 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
   onToggleSection,
   onClose
 }) => {
+  // Refs for each section
+  const sectionRefs = {
+    what: useRef<HTMLDivElement>(null),
+    howto: useRef<HTMLDivElement>(null),
+    compression: useRef<HTMLDivElement>(null),
+    strategy: useRef<HTMLDivElement>(null),
+    drones: useRef<HTMLDivElement>(null),
+    recency: useRef<HTMLDivElement>(null),
+    advanced: useRef<HTMLDivElement>(null),
+    privacy: useRef<HTMLDivElement>(null),
+  };
+
+  // Ref for scrollable container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Keep track of the previously expanded sections to detect changes
+  const prevExpandedRef = useRef<{[key: string]: boolean}>({});
+  
+  // Effect to scroll to expanded section when it changes
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    // Find which section was just expanded (that wasn't expanded before)
+    const newlyExpandedSection = Object.keys(expandedSections).find(
+      section => 
+        expandedSections[section as keyof ExpandedSections] && 
+        !prevExpandedRef.current[section]
+    ) as keyof ExpandedSections | undefined;
+    
+    // Store current state for next comparison
+    prevExpandedRef.current = {...expandedSections};
+    
+    if (newlyExpandedSection && sectionRefs[newlyExpandedSection]?.current && scrollContainerRef.current) {
+      // Add a slight delay to ensure the section is fully rendered
+      setTimeout(() => {
+        if (sectionRefs[newlyExpandedSection]?.current && scrollContainerRef.current) {
+          const sectionElement = sectionRefs[newlyExpandedSection].current;
+          const scrollContainer = scrollContainerRef.current;
+          
+          // Scroll the section into view with some padding at the top
+          const sectionTop = sectionElement.offsetTop - 120; // 20px padding
+          scrollContainer.scrollTo({
+            top: sectionTop,
+            behavior: 'smooth'
+          });
+        }
+      }, 50);
+    }
+  }, [expandedSections, isOpen]);
+
+  // Handler for toggling a section with scroll
+  const handleToggleSection = (section: keyof ExpandedSections) => {
+    onToggleSection(section);
+  };
+
   if (!isOpen) return null;
 
-  return (    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={handleBackdropClick}
+    >
       <div role="dialog" aria-modal="true" aria-labelledby="info-panel-title" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}        <div className="flex items-center justify-between mb-6">
           <h2 id="info-panel-title" className="text-2xl font-medium text-[var(--text-primary)] select-none cursor-default">ThreadLink User Guide</h2>
@@ -36,11 +100,11 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pr-2 space-y-3">
           {/* Section 1: What is ThreadLink? */}
-          <div className="border border-[var(--divider)] rounded-lg">
+          <div ref={sectionRefs.what} className="border border-[var(--divider)] rounded-lg">
             <button
-              onClick={() => onToggleSection('what')}
+              onClick={() => handleToggleSection('what')}
               className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
             >
               <Sparkles size={20} className="text-[var(--highlight-blue)]" />
@@ -76,9 +140,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           </div>
 
           {/* Section 2: How to Use ThreadLink */}
-          <div className="border border-[var(--divider)] rounded-lg">
+          <div ref={sectionRefs.howto} className="border border-[var(--divider)] rounded-lg">
             <button
-              onClick={() => onToggleSection('howto')}
+              onClick={() => handleToggleSection('howto')}
               className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
             >
               <Copy size={20} className="text-[var(--highlight-blue)]" />
@@ -133,9 +197,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           </div>
 
           {/* Section 3: Understanding Compression */}
-          <div className="border border-[var(--divider)] rounded-lg">
+          <div ref={sectionRefs.compression} className="border border-[var(--divider)] rounded-lg">
             <button
-              onClick={() => onToggleSection('compression')}
+              onClick={() => handleToggleSection('compression')}
               className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
             >
               <Package size={20} className="text-[var(--highlight-blue)]" />
@@ -173,9 +237,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           </div>
 
           {/* Section 4: Context Card Strategy */}
-          <div className="border border-[var(--divider)] rounded-lg">
+          <div ref={sectionRefs.strategy} className="border border-[var(--divider)] rounded-lg">
             <button
-              onClick={() => onToggleSection('strategy')}
+              onClick={() => handleToggleSection('strategy')}
               className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
             >
               <Scale size={20} className="text-[var(--highlight-blue)]" />
@@ -218,9 +282,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           </div>
 
           {/* Section 5: Meet Your Drones */}
-          <div className="border border-[var(--divider)] rounded-lg">
+          <div ref={sectionRefs.drones} className="border border-[var(--divider)] rounded-lg">
             <button
-              onClick={() => onToggleSection('drones')}
+              onClick={() => handleToggleSection('drones')}
               className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
             >
               <Bot size={20} className="text-[var(--highlight-blue)]" />
@@ -286,9 +350,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           </div>
 
           {/* Section 6: Recency Mode */}
-          <div className="border border-[var(--divider)] rounded-lg">
+          <div ref={sectionRefs.recency} className="border border-[var(--divider)] rounded-lg">
             <button
-              onClick={() => onToggleSection('recency')}
+              onClick={() => handleToggleSection('recency')}
               className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
             >
               <Focus size={20} className="text-[var(--highlight-blue)]" />
@@ -336,9 +400,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           </div>
 
           {/* Section 7: Advanced Controls */}
-          <div className="border border-[var(--divider)] rounded-lg">
+          <div ref={sectionRefs.advanced} className="border border-[var(--divider)] rounded-lg">
             <button
-              onClick={() => onToggleSection('advanced')}
+              onClick={() => handleToggleSection('advanced')}
               className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
             >
               <Settings size={20} className="text-[var(--highlight-blue)]" />
@@ -399,9 +463,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           </div>
 
           {/* Section 8: Privacy & The Project */}
-          <div className="border border-[var(--divider)] rounded-lg">
+          <div ref={sectionRefs.privacy} className="border border-[var(--divider)] rounded-lg">
             <button
-              onClick={() => onToggleSection('privacy')}
+              onClick={() => handleToggleSection('privacy')}
               className="w-full px-4 py-2 flex items-center gap-3 hover:bg-[var(--bg-primary)] transition-colors rounded-lg cursor-pointer"
             >
               <Shield size={20} className="text-[var(--highlight-blue)]" />

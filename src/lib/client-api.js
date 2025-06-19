@@ -3,24 +3,17 @@
  * Replaces the Node.js utils.js with direct REST API calls
  */
 
-// Model to provider mapping (updated to match all available models)
+// Model to provider mapping (only cheap, fast models for batch processing)
 export const MODEL_PROVIDERS = {
     // Google models
     "gemini-1.5-flash": "google",
-    "gemini-1.5-pro": "google",
-    "gemini-pro": "google",
     
     // OpenAI models
-    "gpt-4": "openai",
-    "gpt-4o": "openai",
-    "gpt-4o-mini": "openai",
-    "gpt-3.5-turbo": "openai",
+    "gpt-4.1-nano": "openai",
+    "gpt-4.1-mini": "openai",
     
     // Anthropic models
-    "claude-3-5-sonnet-20241022": "anthropic",
     "claude-3-5-haiku-20241022": "anthropic",
-    "claude-3-haiku-20240307": "anthropic",
-    "claude-3-opus-20240229": "anthropic",
 };
 
 // API endpoints
@@ -188,7 +181,7 @@ async function generateGoogleResponse(
 export async function generateResponse(
     systemInstructions,
     userPrompt,
-    model = "gpt-4o",
+    model = "gpt-4.1-nano",
     apiKey,
     temperature = 0.7,
     maxTokens = null

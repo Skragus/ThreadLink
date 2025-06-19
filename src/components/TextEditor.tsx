@@ -48,32 +48,32 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         >
           Processed in {stats.executionTime}s • {stats.compressionRatio}:1 compression • {stats.successfulDrones}/{stats.totalDrones} drones successful
         </div>
-      )}
-
-      {/* Main content area */}
-      <div className="flex-grow flex flex-col justify-center px-12 py-4 relative resize-none">
-        <textarea
-          ref={outputTextareaRef}
-          className={`w-full flex-grow bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isLoading ? 'blur-sm' : ''} ${isProcessed || isLoading ? 'cursor-default' : 'cursor-text'}`}
-          placeholder="Paste your AI conversation here..."
-          value={displayText}
-          onChange={onTextChange}
-          readOnly={isProcessed || isLoading}
-        />
-
-        {/* Floating Badge */}
-        <a 
-          href="https://bolt.new" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="absolute bottom-7 right-14 z-10"
-        >
-          <img 
-            src="src/assets/bolt-badge.png"
-            alt="Powered by Bolt.new" 
-            className="w-20 h-auto opacity-10 hover:opacity-50 transition-opacity"
+      )}      {/* Main content area */}      <div className="flex-grow flex flex-col justify-center px-12 py-4 relative resize-none">
+        <div className="relative w-full flex-grow">
+          <textarea
+            ref={outputTextareaRef}
+            className={`w-full h-full bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isProcessed || isLoading ? 'cursor-default' : 'cursor-text'}`}
+            placeholder="Paste your AI conversation here..."
+            value={displayText}
+            onChange={onTextChange}
+            readOnly={isProcessed || isLoading}
+            spellCheck={false}
           />
-        </a>
+
+          {/* Floating Badge */}
+          <a 
+            href="https://bolt.new" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="absolute bottom-5 right-4 z-10"
+          >
+            <img 
+              src="src/assets/bolt-badge.png"
+              alt="Powered by Bolt.new" 
+              className="w-20 h-auto opacity-10 hover:opacity-50 transition-opacity"
+            />
+          </a>
+        </div>
         
         {/* Loading Overlay */}
         {isLoading && (

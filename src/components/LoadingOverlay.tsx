@@ -23,9 +23,8 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       const progressPercent = Math.min(100, ((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100);
       progressBarRef.current.style.width = `${progressPercent}%`;
     }
-  }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);
-  return (
-    <div className="absolute inset-0 mx-12 my-4 bg-black bg-opacity-60 rounded-lg flex items-center justify-center" data-testid="loading-overlay">
+  }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-testid="loading-overlay">
       <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-8 max-w-md w-full mx-4">
         <div className="flex flex-col items-center space-y-6">          {/* Loading Message */}
           <div className="text-center">            <div className="text-lg font-medium text-[var(--text-primary)] mb-2" data-testid="loading-message">

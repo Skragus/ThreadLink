@@ -18,7 +18,6 @@ export const CustomPromptEditor: React.FC<CustomPromptEditorProps> = ({
   onSave,
   onBack
 }) => {  const [promptText, setPromptText] = useState(customPrompt);
-  const [showInitialWarning, setShowInitialWarning] = useState(true);
 
   useEffect(() => {
     // If no custom prompt exists, populate with default from config
@@ -43,124 +42,66 @@ export const CustomPromptEditor: React.FC<CustomPromptEditorProps> = ({
       if (!confirmed) return;
     }
     onBack();
-  };
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-[var(--card-bg)] border border-red-500/50 rounded-lg w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
-        {/* First-time warning overlay */}
-        {showInitialWarning && (
-          <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 rounded-lg">
-            <div className="bg-red-950 border-2 border-red-500 rounded-lg p-6 max-w-lg mx-4">
-              <div className="flex items-center space-x-3 mb-4">
-                <AlertTriangle size={32} className="text-red-400" />
-                <h3 className="text-xl font-bold text-red-400">FIRST TIME WARNING</h3>
-                <AlertTriangle size={32} className="text-red-400" />
-              </div>
-              
-              <div className="space-y-4 text-red-200">
-                <p className="font-medium">
-                  You are about to access <strong>ADVANCED SYSTEM PROMPT EDITING</strong>.
-                </p>
-                <div className="bg-red-900/30 border border-red-400/30 rounded p-3">
-                  <p className="text-sm">
-                    <strong>⚠️ RISKS:</strong>
-                  </p>
-                  <ul className="text-sm mt-2 space-y-1 list-disc list-inside">
-                    <li>Complete processing failure</li>
-                    <li>Dramatically increased API costs</li>
-                    <li>Unpredictable or corrupted output</li>
-                    <li>No technical support for custom prompts</li>
-                  </ul>
-                </div>
-                <p className="text-sm text-red-300">
-                  This will override the core logic that makes ThreadLink work. Only proceed if you understand prompt engineering and accept full responsibility for any issues.
-                </p>
-              </div>
-              
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowInitialWarning(false)}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  I Accept All Risks
-                </button>
-                <button
-                  onClick={onBack}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="border-b border-red-500/30 p-4 bg-red-950/20">
+  };  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-[var(--card-bg)] border border-red-500/50 rounded-lg w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col">        {/* Header */}
+        <div className="border-b border-red-500/30 p-3 sm:p-4 bg-red-950/20">
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={handleBack}
               className="flex items-center space-x-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
               <ChevronLeft size={20} />
-              <span>Back</span>
+              <span className="hidden sm:inline">Back</span>
             </button>
-            <div className="flex items-center space-x-2 text-red-400">
-              <AlertTriangle size={20} />
-              <span className="font-bold">DANGER ZONE</span>
-              <AlertTriangle size={20} />
+            <div className="flex-1 flex justify-center">
+              <div className="flex items-center space-x-1 sm:space-x-2 text-red-400">
+                <AlertTriangle size={16} className="sm:w-5 sm:h-5" />
+                <span className="font-bold text-xs sm:text-sm">WARNING: CORE LOGIC OVERRIDE</span>
+                <AlertTriangle size={16} className="sm:w-5 sm:h-5" />
+              </div>
             </div>
+            <div className="w-[100px]"></div> {/* Spacer to balance the back button */}
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-red-400 flex items-center space-x-2">
-              <AlertTriangle size={24} />
-              <span>WARNING: CORE LOGIC OVERRIDE</span>
-            </h2>
-            <p className="text-red-300 text-sm">
-              You are changing the fundamental instructions for the AI. Unstable results, higher costs, and processing failures are likely.
-            </p>
-            <div className="bg-red-900/20 border border-red-500/30 rounded p-3 mt-3">
-              <p className="text-[var(--text-secondary)] text-sm">
-                <strong>Core Logic:</strong> This prompt is sent to EVERY drone that processes your text. 
-                The <code className="bg-black/30 px-1 py-0.5 rounded text-red-300">{'{TARGET_TOKENS}'}</code> variable 
-                will be replaced with the calculated token budget for each drone based on your compression settings.
+            <p className="text-red-300 text-xs sm:text-sm text-center">
+              You are changing the fundamental instructions for the AI. Unstable results and failures are likely.
+            </p><div className="bg-red-900/20 border border-red-500/30 rounded p-2 sm:p-3 mt-3">              <p className="text-[var(--text-secondary)] text-xs sm:text-sm mb-3">
+                <strong>System Prompt:</strong> This acts as a function applied to every text batch. Each drone gets this prompt + your text segment. 
+                The <code className="bg-black/30 px-1 py-0.5 rounded text-red-300 text-xs">{'{TARGET_TOKENS}'}</code> variable 
+                sets each drone's output length target. Using the variable is optional.
               </p>
+              
+              <p className="text-red-200 text-xs mb-1">
+                <strong>Example:</strong> "Extract key insights from this text in exactly {'{TARGET_TOKENS}'} tokens."
+              </p>
+
             </div>
           </div>
-        </div>
-
-        {/* Editor Body */}
-        <div className="flex-1 p-4 overflow-hidden">
+        </div>        {/* Editor Body */}
+        <div className="flex-1 p-3 sm:p-4 overflow-hidden">
           <div className="h-full flex flex-col">
-            <label className="text-sm text-[var(--text-secondary)] mb-2">
-              System Prompt (sent to every drone):
-            </label>
             <textarea
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
-              className="flex-1 w-full p-4 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] font-mono text-sm resize-none focus:outline-none focus:border-red-500/50"
+              className="flex-1 w-full p-3 sm:p-4 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] font-mono text-xs sm:text-sm resize-none focus:outline-none focus:border-red-500/50"
               placeholder="Enter your custom prompt..."
               spellCheck={false}
             />
-            <div className="mt-2 text-xs text-[var(--text-secondary)]">
-              {promptText.length} characters | ~{Math.ceil(promptText.length / 4)} tokens (estimate)
-            </div>
           </div>
         </div>        {/* Footer */}
-        <div className="border-t border-red-500/30 p-4 bg-red-950/10">
-          <div className="space-y-3">
-            <p className="text-xs text-red-300 pointer-events-none">
+        <div className="border-t border-red-500/30 p-3 sm:p-4 bg-red-950/10">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-xs text-red-300 pointer-events-none flex-1">
               By applying this custom prompt, you accept full responsibility for any unexpected behavior, increased costs, or processing failures.
             </p>
-            <div className="flex justify-end">
-              <button
-                onClick={handleApplyAndClose}
-                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors relative z-10"
-              >
-                Apply & Close
-              </button>
-            </div>
+            <button
+              onClick={handleApplyAndClose}
+              className="px-4 sm:px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors relative z-10 flex-shrink-0 w-full sm:w-auto"
+            >
+              Apply & Close
+            </button>
           </div>
         </div>
       </div>

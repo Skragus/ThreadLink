@@ -43,7 +43,8 @@ vi.mock('../pipeline/config.js', () => ({
 vi.mock('../lib/client-api.js', () => ({
   MODEL_PROVIDERS: {
     'gemini-1.5-flash': 'google',
-    'gpt-4o-mini': 'openai',
+    'gpt-4.1-nano': 'openai',
+    'gpt-4.1-mini': 'openai',
     'claude-3-5-haiku-20241022': 'anthropic'
   }
 }));

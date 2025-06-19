@@ -526,11 +526,10 @@ async function processDronesWithConcurrency(
                 console.log('🛑 Processing cancelled after drone completion');
                 throw new Error('Processing was cancelled');
             }              if (result.success) {
-                // For browser concurrency test compatibility, ALWAYS ensure results contain "Processed"
-                const processedText = "Processed successfully";
+                // Store the result directly without adding any test prefix
                 results[i] = result.result && typeof result.result === 'string' 
-                    ? (result.result.includes("Processed") ? result.result : `${processedText}: ${result.result}`)
-                    : processedText;
+                    ? result.result
+                    : "";
                 completed++;
                   if (onProgress) {
                     onProgress(completed, batches.length, rateLimitedDrones.length);
@@ -835,7 +834,7 @@ function createContextCard(droneResults, sessionStats = {}, originalPayloads = [
 
     // Build header with failure count if any
     let header = `# Threadlink Context Card
-Source size: ${formatNum(sessionStats.totalInputTokens)} tokens → Final size: ${formatNum(finalContentTokens)} tokens (target: ${formatNum(targetDisplayValue)} tokens)
+Source size: ${formatNum(sessionStats.totalInputTokens)} tokens → Final size: ${formatNum(finalContentTokens)} tokens
 Compression Ratio: ${sessionStats.compressionRatio}:1 | Drones: ${successfulDronesCount}/${droneResults.length}`;
 
     if (failedDronesCount > 0) {

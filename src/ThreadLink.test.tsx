@@ -13,6 +13,11 @@ vi.mock('./lib/storage.js', () => ({
   getCustomPrompt: vi.fn(() => ''),
   saveUseCustomPrompt: vi.fn(),
   saveCustomPrompt: vi.fn(),
+  getAvailableProviders: vi.fn(() => ({
+    google: true,
+    openai: true,
+    anthropic: true
+  })),
   getSettings: vi.fn(() => ({
     model: 'gemini-1.5-flash',
     temperature: 0.3,
@@ -121,8 +126,9 @@ vi.mock('./utils/textProcessing', () => ({
 vi.mock('./lib/client-api.js', () => ({
   MODEL_PROVIDERS: {
     'gemini-1.5-flash': 'google',
-    'gpt-4o': 'openai',
-    'claude-3-opus': 'anthropic'
+    'gpt-4.1-nano': 'openai',
+    'gpt-4.1-mini': 'openai',
+    'claude-3-5-haiku-20241022': 'anthropic'
   }
 }));
 

@@ -13,34 +13,36 @@ vi.mock('../lib/storage.js', () => ({
   }))
 }));
 
+// Default props for all tests
+const defaultProps = {
+  isOpen: true,
+  model: 'gpt-4.1-nano',
+  setModel: vi.fn(),
+  processingSpeed: 'balanced',
+  setProcessingSpeed: vi.fn(),
+  recencyMode: false,
+  setRecencyMode: vi.fn(),
+  recencyStrength: 1,
+  setRecencyStrength: vi.fn(),
+  showAdvanced: false,
+  setShowAdvanced: vi.fn(),
+  advTemperature: 0.5,
+  setAdvTemperature: vi.fn(),
+  advDroneDensity: 2,
+  setAdvDroneDensity: vi.fn(),
+  advMaxDrones: 50,
+  setAdvMaxDrones: vi.fn(),
+  useCustomPrompt: false,
+  setUseCustomPrompt: vi.fn(),
+  customPrompt: '',
+  setCustomPrompt: vi.fn(),
+  googleAPIKey: 'AIzaSyTest123456789',
+  openaiAPIKey: 'sk-test123456789',
+  anthropicAPIKey: 'sk-ant-test123456789',
+  onClose: vi.fn()
+};
+
 describe('Processing Speed Feature', () => {
-  const defaultProps = {
-    isOpen: true,
-    model: 'gpt-4',
-    setModel: vi.fn(),
-    processingSpeed: 'balanced',
-    setProcessingSpeed: vi.fn(),
-    recencyMode: false,
-    setRecencyMode: vi.fn(),
-    recencyStrength: 1,
-    setRecencyStrength: vi.fn(),
-    showAdvanced: false,
-    setShowAdvanced: vi.fn(),
-    advTemperature: 0.5,
-    setAdvTemperature: vi.fn(),
-    advDroneDensity: 2,
-    setAdvDroneDensity: vi.fn(),
-    advMaxDrones: 50,
-    setAdvMaxDrones: vi.fn(),
-    useCustomPrompt: false,
-    setUseCustomPrompt: vi.fn(),
-    customPrompt: '',
-    setCustomPrompt: vi.fn(),
-    googleAPIKey: 'AIzaSyTest123456789',
-    openaiAPIKey: 'sk-test123456789',
-    anthropicAPIKey: 'sk-ant-test123456789',
-    onClose: vi.fn()
-  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,7 +70,7 @@ describe('Processing Speed Feature', () => {
       render(
         <SettingsModal 
           {...defaultProps}
-          model="gpt-4o"
+          model="gpt-4.1-nano"
           processingSpeed="balanced"
         />
       );
@@ -422,7 +424,7 @@ describe('Processing Speed Feature', () => {
         );
 
         // Verify the display shows fast
-        const fastOption = screen.getByRole('button', { name: /switch to normal processing/i });
+        const fastOption = screen.getByRole('button', { name: /switch to balanced processing/i });
         expect(fastOption).toBeInTheDocument();
         expect(screen.getByText('Fast')).toBeInTheDocument();
 
@@ -440,7 +442,7 @@ describe('Processing Speed Feature', () => {
         );
 
         // Processing speed should be hidden for Claude models
-        const speedToggle = screen.queryByRole('button', { name: /processing speed/i });
+        const speedToggle = screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i });
         expect(speedToggle).not.toBeInTheDocument();
 
         // Anthropic models always use concurrency=1 in ThreadLink.tsx
@@ -476,7 +478,7 @@ describe('Processing Speed Feature', () => {
         );
 
         // Processing speed should be hidden
-        expect(screen.queryByRole('button', { name: /processing speed/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i })).not.toBeInTheDocument();
       });
 
       it('should allow fast mode when switching back to non-Anthropic model', () => {
@@ -493,7 +495,7 @@ describe('Processing Speed Feature', () => {
         );
 
         // No processing speed controls
-        expect(screen.queryByRole('button', { name: /processing speed/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i })).not.toBeInTheDocument();
 
         // Switch back to non-Anthropic model
         rerender(
@@ -526,7 +528,7 @@ describe('Processing Speed Feature', () => {
         );
 
         // Should still detect as Claude and hide processing speed
-        expect(screen.queryByRole('button', { name: /processing speed/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i })).not.toBeInTheDocument();
       });
 
       it('should handle malformed model names gracefully', () => {
@@ -567,7 +569,7 @@ describe('Processing Speed Feature', () => {
         );
 
         // Should show processing speed for non-Claude models
-        expect(screen.getByRole('button', { name: /switch to normal processing/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /switch to balanced processing/i })).toBeInTheDocument();
       });
     });
 
@@ -613,7 +615,7 @@ describe('Processing Speed Feature', () => {
 
       it('should handle rapid model changes without breaking state', () => {
         const mockSetProcessingSpeed = vi.fn();
-        const models = ['gpt-4', 'claude-3-5-sonnet', 'gpt-4o', 'claude-3-opus', 'gpt-3.5-turbo'];
+        const models = ['gemini-1.5-flash', 'gpt-4.1-nano', 'gpt-4.1-mini', 'claude-3-5-haiku-20241022'];
         
         const { rerender } = render(
           <SettingsModal
@@ -637,7 +639,7 @@ describe('Processing Speed Feature', () => {
 
           // Check if processing speed is visible based on model type
           const isClaudeModel = model.toLowerCase().includes('claude');
-          const speedToggle = screen.queryByRole('button', { name: /processing speed/i });
+          const speedToggle = screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i });
           
           if (isClaudeModel) {
             expect(speedToggle).not.toBeInTheDocument();
@@ -1087,7 +1089,7 @@ describe('Processing Speed - Critical Production Logic', () => {
       );
 
       // Verify the display shows fast
-      const fastOption = screen.getByRole('button', { name: /switch to normal processing/i });
+      const fastOption = screen.getByRole('button', { name: /switch to balanced processing/i });
       expect(fastOption).toBeInTheDocument();
       expect(screen.getByText('Fast')).toBeInTheDocument();
 
@@ -1105,7 +1107,7 @@ describe('Processing Speed - Critical Production Logic', () => {
       );
 
       // Processing speed should be hidden for Claude models
-      const speedToggle = screen.queryByRole('button', { name: /processing speed/i });
+      const speedToggle = screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i });
       expect(speedToggle).not.toBeInTheDocument();
 
       // Anthropic models always use concurrency=1 in ThreadLink.tsx
@@ -1141,7 +1143,7 @@ describe('Processing Speed - Critical Production Logic', () => {
       );
 
       // Processing speed should be hidden
-      expect(screen.queryByRole('button', { name: /processing speed/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i })).not.toBeInTheDocument();
     });
 
     it('should allow fast mode when switching back to non-Anthropic model', () => {
@@ -1158,7 +1160,7 @@ describe('Processing Speed - Critical Production Logic', () => {
       );
 
       // No processing speed controls
-      expect(screen.queryByRole('button', { name: /processing speed/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i })).not.toBeInTheDocument();
 
       // Switch back to non-Anthropic model
       rerender(
@@ -1191,7 +1193,7 @@ describe('Processing Speed - Critical Production Logic', () => {
       );
 
       // Should still detect as Claude and hide processing speed
-      expect(screen.queryByRole('button', { name: /processing speed/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i })).not.toBeInTheDocument();
     });
 
     it('should handle malformed model names gracefully', () => {
@@ -1232,7 +1234,7 @@ describe('Processing Speed - Critical Production Logic', () => {
       );
 
       // Should show processing speed for non-Claude models
-      expect(screen.getByRole('button', { name: /switch to normal processing/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /switch to balanced processing/i })).toBeInTheDocument();
     });
   });
 
@@ -1278,7 +1280,7 @@ describe('Processing Speed - Critical Production Logic', () => {
 
     it('should handle rapid model changes without breaking state', () => {
       const mockSetProcessingSpeed = vi.fn();
-      const models = ['gpt-4', 'claude-3-5-sonnet', 'gpt-4o', 'claude-3-opus', 'gpt-3.5-turbo'];
+      const models = ['gemini-1.5-flash', 'gpt-4.1-nano', 'gpt-4.1-mini', 'claude-3-5-haiku-20241022'];
       
       const { rerender } = render(
         <SettingsModal
@@ -1302,7 +1304,7 @@ describe('Processing Speed - Critical Production Logic', () => {
 
         // Check if processing speed is visible based on model type
         const isClaudeModel = model.toLowerCase().includes('claude');
-        const speedToggle = screen.queryByRole('button', { name: /processing speed/i });
+        const speedToggle = screen.queryByRole('button', { name: /switch to (fast|balanced) processing/i });
         
         if (isClaudeModel) {
           expect(speedToggle).not.toBeInTheDocument();

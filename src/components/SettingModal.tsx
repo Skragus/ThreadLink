@@ -74,39 +74,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       openai: cached.openai || !!openaiAPIKey,
       anthropic: cached.anthropic || !!anthropicAPIKey
     };
-  }, [googleAPIKey, openaiAPIKey, anthropicAPIKey]);
-  // Filter models based on available API keys
+  }, [googleAPIKey, openaiAPIKey, anthropicAPIKey]);  // All available models - only cheap, fast models for batch processing
   const availableModels = useMemo(() => {
-    const models = {
+    return {
       google: [
-        { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
-        { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-        { value: "gemini-pro", label: "Gemini Pro" }
+        { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" }
       ],
       openai: [
-        { value: "gpt-4", label: "GPT-4" },
-        { value: "gpt-4o", label: "GPT-4o" },
-        { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-        { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" }
+        { value: "gpt-4.1-nano", label: "GPT-4.1 Nano" },
+        { value: "gpt-4.1-mini", label: "GPT-4.1 Mini" }
       ],
       anthropic: [
-        { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
-        { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
-        { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku" },
-        { value: "claude-3-opus-20240229", label: "Claude 3 Opus" }
+        { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" }
       ]
     };
-
-    // Filter out providers that don't have API keys
-    const filtered: Partial<typeof models> = {};
-    Object.entries(models).forEach(([provider, modelList]) => {
-      if (availableProviders[provider as keyof typeof availableProviders]) {
-        filtered[provider as keyof typeof models] = modelList;
-      }
-    });
-
-    return filtered;
-  }, [availableProviders]);
+  }, []);
   if (!isOpen) return null;
 
   const isAnthropicModel = model.toLowerCase().includes('claude');
@@ -127,19 +109,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setUseCustomPrompt(true);
     }
     setShowPromptEditor(false);
-  };
-  return (
+  };  return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={(e) => {
+          // Only close if clicking the backdrop itself, not its children
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
         <div role="dialog" aria-labelledby="settings-title" aria-modal="true" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">          <h3 id="settings-title" className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">Settings</h3>
-          
-          {/* Warning when no API keys are configured */}
-          {Object.keys(availableModels).length === 0 && (
+            {/* Warning when no API keys are configured */}
+          {Object.keys(availableProviders).filter(provider => availableProviders[provider as keyof typeof availableProviders]).length === 0 && (
             <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
               <div className="flex items-center space-x-2">
                 <AlertTriangle size={16} className="text-amber-500" />
                 <span className="text-sm text-amber-600">
-                  No API keys configured. Please configure your API keys to use the application.
+                  No API keys configured. Please configure your API keys to use the selected model.
                 </span>
               </div>
             </div>
@@ -151,46 +139,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label htmlFor="model-select" className="text-sm text-[var(--text-secondary)] select-none cursor-default">
                   Model
                 </label>
-              </div>
-              <select
+              </div>              <select
                 id="model-select"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 className="w-48 px-3 py-1 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm cursor-pointer"
               >
-                {Object.keys(availableModels).length === 0 ? (
-                  <option value="" disabled>No API keys configured</option>
-                ) : (
-                  <>
-                    {availableModels.google && (
-                      <optgroup label="Google">
-                        {availableModels.google.map(modelOption => (
-                          <option key={modelOption.value} value={modelOption.value}>
-                            {modelOption.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {availableModels.openai && (
-                      <optgroup label="OpenAI">
-                        {availableModels.openai.map(modelOption => (
-                          <option key={modelOption.value} value={modelOption.value}>
-                            {modelOption.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {availableModels.anthropic && (
-                      <optgroup label="Anthropic">
-                        {availableModels.anthropic.map(modelOption => (
-                          <option key={modelOption.value} value={modelOption.value}>
-                            {modelOption.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </>
-                )}
+                <optgroup label="Google">
+                  {availableModels.google.map(modelOption => (
+                    <option key={modelOption.value} value={modelOption.value}>
+                      {modelOption.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="OpenAI">
+                  {availableModels.openai.map(modelOption => (
+                    <option key={modelOption.value} value={modelOption.value}>
+                      {modelOption.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Anthropic">
+                  {availableModels.anthropic.map(modelOption => (
+                    <option key={modelOption.value} value={modelOption.value}>
+                      {modelOption.label}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 
@@ -429,12 +404,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="flex items-center space-x-3">
                         <span className={`text-xs select-none cursor-default ${!useCustomPrompt ? 'text-red-400/60 font-medium' : 'text-red-400/40'}`}>
                           Off
-                        </span>
-                        <button
+                        </span>                        <button
                           onClick={handleCustomPromptToggle}
                           title={`${useCustomPrompt ? 'Disable' : 'Enable'} custom system prompt`}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors select-none cursor-pointer ${
-                            useCustomPrompt ? 'bg-red-500' : 'bg-red-500/30'
+                            useCustomPrompt ? 'bg-red-500' : 'bg-[var(--divider)]'
                           }`}
                         >
                           <span
