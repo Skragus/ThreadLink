@@ -57,17 +57,15 @@ export const TextEditor: React.FC<TextEditorProps> = ({
             onChange={onTextChange}
             readOnly={isProcessed || isLoading}
             spellCheck={false}
-          />
-
-          {/* Floating Badge */}
+          />          {/* Floating Badge */}
           <a 
             href="https://bolt.new" 
             target="_blank" 
             rel="noopener noreferrer"
             className="absolute bottom-5 right-4 z-10"
-          >
+          >            
             <img 
-              src="src/assets/bolt-badge.png"
+              src="/src/assets/bolt-badge.png"
               alt="Powered by Bolt.new" 
               className="w-20 h-auto opacity-10 hover:opacity-50 transition-opacity"
             />
