@@ -15,7 +15,6 @@ Commercial LLMs are fundamentally stateless. Every session starts from zero, for
 ### 🛠 Features
 
 -   **Parallel Processing Pipeline:** Deploys multiple "summarizer drones" to process conversation chunks concurrently for speed and efficiency.
--   **Drone Failure Traces:** Instead of failing, the pipeline gracefully handles errors by inserting diagnostic markers (`[⚠ Drone X failed]`), ensuring a resilient and predictable output every time.
 -   **BYOK (Bring Your Own Key):** Natively supports OpenAI, Google Gemini, and Anthropic Claude models.
 -   **Zero-Trust Privacy Architecture:** All processing and API calls happen **entirely in the user's browser**. No data ever touches our servers, ensuring absolute privacy and security.
 -   **Live & Deployed:** Try it now at [**threadlink.xyz**](https://threadlink.xyz)
