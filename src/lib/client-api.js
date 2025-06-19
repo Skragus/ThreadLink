@@ -12,13 +12,17 @@ export const MODEL_PROVIDERS = {
     "gpt-4.1-mini": "openai",
     
     // Mistral models
-    "mistral-small-latest": "mistral"
+    "mistral-small-latest": "mistral",
+      // Groq models
+    "llama-3.1-8b-instant": "groq",
+    "llama-3.3-70b-versatile": "groq"
 };
 
 // API endpoints
 const API_ENDPOINTS = {
     openai: 'https://api.openai.com/v1/chat/completions',
     mistral: 'https://api.mistral.ai/v1/chat/completions',
+    groq: 'https://api.groq.com/openai/v1/chat/completions',
     google: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 };
 
@@ -53,9 +57,15 @@ async function generateOpenAIResponse(
     userPrompt,
     model,
     apiKey,
-    temperature = 0.5,
+    temperature = 0.7,
     maxTokens = 4096
 ) {
+    // Ensure maxTokens is not null - use reasonable default for OpenAI
+    const effectiveMaxTokens = maxTokens ?? 4096;
+    if (maxTokens === null) {
+        console.log(`🔧 OpenAI max_tokens defaulted from null to ${effectiveMaxTokens}`);
+    }
+    
     const response = await fetch(API_ENDPOINTS.openai, {
         method: 'POST',
         headers: {
@@ -69,7 +79,7 @@ async function generateOpenAIResponse(
                 { role: "user", content: userPrompt }
             ],
             temperature,
-            max_tokens: maxTokens
+            max_tokens: effectiveMaxTokens
         })
     });
 
@@ -93,9 +103,21 @@ async function generateMistralResponse(
     userPrompt,
     model,
     apiKey,
-    temperature = 0.5,
+    temperature = 0.7,
     maxTokens = 4096
 ) {
+    // Cap Mistral temperature at 1.0 due to provider limitations
+    const cappedTemperature = Math.min(temperature, 1.0);
+    if (temperature > 1.0) {
+        console.log(`🔧 Mistral temperature capped: ${temperature} → ${cappedTemperature}`);
+    }
+    
+    // Ensure maxTokens is not null - use reasonable default for Mistral
+    const effectiveMaxTokens = maxTokens ?? 4096;
+    if (maxTokens === null) {
+        console.log(`🔧 Mistral max_tokens defaulted from null to ${effectiveMaxTokens}`);
+    }
+    
     const response = await fetch(API_ENDPOINTS.mistral, {
         method: 'POST',
         headers: {
@@ -108,14 +130,58 @@ async function generateMistralResponse(
                 { role: "system", content: systemInstructions },
                 { role: "user", content: userPrompt }
             ],
-            temperature,
-            max_tokens: maxTokens
+            temperature: cappedTemperature,
+            max_tokens: effectiveMaxTokens
         })
     });
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
         const err = new Error(error.error?.message || `Mistral API error: ${response.status}`);
+        err.status = response.status;
+        err.response = response;
+        throw err;
+    }    const data = await response.json();
+    return data.choices[0]?.message?.content || "";
+}
+
+/**
+ * Generate response using Groq API
+ */
+async function generateGroqResponse(
+    systemInstructions,
+    userPrompt,
+    model,
+    apiKey,
+    temperature = 0.7,
+    maxTokens = 4096
+) {
+    // Ensure maxTokens is not null - use reasonable default for Groq
+    const effectiveMaxTokens = maxTokens ?? 4096;
+    if (maxTokens === null) {
+        console.log(`🔧 Groq max_tokens defaulted from null to ${effectiveMaxTokens}`);
+    }
+    
+    const response = await fetch(API_ENDPOINTS.groq, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model,
+            messages: [
+                { role: "system", content: systemInstructions },
+                { role: "user", content: userPrompt }
+            ],
+            temperature,
+            max_tokens: effectiveMaxTokens
+        })
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
+        const err = new Error(error.error?.message || `Groq API error: ${response.status}`);
         err.status = response.status;
         err.response = response;
         throw err;
@@ -133,9 +199,22 @@ async function generateGoogleResponse(
     userPrompt,
     model,
     apiKey,
-    temperature = 0.5,
-    maxTokens = null // Google doesn't use max_tokens in the same way
-) {    const endpoint = API_ENDPOINTS.google.replace('{model}', model);
+    temperature = 0.7,
+    maxTokens = null // Google doesn't use max_tokens in the same way - uses maxOutputTokens in generationConfig if needed
+) {
+    const endpoint = API_ENDPOINTS.google.replace('{model}', model);
+    
+    // Google uses maxOutputTokens in generationConfig if token limiting is needed
+    const generationConfig = {
+        temperature,
+        candidateCount: 1
+    };
+    
+    // Add maxOutputTokens if a specific limit is requested (not null)
+    if (maxTokens !== null && maxTokens > 0) {
+        generationConfig.maxOutputTokens = maxTokens;
+        console.log(`🔧 Google maxOutputTokens set to ${maxTokens}`);
+    }
     
     const response = await fetch(endpoint, {
         method: 'POST',
@@ -149,10 +228,7 @@ async function generateGoogleResponse(
                     text: `${systemInstructions}\n\n${userPrompt}`
                 }]
             }],
-            generationConfig: {
-                temperature,
-                candidateCount: 1
-            }
+            generationConfig
         })
     });
 
@@ -175,7 +251,7 @@ async function generateGoogleResponse(
  * @param {string} model - Model name
  * @param {string} apiKey - API key for the provider
  * @param {number} temperature - Temperature setting
- * @param {number} maxTokens - Maximum tokens to generate
+ * @param {number|null} maxTokens - Maximum tokens to generate (null will use provider defaults: 4096 for most APIs)
  */
 export async function generateResponse(
     systemInstructions,
@@ -200,9 +276,12 @@ export async function generateResponse(
             case "openai":
                 return await generateOpenAIResponse(
                     systemInstructions, userPrompt, model, apiKey, temperature, maxTokens
-                );
-            case "mistral":
+                );            case "mistral":
                 return await generateMistralResponse(
+                    systemInstructions, userPrompt, model, apiKey, temperature, maxTokens
+                );
+            case "groq":
+                return await generateGroqResponse(
                     systemInstructions, userPrompt, model, apiKey, temperature, maxTokens
                 );
             case "google":
@@ -306,7 +385,8 @@ export async function testProviderConnection(provider, apiKey) {
         
         let result;        const testModels = {
             openai: "gpt-3.5-turbo",
-            mistral: "mistral-small-latest", 
+            mistral: "mistral-small-latest",
+            groq: "llama-3.1-8b-instant",
             google: "gemini-1.5-flash"
         };
         

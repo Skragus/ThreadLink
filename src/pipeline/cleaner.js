@@ -53,12 +53,12 @@ export function cleanAiChatContent(content) {
         /^Claude is typing\.\.\.\s*$/gim,
         /^Generating response\.\.\.\s*$/gim,
         /^Thinking\.\.\.\s*$/gim,
-        /^Processing\.\.\.\s*$/gim,
-
-        // Usage warnings (only when standalone)
+        /^Processing\.\.\.\s*$/gim,        // Usage warnings (only when standalone)
         /^This conversation may be reviewed.*$/gim,
         /^ChatGPT can make mistakes.*$/gim,
         /^Claude cannot.*outside.*conversation.*$/gim,
+        /^Verify information from Gemini, as it can make mistake.*$/gim,
+        /^Always verify information from AI sources like Gemini\..*$/gim,
 
         // Claude and Mistral-specific UI elements and instructions
         /Smart, efficient model for everyday use Learn more/gim,

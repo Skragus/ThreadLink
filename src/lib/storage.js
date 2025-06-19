@@ -7,6 +7,8 @@ const STORAGE_KEYS = {
     OPENAI_KEY: 'threadlink_openai_api_key',
     ANTHROPIC_KEY: 'threadlink_anthropic_api_key',
     GOOGLE_KEY: 'threadlink_google_api_key',
+    MISTRAL_KEY: 'threadlink_mistral_api_key',
+    GROQ_KEY: 'threadlink_groq_api_key',
     SETTINGS: 'threadlink_settings',
     LAST_USED_MODEL: 'threadlink_last_model',
     CUSTOM_PROMPT: 'threadlink_custom_prompt',
@@ -45,7 +47,7 @@ function simpleDecrypt(encryptedText, key = 'threadlink_key_2025') {
 
 /**
  * Save API key to localStorage (only if caching is enabled in the UI)
- * @param {string} provider - 'openai', 'anthropic', or 'google'
+ * @param {string} provider - 'openai', 'anthropic', 'google', 'mistral', or 'groq'
  * @param {string} key - API key
  * @param {boolean} enableCache - Whether to actually save to localStorage
  */
@@ -55,7 +57,9 @@ export function saveAPIKey(provider, key, enableCache = true) {
     const storageKey = {
         openai: STORAGE_KEYS.OPENAI_KEY,
         anthropic: STORAGE_KEYS.ANTHROPIC_KEY,
-        google: STORAGE_KEYS.GOOGLE_KEY
+        google: STORAGE_KEYS.GOOGLE_KEY,
+        mistral: STORAGE_KEYS.MISTRAL_KEY,
+        groq: STORAGE_KEYS.GROQ_KEY
     }[provider];
       if (storageKey && enableCache) {
         try {
@@ -81,14 +85,16 @@ export function saveAPIKey(provider, key, enableCache = true) {
 
 /**
  * Get API key from localStorage
- * @param {string} provider - 'openai', 'anthropic', or 'google'
+ * @param {string} provider - 'openai', 'anthropic', 'google', 'mistral', or 'groq'
  * @returns {string|null} API key or null if not found
  */
 export function getAPIKey(provider) {
     const storageKey = {
         openai: STORAGE_KEYS.OPENAI_KEY,
         anthropic: STORAGE_KEYS.ANTHROPIC_KEY,
-        google: STORAGE_KEYS.GOOGLE_KEY
+        google: STORAGE_KEYS.GOOGLE_KEY,
+        mistral: STORAGE_KEYS.MISTRAL_KEY,
+        groq: STORAGE_KEYS.GROQ_KEY
     }[provider];
     
     if (!storageKey) return null;
@@ -121,13 +127,15 @@ export function getAPIKey(provider) {
 
 /**
  * Remove API key from localStorage
- * @param {string} provider - 'openai', 'anthropic', or 'google'
+ * @param {string} provider - 'openai', 'anthropic', 'google', 'mistral', or 'groq'
  */
 export function removeAPIKey(provider) {
     const storageKey = {
         openai: STORAGE_KEYS.OPENAI_KEY,
         anthropic: STORAGE_KEYS.ANTHROPIC_KEY,
-        google: STORAGE_KEYS.GOOGLE_KEY
+        google: STORAGE_KEYS.GOOGLE_KEY,
+        mistral: STORAGE_KEYS.MISTRAL_KEY,
+        groq: STORAGE_KEYS.GROQ_KEY
     }[provider];
     
     if (storageKey) {
@@ -148,7 +156,9 @@ export function getAllAPIKeys() {
     return {
         openai: getAPIKey('openai'),
         anthropic: getAPIKey('anthropic'),
-        google: getAPIKey('google')
+        google: getAPIKey('google'),
+        mistral: getAPIKey('mistral'),
+        groq: getAPIKey('groq')
     };
 }
 
@@ -160,7 +170,9 @@ export function getAvailableProviders() {
     return {
         openai: !!getAPIKey('openai'),
         anthropic: !!getAPIKey('anthropic'),
-        google: !!getAPIKey('google')
+        google: !!getAPIKey('google'),
+        mistral: !!getAPIKey('mistral'),
+        groq: !!getAPIKey('groq')
     };
 }
 
@@ -247,10 +259,9 @@ export function getSettings() {
  * Get default settings
  * @returns {Object} Default settings
  */
-export function getDefaultSettings() {
-    return {
+export function getDefaultSettings() {    return {
         model: 'gemini-1.5-flash',
-        temperature: 0.5,
+        temperature: 0.7,
         processingSpeed: 'balanced',
         recencyMode: false,
         recencyStrength: 0,

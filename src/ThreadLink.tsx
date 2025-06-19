@@ -68,7 +68,7 @@ function ThreadLink() {
   const [processingSpeed, setProcessingSpeed] = useState('balanced');
   const [recencyMode, setRecencyMode] = useState(false);
   const [recencyStrength, setRecencyStrength] = useState(1);
-  const [showAdvanced, setShowAdvanced] = useState(false);  const [adv_temperature, setAdv_temperature] = useState(0.5);
+  const [showAdvanced, setShowAdvanced] = useState(false);  const [adv_temperature, setAdv_temperature] = useState(0.7);
   const [adv_droneDensity, setAdv_droneDensity] = useState(2);
   const [adv_maxDrones, setAdv_maxDrones] = useState(50);
   // Custom prompt state
@@ -80,16 +80,17 @@ function ThreadLink() {
   const [overrideModalData, setOverrideModalData] = useState({ 
     calculatedDrones: 0, 
     maxDrones: 0 
-  });
-  // API Keys state
+  });  // API Keys state
   const [googleAPIKey, setGoogleAPIKey] = useState('');
   const [openaiAPIKey, setOpenaiAPIKey] = useState('');
   const [mistralAPIKey, setMistralAPIKey] = useState('');
+  const [groqAPIKey, setGroqAPIKey] = useState('');
   
   // Cache toggle states
   const [googleCacheEnabled, setGoogleCacheEnabled] = useState(false);
   const [openaiCacheEnabled, setOpenaiCacheEnabled] = useState(false);
   const [mistralCacheEnabled, setMistralCacheEnabled] = useState(false);
+  const [groqCacheEnabled, setGroqCacheEnabled] = useState(false);
   // Info Panel expandable sections state
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
     what: false,
@@ -122,10 +123,10 @@ function ThreadLink() {
       maxDrones: adv_maxDrones
     };
     saveSettings(currentSettings);
-  };
-  // Initialize API keys from storage on mount
+  };  // Initialize API keys from storage on mount
   useEffect(() => {    const loadedGoogleKey = getAPIKey('google');    const loadedOpenAIKey = getAPIKey('openai');
     const loadedMistralKey = getAPIKey('mistral');
+    const loadedGroqKey = getAPIKey('groq');
     
     if (loadedGoogleKey) {
       setGoogleAPIKey(loadedGoogleKey);
@@ -138,6 +139,10 @@ function ThreadLink() {
     if (loadedMistralKey) {
       setMistralAPIKey(loadedMistralKey);
       setMistralCacheEnabled(true);
+    }
+    if (loadedGroqKey) {
+      setGroqAPIKey(loadedGroqKey);
+      setGroqCacheEnabled(true);
     }
     
     // Load custom prompt settings
@@ -158,18 +163,17 @@ function ThreadLink() {
     }    // Check if this is a first-time visit and show welcome banner
     // Do this check after API keys are loaded
     setTimeout(() => {
-      const hasVisitedBefore = localStorage.getItem('threadlink_has_visited');      const hasAnyApiKeys = googleAPIKey || openaiAPIKey || mistralAPIKey || 
-                           getAPIKey('google') || getAPIKey('openai') || getAPIKey('mistral');
+      const hasVisitedBefore = localStorage.getItem('threadlink_has_visited');      const hasAnyApiKeys = googleAPIKey || openaiAPIKey || mistralAPIKey || groqAPIKey || 
+                           getAPIKey('google') || getAPIKey('openai') || getAPIKey('mistral') || getAPIKey('groq');
       
       if (!hasVisitedBefore && !hasAnyApiKeys) {
         setShowWelcomeBanner(true);
       }
     }, 100);
-  }, []);
-  // Processing speed logic - all models now support fast processing
+  }, []);  // Processing speed logic - all models now support fast processing
   const calculateConcurrency = () => {
-    if (processingSpeed === 'fast') return 6;
-    return 3;
+    if (processingSpeed === 'fast') return 10;
+    return 5;
   };
 
   const displayText = isProcessed ? outputText : inputText;
@@ -259,7 +263,7 @@ function ThreadLink() {
         setIsCancelling(false);
       }
     }, 5000);
-  };const saveAPIKeys = () => {
+  };  const saveAPIKeys = () => {
     try {
       // Save or remove API keys based on cache settings (respects user privacy choice)
       if (googleAPIKey) {
@@ -277,6 +281,12 @@ function ThreadLink() {
         saveAPIKey('mistral', mistralAPIKey, mistralCacheEnabled);
       } else {
         removeAPIKey('mistral');
+      }
+      
+      if (groqAPIKey) {
+        saveAPIKey('groq', groqAPIKey, groqCacheEnabled);
+      } else {
+        removeAPIKey('groq');
       }
     } catch (error: any) {
       // Re-throw the error so the modal can catch it
@@ -299,7 +309,7 @@ function ThreadLink() {
       console.error("Error saving custom prompt settings:", error);
       throw error;
     }    // Hide welcome banner when user saves API keys
-    if (googleAPIKey || openaiAPIKey || mistralAPIKey) {
+    if (googleAPIKey || openaiAPIKey || mistralAPIKey || groqAPIKey) {
       setShowWelcomeBanner(false);
       localStorage.setItem('threadlink_has_visited', 'true');
     }
@@ -329,7 +339,8 @@ function ThreadLink() {
     const inMemoryApiKeys: { [key: string]: string } = {
       'google': googleAPIKey,
       'openai': openaiAPIKey,
-      'mistral': mistralAPIKey
+      'mistral': mistralAPIKey,
+      'groq': groqAPIKey
     };
     
     const apiKey = inMemoryApiKeys[provider] || getAPIKey(provider);
@@ -388,12 +399,12 @@ function ThreadLink() {
       (recencyStrength === 0 ? 25 : recencyStrength === 1 ? 50 : 90) : 0;
       
     try {
-      const provider = MODEL_PROVIDERS[model];
-        // Use in-memory API key first, then fallback to stored key
+      const provider = MODEL_PROVIDERS[model];        // Use in-memory API key first, then fallback to stored key
       const inMemoryApiKeys: { [key: string]: string } = {
         'google': googleAPIKey,
         'openai': openaiAPIKey,
-        'mistral': mistralAPIKey
+        'mistral': mistralAPIKey,
+        'groq': groqAPIKey
       };
       
       const apiKey = inMemoryApiKeys[provider] || getAPIKey(provider);
@@ -440,7 +451,7 @@ function ThreadLink() {
         }
       } as any);
 
-      console.log('🏁 Pipeline completed:', { success: result.success, hasContextCard: !!result.contextCard, result });if (result.success && result.contextCard) {
+      console.log('🏁 Pipeline completed:', { success: result.success, hasContextCard: !!result.contextCard, result });      if (result.success && result.contextCard) {
         setOutputText(result.contextCard);
         setOutputTokenCount(estimateTokens(result.contextCard));
         
@@ -474,6 +485,36 @@ function ThreadLink() {
           statsSet: true,
           originalSessionStats: result.sessionStats,
           originalStats: result.stats 
+        });
+      } else if (!result.success && result.contextCard) {
+        // Handle case where all drones failed but we have a failure context card
+        setOutputText(result.contextCard);
+        setOutputTokenCount(estimateTokens(result.contextCard));
+        
+        // Create stats for failed processing
+        const failureStats = {
+          executionTime: result.executionTime || '0',
+          compressionRatio: result.sessionStats?.compressionRatio || result.stats?.compressionRatio || '0.0',
+          successfulDrones: result.sessionStats?.successfulDrones || result.stats?.successfulDrones || 0,
+          totalDrones: result.sessionStats?.totalDrones || result.stats?.totalDrones || 0,
+          initialTokens: result.stats?.initialTokens || estimateTokens(inputText),
+          finalTokens: result.stats?.finalTokens || result.sessionStats?.finalContentTokens || 0
+        };
+        
+        setStats(failureStats);
+        setIsProcessed(true);
+        
+        // Also show an informational message about the failure
+        const errorInfo = getErrorDisplay(
+          `All drones failed, but failure context card is available. Failure details are shown in the output.`,
+          'PROCESSING_FAILURE'
+        );
+        setError(errorInfo);
+        
+        console.log('⚠️ Processing failed but context card available:', { 
+          hasContextCard: !!result.contextCard,
+          failureStats,
+          error: result.error
         });
       } else {
         const errorInfo = getErrorDisplay(result.error || 'Processing failed', result.errorType);
@@ -576,8 +617,7 @@ function ThreadLink() {
   const handleDismissWelcomeBanner = () => {
     setShowWelcomeBanner(false);
     localStorage.setItem('threadlink_has_visited', 'true');
-  };
-  const handleDeleteKey = (provider: 'google' | 'openai' | 'mistral') => {
+  };  const handleDeleteKey = (provider: 'google' | 'openai' | 'mistral' | 'groq') => {
     console.log(`🗑️ Deleting ${provider} API key - clearing input, disabling cache, removing from storage`);
     
     switch (provider) {
@@ -594,6 +634,11 @@ function ThreadLink() {
         setMistralAPIKey(''); // Clear the input field
         setMistralCacheEnabled(false); // Toggle cache off
         removeAPIKey('mistral'); // Remove from browser storage
+        break;
+      case 'groq':
+        setGroqAPIKey(''); // Clear the input field
+        setGroqCacheEnabled(false); // Toggle cache off
+        removeAPIKey('groq'); // Remove from browser storage
         break;
     }
     
@@ -648,31 +693,33 @@ function ThreadLink() {
           // Add custom prompt props
           useCustomPrompt={useCustomPrompt}
           setUseCustomPrompt={setUseCustomPrompt}
-          customPrompt={customPrompt}          setCustomPrompt={setCustomPrompt}
-          // Pass current API key states for model filtering
+          customPrompt={customPrompt}          setCustomPrompt={setCustomPrompt}          // Pass current API key states for model filtering
           googleAPIKey={googleAPIKey}
           openaiAPIKey={openaiAPIKey}
           mistralAPIKey={mistralAPIKey}
+          groqAPIKey={groqAPIKey}
           onClose={() => {
             saveCurrentSettings();
             setShowSettings(false);
           }}
-        />
-
-        <APIKeysModal
+        />        <APIKeysModal
           isOpen={showAPIKeys}
           googleAPIKey={googleAPIKey}
           openaiAPIKey={openaiAPIKey}
           mistralAPIKey={mistralAPIKey}
+          groqAPIKey={groqAPIKey}
           googleCacheEnabled={googleCacheEnabled}
           openaiCacheEnabled={openaiCacheEnabled}
           mistralCacheEnabled={mistralCacheEnabled}
+          groqCacheEnabled={groqCacheEnabled}
           setGoogleAPIKey={setGoogleAPIKey}
           setOpenaiAPIKey={setOpenaiAPIKey}
           setMistralAPIKey={setMistralAPIKey}
+          setGroqAPIKey={setGroqAPIKey}
           setGoogleCacheEnabled={setGoogleCacheEnabled}
           setOpenaiCacheEnabled={setOpenaiCacheEnabled}
           setMistralCacheEnabled={setMistralCacheEnabled}
+          setGroqCacheEnabled={setGroqCacheEnabled}
           onSave={saveAPIKeys} // Pass the function directly
           onClose={() => setShowAPIKeys(false)}
           onDeleteKey={handleDeleteKey}

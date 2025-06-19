@@ -17,13 +17,14 @@
 
 ## Architecture Overview
 
-ThreadLink is a browser-based AI conversation condensation application built with React + TypeScript that transforms lengthy AI chat sessions into dense, portable context cards. The application follows a privacy-first, BYOK (Bring Your Own Key) architecture with client-side processing.
+ThreadLink is a browser-based AI conversation condensation application built with React + TypeScript that transforms lengthy AI chat sessions into dense, portable context cards. The application follows a privacy-first, BYOK (Bring Your Own Key) architecture with client-side processing and production-grade reliability.
 
 ### Key Architectural Principles
 - **Privacy-First**: All processing happens in the browser; no data sent to external servers
-- **BYOK Model**: Users provide their own API keys for LLM providers
+- **BYOK Model**: Users provide their own API keys for LLM providers with session-only default storage
 - **Client-Side Pipeline**: Complete condensation pipeline runs in the browser
-- **Provider Agnostic**: Supports Google (Gemini), OpenAI (GPT), and Mistral
+- **Provider Agnostic**: Supports Google (Gemini), OpenAI (GPT), Mistral, and Groq
+- **Production-Ready**: Comprehensive error handling, partial failure resilience, and adaptive rate limiting
 
 
 ### Technology Stack
@@ -53,8 +54,15 @@ Raw Text → Cleaner → Splicer → Batcher → Orchestrator → Context Card
 3. **Orphan Rescue** - Merge tiny paragraphs to prevent loss
 4. **Segment Consolidation** - Combine paragraphs into optimal chunks
 5. **Drone Batching** - Create drone input batches with size optimization
-6. **Drone Processing** - Parallel AI condensation with concurrency control
-7. **Context Card Assembly** - Merge drone outputs into final format
+6. **Drone Processing** - Parallel AI condensation with concurrency control and partial failure handling
+7. **Context Card Assembly** - Merge drone outputs into final format with failure annotations
+
+### Resilience Features
+- **Partial Failure Handling**: Individual drone failures do not cause entire context card rejection
+- **Adaptive Rate Limiting**: Dynamic concurrency adjustment based on API-provided retry headers
+- **Intelligent Retry Logic**: Exponential backoff with provider-specific strategies
+- **State Corruption Prevention**: Retry operations preserve model and session state integrity
+- **Graceful Degradation**: Context cards are always generated, even with partial drone failures
 
 ---
 
@@ -95,7 +103,7 @@ Raw Text → Cleaner → Splicer → Batcher → Orchestrator → Context Card
 - **Features**: 
   - Model selection with provider-specific warnings
   - Recency Mode with temporal weighting controls
-  - LLM Temperature adjustment (0.0-2.0)
+  - LLM Temperature adjustment (0.0-2.0, Mistral capped at 1.0)
   - Advanced settings (drone density, max drones)
   - Custom prompt editor integration
   - Processing speed optimization
@@ -456,9 +464,12 @@ if (rateLimitDetected) {
 #### Model-Specific Settings
 ```javascript
 const MODEL_CONFIGS = {
-    'gemini-1.5-flash': { safeConcurrency: 10, rateLimitBackoff: 60000 },
-    'gpt-4.1-nano': { safeConcurrency: 5, rateLimitBackoff: 60000 },
-    'claude-3-5-haiku': { safeConcurrency: 1, rateLimitBackoff: 300000 }
+    'gemini-1.5-flash': { safeConcurrency: 10, rateLimitBackoff: 15000 },
+    'gpt-4.1-nano': { safeConcurrency: 10, rateLimitBackoff: 30000 },
+    'gpt-4.1-mini': { safeConcurrency: 10, rateLimitBackoff: 30000 },
+    'mistral-small-latest': { safeConcurrency: 5, rateLimitBackoff: 2000 },
+    'llama-3.1-8b-instant': { safeConcurrency: 6, rateLimitBackoff: 20000 },
+    'llama-3.3-70b-versatile': { safeConcurrency: 5, rateLimitBackoff: 20000 }
 };
 ```
 
@@ -473,10 +484,12 @@ const MODEL_CONFIGS = {
 - **FATAL_ERROR**: Unrecoverable system errors
 
 #### Recovery Strategies
-- **Retryable Errors**: Exponential backoff with limits
-- **Rate Limits**: Dedicated queue with proper delays
-- **Fatal Errors**: Immediate termination with error report
-- **Quality Issues**: Retry with adjusted parameters
+- **Retryable Errors**: Exponential backoff with limits and provider-specific tuning
+- **Rate Limits**: API-provided Retry-After header support with fallback delays
+- **Partial Failures**: Individual drone failures annotated in final context card
+- **Fatal Errors**: Immediate termination with detailed error reporting
+- **Quality Issues**: Retry with adjusted parameters and fallback strategies
+- **State Preservation**: Retry operations maintain model and session consistency
 
 ---
 
@@ -488,7 +501,9 @@ const MODEL_PROVIDERS = {
     "gemini-1.5-flash": "google",
     "gpt-4.1-nano": "openai",
     "gpt-4.1-mini": "openai",
-    "mistral-small-latest": "mistral"
+    "mistral-small-latest": "mistral",
+    "llama-3.1-8b-instant": "groq",
+    "llama-3.3-70b-versatile": "groq"
 };
 ```
 
@@ -499,10 +514,11 @@ const MODEL_PROVIDERS = {
 
 ### Advanced Settings
 
-#### LLM Temperature (0.0 - 1.0)
+#### LLM Temperature (0.0 - 2.0)
 - **0.0-0.3**: Deterministic, focused output
 - **0.4-0.6**: Balanced creativity and consistency
 - **0.7-1.0**: High creativity and variation
+- **1.1-2.0**: Experimental, highly creative (Note: Mistral capped at 1.0)
 
 #### Drone Density (1-20 drones per 10k tokens)
 - **1-5**: Broad overview, low granularity
@@ -510,8 +526,8 @@ const MODEL_PROVIDERS = {
 - **11-20**: High granularity, expensive processing
 
 #### Processing Speed
-- **Balanced**: Standard concurrency, reliable processing
-- **Fast**: Increased concurrency, faster completion
+- **Balanced**: 5 concurrent requests, standard processing speed
+- **Fast**: 10 concurrent requests, maximum processing speed
 
 #### Recency Mode
 - **Temporal Weighting**: Focus processing power on recent content
@@ -590,6 +606,7 @@ export async function generateResponse(systemPrompt, userPrompt, model, apiKey, 
         case 'google': return callGeminiAPI(/* ... */);
         case 'openai': return callOpenAIAPI(/* ... */);
         case 'mistral': return callMistralAPI(/* ... */);
+        case 'groq': return callGroqAPI(/* ... */);
     }
 }
 ```
@@ -607,9 +624,11 @@ function getAPIKey(provider) {
 ### Rate Limiting & Optimization
 
 #### Provider-Specific Limits
-- **Google Gemini**: 10 concurrent requests, 60s backoff
-- **OpenAI GPT**: 5 concurrent requests, 60s backoff  
-- **Mistral**: 5 concurrent requests, 60s backoff
+- **Google Gemini**: 10 concurrent requests, 15s backoff
+- **OpenAI GPT**: 10 concurrent requests, 30s backoff  
+- **Mistral**: 5 concurrent requests, 2s backoff (very aggressive retry)
+- **Groq 8B**: 6 concurrent requests, 20s backoff (fast model, higher concurrency)
+- **Groq 70B**: 5 concurrent requests, 20s backoff (larger model, conservative)
 
 #### Adaptive Concurrency
 ```javascript
@@ -643,16 +662,17 @@ sessionState.onRateLimit = () => {
 
 #### Local Storage Schema
 ```javascript
-// API Keys (optional)
+// API Keys (optional browser storage, defaulted to session-only)
 'threadlink_google_api_key': 'encrypted_key'
 'threadlink_openai_api_key': 'encrypted_key'
 'threadlink_mistral_api_key': 'encrypted_key'
+'threadlink_groq_api_key': 'encrypted_key'
 
 // Settings
 'threadlink_settings': {
     model: 'gemini-1.5-flash',
     compressionRatio: 'balanced',
-    temperature: 0.3,
+    temperature: 0.7,
     recencyMode: false,
     // ... other settings
 }
@@ -718,8 +738,16 @@ function estimateTokens(text) {
 
 ## Conclusion
 
-ThreadLink represents a sophisticated client-side AI processing application that prioritizes user privacy while delivering professional-grade functionality. The modular pipeline architecture, intelligent error handling, and responsive design make it suitable for production deployment with minimal risk.
+ThreadLink represents a sophisticated, production-ready client-side AI processing application that prioritizes user privacy while delivering enterprise-grade functionality. The modular pipeline architecture, intelligent error handling, partial failure resilience, and responsive design make it suitable for large-scale production deployment.
 
-The combination of privacy-first design, comprehensive feature set, and excellent user experience positions ThreadLink as a best-in-class solution for AI conversation condensation and context management.
+Key production features include:
+- **Robust Error Handling**: Comprehensive classification and recovery for all failure modes
+- **Partial Failure Resilience**: Individual drone failures never prevent context card generation
+- **Adaptive Rate Limiting**: Dynamic concurrency adjustment with API-provided retry headers
+- **State Integrity**: Retry operations preserve model and session consistency
+- **Privacy-First Architecture**: Complete client-side processing with session-only API key storage
+- **Multi-Provider Support**: Comprehensive integration with OpenAI, Google Gemini, Mistral, and Groq
+
+The combination of privacy-first design, comprehensive feature set, production-grade reliability, and excellent user experience positions ThreadLink as a best-in-class solution for AI conversation condensation and context management.
 
 For additional technical details, refer to the inline code documentation and the extensive in-app user guide accessible through the Info panel.
