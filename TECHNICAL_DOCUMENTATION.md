@@ -12,7 +12,6 @@
 9. [API Integration](#api-integration)
 10. [Storage & Privacy](#storage--privacy)
 11. [Performance Optimization](#performance-optimization)
-12. [Testing Framework](#testing-framework)
 
 ---
 
@@ -25,7 +24,7 @@ ThreadLink is a browser-based AI conversation condensation application built wit
 - **BYOK Model**: Users provide their own API keys for LLM providers
 - **Client-Side Pipeline**: Complete condensation pipeline runs in the browser
 - **Provider Agnostic**: Supports Google (Gemini), OpenAI (GPT), and Anthropic (Claude)
-- **Responsive Design**: Mobile-first UI with progressive enhancement
+
 
 ### Technology Stack
 ```
@@ -500,10 +499,10 @@ const MODEL_PROVIDERS = {
 
 ### Advanced Settings
 
-#### LLM Temperature (0.0 - 2.0)
-- **0.0-0.5**: Deterministic, focused output
-- **0.5-1.0**: Balanced creativity and consistency
-- **1.0-2.0**: High creativity and variation
+#### LLM Temperature (0.0 - 1.0)
+- **0.0-0.3**: Deterministic, focused output
+- **0.4-0.6**: Balanced creativity and consistency
+- **0.7-1.0**: High creativity and variation
 
 #### Drone Density (1-20 drones per 10k tokens)
 - **1-5**: Broad overview, low granularity
@@ -516,7 +515,7 @@ const MODEL_PROVIDERS = {
 
 #### Recency Mode
 - **Temporal Weighting**: Focus processing power on recent content
-- **Strength Levels**: Subtle (25%), Balanced (50%), Strong (100%)
+- **Strength Levels**: Subtle (25%), Balanced (50%), Strong (90%)
 - **Band Processing**: 30% oldest, 50% mid, 20% recent
 
 ### Custom Prompt System
@@ -714,132 +713,6 @@ function estimateTokens(text) {
 - Model-specific concurrency limits
 - Rate limit detection and adaptive adjustment
 - Optimal retry strategies with exponential backoff
-
----
-
-## Testing Framework
-
-### E2E Testing with Playwright
-
-#### Test Structure
-```typescript
-// tests/e2e/settings.spec.ts
-test.describe('Settings Configuration', () => {
-    let threadlink: ThreadLinkPage;
-    
-    test.beforeEach(async ({ page }) => {
-        await page.goto('/');
-        threadlink = new ThreadLinkPage(page);
-        await setupAPIMocks(page);
-    });
-    
-    test('compression level settings can be changed', async () => {
-        // Test implementation
-    });
-});
-```
-
-#### API Mocking
-```javascript
-// Mock API responses for consistent testing
-export async function setupAPIMocks(page) {
-    await page.route('**/v1/models/gemini-1.5-flash:generateContent', 
-        async route => {
-            await route.fulfill({
-                status: 200,
-                body: JSON.stringify(mockGeminiResponse)
-            });
-        }
-    );
-}
-```
-
-### Unit Testing with Vitest
-
-#### Component Testing
-- Isolated component behavior testing
-- State management validation
-- Event handling verification
-- Edge case coverage
-
-#### Pipeline Testing
-- Individual stage functionality
-- Error handling scenarios
-- Data transformation accuracy
-- Performance benchmarking
-
-### Test Data Management
-
-#### Structured Test Data
-```javascript
-export const TEST_DATA = {
-    shortConversation: "User: Hello\nAssistant: Hi there!",
-    longConversation: "/* 10k+ character conversation */",
-    codeConversation: "/* Conversation with code blocks */"
-};
-
-export const TEST_KEYS = {
-    valid: {
-        google: 'test-google-key',
-        openai: 'test-openai-key',
-        anthropic: 'test-anthropic-key'
-    },
-    invalid: {
-        malformed: 'invalid-key-format'
-    }
-};
-```
-
----
-
-## Development Guidelines
-
-### Code Organization
-- **Components**: React components in `src/components/`
-- **Pipeline**: Processing modules in `src/pipeline/`
-- **Library**: Utilities and APIs in `src/lib/`
-- **Types**: TypeScript definitions in `src/types.ts`
-- **Tests**: E2E tests in `tests/e2e/`
-
-### Naming Conventions
-- **Components**: PascalCase with descriptive names
-- **Functions**: camelCase with action-oriented names
-- **Constants**: UPPER_SNAKE_CASE for configuration
-- **Files**: kebab-case for consistency
-
-### Error Handling Standards
-- Always classify errors with appropriate types
-- Provide user-friendly error messages
-- Implement proper cleanup in error scenarios
-- Log technical details for debugging
-
-### Performance Standards
-- Keep bundle size under 500KB gzipped
-- Maintain 60fps UI interactions
-- Optimize for mobile devices first
-- Implement proper loading states
-
----
-
-## Future Enhancements
-
-### Planned Features
-- **Offline Mode**: Service worker for offline processing
-- **Export Formats**: Multiple output formats (JSON, MD, PDF)
-- **Plugin System**: Extensible processing modules
-- **Analytics**: Optional usage analytics with privacy controls
-
-### Technical Debt
-- Reduce TypeScript `@ts-ignore` usage
-- Implement comprehensive error boundary system
-- Add automated performance monitoring
-- Expand test coverage to 90%+
-
-### Scalability Considerations
-- Support for larger input texts (100k+ tokens)
-- Enhanced concurrency management
-- Improved memory usage optimization
-- Provider-specific optimizations
 
 ---
 
