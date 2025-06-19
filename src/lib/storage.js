@@ -8,15 +8,48 @@ const STORAGE_KEYS = {
     ANTHROPIC_KEY: 'threadlink_anthropic_api_key',
     GOOGLE_KEY: 'threadlink_google_api_key',
     SETTINGS: 'threadlink_settings',
-    LAST_USED_MODEL: 'threadlink_last_model'
+    LAST_USED_MODEL: 'threadlink_last_model',
+    CUSTOM_PROMPT: 'threadlink_custom_prompt',
+    USE_CUSTOM_PROMPT: 'threadlink_use_custom_prompt'
 };
 
 /**
- * Save API key to localStorage
+ * Simple XOR encryption for API keys
+ * This is a basic obfuscation to prevent plaintext storage
+ * Note: This is not cryptographically secure - it's just to provide minimal protection
+ */
+function simpleEncrypt(text, key = 'threadlink_key_2025') {
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+        result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    }
+    return btoa(result); // Base64 encode the result
+}
+
+/**
+ * Simple XOR decryption for API keys
+ */
+function simpleDecrypt(encryptedText, key = 'threadlink_key_2025') {
+    try {
+        const decoded = atob(encryptedText); // Base64 decode first
+        let result = '';
+        for (let i = 0; i < decoded.length; i++) {
+            result += String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        return result;
+    } catch (error) {
+        console.error('Failed to decrypt data:', error);
+        return null;
+    }
+}
+
+/**
+ * Save API key to localStorage (only if caching is enabled in the UI)
  * @param {string} provider - 'openai', 'anthropic', or 'google'
  * @param {string} key - API key
+ * @param {boolean} enableCache - Whether to actually save to localStorage
  */
-export function saveAPIKey(provider, key) {
+export function saveAPIKey(provider, key, enableCache = true) {
     if (!provider || !key) return;
     
     const storageKey = {
@@ -24,13 +57,24 @@ export function saveAPIKey(provider, key) {
         anthropic: STORAGE_KEYS.ANTHROPIC_KEY,
         google: STORAGE_KEYS.GOOGLE_KEY
     }[provider];
-    
-    if (storageKey) {
+      if (storageKey && enableCache) {
         try {
-            localStorage.setItem(storageKey, key);
-            console.log(`✅ Saved ${provider} API key`);
-        } catch (error) {
+            // Encrypt the API key before storing it
+            const encryptedKey = simpleEncrypt(key);
+            localStorage.setItem(storageKey, encryptedKey);
+            console.log(`✅ Saved ${provider} API key to browser cache (encrypted)`);        } catch (error) {
             console.error(`Failed to save ${provider} API key:`, error);
+            if (error.name === 'QuotaExceededError') {
+                throw error; // Re-throw to be handled by UI layer
+            }
+        }
+    } else if (storageKey && !enableCache) {
+        // If caching is disabled, remove any existing key from storage
+        try {
+            localStorage.removeItem(storageKey);
+            console.log(`🗑️ Removed ${provider} API key from browser cache (caching disabled)`);
+        } catch (error) {
+            console.error(`Failed to remove ${provider} API key:`, error);
         }
     }
 }
@@ -50,7 +94,25 @@ export function getAPIKey(provider) {
     if (!storageKey) return null;
     
     try {
-        return localStorage.getItem(storageKey);
+        const encryptedKey = localStorage.getItem(storageKey);
+        if (!encryptedKey) return null;
+        
+        // Try to decrypt the key - if it fails, it might be an old plaintext key
+        const decryptedKey = simpleDecrypt(encryptedKey);
+        if (decryptedKey) {
+            return decryptedKey;
+        }
+        
+        // If decryption fails, treat it as a plaintext key (backwards compatibility)
+        // but re-encrypt it for future storage
+        if (encryptedKey.startsWith('sk-') || encryptedKey.startsWith('AIza')) {
+            // Re-encrypt the plaintext key
+            const reencrypted = simpleEncrypt(encryptedKey);
+            localStorage.setItem(storageKey, reencrypted);
+            return encryptedKey;
+        }
+        
+        return null;
     } catch (error) {
         console.error(`Failed to get ${provider} API key:`, error);
         return null;
@@ -103,6 +165,58 @@ export function getAvailableProviders() {
 }
 
 /**
+ * Save custom prompt to localStorage
+ * @param {string} prompt - Custom prompt text
+ */
+export function saveCustomPrompt(prompt) {
+    try {
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_PROMPT, prompt);
+        console.log('✅ Custom prompt saved');
+    } catch (error) {
+        console.error('Failed to save custom prompt:', error);
+    }
+}
+
+/**
+ * Get custom prompt from localStorage
+ * @returns {string|null} Custom prompt or null if not found
+ */
+export function getCustomPrompt() {
+    try {
+        return localStorage.getItem(STORAGE_KEYS.CUSTOM_PROMPT);
+    } catch (error) {
+        console.error('Failed to get custom prompt:', error);
+        return null;
+    }
+}
+
+/**
+ * Save custom prompt enabled state
+ * @param {boolean} enabled - Whether custom prompt is enabled
+ */
+export function saveUseCustomPrompt(enabled) {
+    try {
+        localStorage.setItem(STORAGE_KEYS.USE_CUSTOM_PROMPT, enabled ? 'true' : 'false');
+        console.log(`✅ Custom prompt ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+        console.error('Failed to save custom prompt state:', error);
+    }
+}
+
+/**
+ * Get custom prompt enabled state
+ * @returns {boolean} Whether custom prompt is enabled
+ */
+export function getUseCustomPrompt() {
+    try {
+        return localStorage.getItem(STORAGE_KEYS.USE_CUSTOM_PROMPT) === 'true';
+    } catch (error) {
+        console.error('Failed to get custom prompt state:', error);
+        return false;
+    }
+}
+
+/**
  * Save settings to localStorage
  * @param {Object} settings - Settings object
  */
@@ -136,13 +250,15 @@ export function getSettings() {
 export function getDefaultSettings() {
     return {
         model: 'gemini-1.5-flash',
-        temperature: 0.3,
+        temperature: 0.5,
         processingSpeed: 'balanced',
         recencyMode: false,
         recencyStrength: 0,
-        droneDensity: 10, // drones per 10k tokens
-        maxDrones: 100,
-        targetTokens: null // null means auto-calculate
+        droneDensity: 2, // drones per 10k tokens
+        maxDrones: 50,
+        targetTokens: null, // null means auto-calculate
+        useCustomPrompt: false,
+        customPrompt: null
     };
 }
 
@@ -193,7 +309,9 @@ export function exportData() {
     return {
         apiKeys: getAllAPIKeys(),
         settings: getSettings(),
-        lastUsedModel: getLastUsedModel()
+        lastUsedModel: getLastUsedModel(),
+        customPrompt: getCustomPrompt(),
+        useCustomPrompt: getUseCustomPrompt()
     };
 }
 
@@ -214,6 +332,14 @@ export function importData(data) {
     
     if (data.lastUsedModel) {
         saveLastUsedModel(data.lastUsedModel);
+    }
+    
+    if (data.customPrompt !== undefined) {
+        saveCustomPrompt(data.customPrompt);
+    }
+    
+    if (data.useCustomPrompt !== undefined) {
+        saveUseCustomPrompt(data.useCustomPrompt);
     }
     
     console.log('✅ Data imported successfully');

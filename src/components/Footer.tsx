@@ -5,9 +5,9 @@ import { formatTokenCount } from '../utils/textProcessing';
 
 interface FooterProps {
   tokenCount: number;
+  outputTokenCount: number;
   compressionRatio: string;
-  onCompressionChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  inputText: string;
+  onCompressionChange: (_e: React.ChangeEvent<HTMLSelectElement>) => void;
   isProcessed: boolean;
   isLoading: boolean;
   isCopied: boolean;
@@ -20,7 +20,6 @@ export const Footer: React.FC<FooterProps> = ({
   tokenCount,
   compressionRatio,
   onCompressionChange,
-  inputText,
   isProcessed,
   isLoading,
   isCopied,
@@ -32,11 +31,9 @@ export const Footer: React.FC<FooterProps> = ({
     <>
       <div className="border-t border-[#181920] bg-[var(--bg-primary)] pb-4">
         <div className="px-12 py-4">
-          <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">
-            <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] select-none cursor-default">
+          <div className="flex flex-wrap justify-between items-center gap-3 min-h-[48px]">            <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)] select-none cursor-default">
               <div className="flex items-center gap-2 shrink-0">
                 <span className="font-mono w-32">{formatTokenCount(tokenCount)}</span>
-                <span className="mx-2">•</span>
                 <label htmlFor="compression-ratio-select" className="whitespace-nowrap cursor-default">
                   Compression level:
                 </label>
@@ -52,9 +49,8 @@ export const Footer: React.FC<FooterProps> = ({
                 </select>
               </div>
             </div>
-            
-            <div className="flex gap-3 shrink-0">
-              {inputText && !isProcessed && (
+              <div className="flex gap-3 shrink-0">
+              {!isProcessed && (
                 <button 
                   onClick={onCondense}
                   disabled={isLoading}

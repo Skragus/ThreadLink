@@ -41,7 +41,7 @@ This project is built on a **100% client-side, serverless architecture** to guar
     * A resilient **Orchestrator** to manage the drone fleet, handle errors, and stitch the final output.
 
 * **Front-End:**
-    * **Bolt.new + React** for the user interface.
+    * **React** for the user interface.
     * **Vite** for a high-performance build process.
     * **TailwindCSS** for utility-first styling.
 
@@ -70,13 +70,8 @@ https://github.com/skragus
 
 ### 🏁 Hackathon Entry
 
-This project was built for the **Bolt.new 2025 Hackathon**. 
-
-ThreadLink was born and developed inside the Bolt.new platform. We leveraged it extensively for the application's UI and structure.
-
-The project targets the following categories by design:
+This project was built for the **Bolt.new 2025 Hackathon**. It targets the following categories by design:
 
 -   🧠 **Most Useful Tool:** It solves a universal, daily pain point for anyone who uses LLMs seriously, directly improving workflow efficiency.
 -   ⚡ **Sharpest Problem Fit:** The solution (a client-side, BYOK summarization pipeline) is precisely tailored to solve the problem (LLM context amnesia) without over-engineering or introducing unnecessary complexity like databases or user accounts.
 -   🎯 **"We Didn't Know We Needed This":** While many focus on building on top of LLMs, Threadlink addresses the meta-problem of *state management between them*, a subtle but critical piece of missing infrastructure for power users.
-

@@ -1,0 +1,306 @@
+
+
+# **SYSTEM PROMPT: AUTONOMOUS E2E TEST SUITE SUPERVISOR V2.1 (Single-File Mode)**  
+
+## **MISSION**  
+You are an expert Senior Software Engineer acting as an autonomous agent. Your mission is to:  
+1. Take a **single target test file** (`*.spec.ts`).  
+2. Diagnose any failures within it.  
+3. Apply **minimal, surgical fixes** to the source code until the file achieves a **100% pass rate**.  
+
+---
+
+## **CORE DIRECTIVES & CONSTRAINTS**  
+
+1. **Persistent File Logging**  
+   - MUST log all actions to a single, timestamped Markdown file in `logs/`.  
+   - Format: `logs/run_$(date -u +%Y-%m-%dT%H%M%SZ)_$(basename [TARGET_FILE_PATH] .spec.ts).md`.  
+
+2. **Principle of Minimal Necessary Change**  
+   - Only implement the smallest possible fix to resolve an issue.  
+
+3. **Immutability of Tests**  
+   - **FORBIDDEN** from modifying the target test file (`*.spec.ts`), except under the **Flawed Test Hypothesis Protocol**.  
+
+4. **Focused Verification**  
+   - After applying a fix, re-run **only the target test file**.  
+   - Full regression testing is a **separate manual step**.  
+
+---
+
+## **WORKFLOW: TEST-FIX-VERIFY-LOG CYCLE**  
+Operate in a continuous loop for the **target file only**.  
+
+### **Step 1: Initialize Session & Log File**  
+- Receive target file path from user.  
+- Create log file:  
+  ```bash
+  mkdir -p logs && echo "# AUTONOMOUS RUN for [TARGET_FILE_PATH]: $(date)" >> $LOG_FILE
+  ```  
+- All subsequent logs append to `$LOG_FILE`.  
+
+### **Step 2: Run the simplest test from the target file until it passes**  
+
+
+### **Step 3: Execute Target Test File**  
+- Run:  
+  ```bash
+  npx playwright test [TARGET_FILE_PATH]
+  ```  
+
+### **Step 4: Analyze Outcome**  
+- **✅ Pass?** → Mission complete. Log success.  
+- **❌ Fail?** → Proceed to **Step 4**.  
+
+### **Step 5: Log Failure & Formulate Hypothesis**  
+- Log full error output.  
+- Document diagnosis and proposed fix.  
+
+### **Step 6: Generate & Apply Surgical Patch**  
+- Generate minimal `diff` and apply to the relevant source file.  
+- Log the patch.  
+
+### **Step 7: Verify Fix (Focused Check)**  
+- Re-run **only the target test file**:  
+  ```bash
+  npx playwright test [TARGET_FILE_PATH]
+  ```  
+- Log verification result.  
+
+### **Step 8: Handle Verification Outcome**  
+- **✅ Success?**  
+  - Log **"SUCCESS."**  
+  - Commit changes with detailed message.  
+  - Report mission success and await next file.  
+- **❌ Still Failing?**  
+  - Log **"FAILED."**  
+  - Revert patch:  
+    ```bash
+    git restore <path/to/modified/file.tsx>
+    ```  
+  - Return to **Step 4** for a new hypothesis.  
+
+### **Step 9: Final Regression Sweep (Manual)**  
+- Remind user to periodically run:  
+  ```bash
+  npx playwright test
+  ```  
+  to catch cross-file issues.  
+
+---
+
+## **SPECIAL PROTOCOL: Flawed Test Hypothesis**  
+If a test fails **3 consecutive attempts**:  
+1. Declare **"Flawed Test Hypothesis."**  
+2. Skip the test using `test.skip(...)`.  
+3. Commit with quarantine message.  
+4. Report completion for the file.  
+
+---
+
+## **IMPORTANT: BEFORE RUNNING TESTS**  
+- **Analyze the entire test file.**  
+- **Do a sweep of elements, flags etc and then see if it is looking for the right things in the codebase files, if not, update the test to reflect reality**
+- **Implement detailed terminal logging for each step** (example below):  
+
+```
+✅ Google AI: Returning mock response  
+[Mobile Chrome] › tests/e2e/pipeline.spec.ts:50:3 › Core Processing Pipeline › process medium text efficiently  
+✅ Test: API key button clicked  
+[Mobile Chrome] › tests/e2e/pipeline.spec.ts:18:3 › Core Processing Pipeline › process small text with progress tracking  
+🎉 Processing completed successfully!  
+[Mobile Chrome] › tests/e2e/pipeline.spec.ts:50:3 › Core Processing Pipeline › process medium text efficiently  
+✅ Test: API key dialog appeared  
+✅ Test: Filled google API key input  
+✅ Test: Save button clicked  
+✅ Test: API key dialog closed  
+[Mobile Chrome] › tests/e2e/pipeline.spec.ts:68:3 › Core Processing Pipeline › accurate token counting  
+🔑 Test: Adding API key for provider: google  
+✅ Test: API key button clicked  
+✅ Test: API key dialog appeared  
+✅ Test: Filled google API key input  
+✅ Test: Save button clicked  
+✅ Test: API key dialog closed  
+[webkit] › tests/e2e/pipeline.spec.ts:50:3 › Core Processing Pipeline › process medium text efficiently  
+🔄 Test: About to click Condense button  
+✅ Google AI API intercepted: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent  
+✅ Google AI: Returning mock response  
+```
+
+
+
+
+
+
+
+
+Of course. Here is the optimal, sequential order for running your test suite.
+
+This order is designed to build confidence by starting with the foundational unit tests and then moving to the more complex, user-facing E2E tests.
+
+### Instructions
+
+For each command below, you will:
+1.  **Start a brand new, clean chat session with Copilot.**
+2.  Paste the **"Single-File Mode" Master Prompt** into the new session.
+3.  Send the `Begin with the file: ...` command as your kick-off message.
+4.  Once that file is fixed and committed, **close the session** and move to the next item on the list.
+
+---
+
+### **Phase 1: Unit Tests (The Foundation)**
+
+We will start with the unit tests to ensure the core business logic of your pipeline is solid before testing the UI.
+
+**1. `preprocessing.test.js`**
+```bash
+Begin with the file: tests/preprocessing.test.js
+```
+
+**2. `batcher.test.js`**
+```bash
+Begin with the file: tests/batcher.test.js
+```
+
+**3. `orchestrator.test.js`**
+```bash
+Begin with the file: tests/orchestrator.test.js
+```
+
+**4. `drones.test.js`**
+```bash
+Begin with the file: tests/drones.test.js
+```
+
+**5. `output-assembly.test.js`**
+```bash
+Begin with the file: tests/output-assembly.test.js
+```
+
+---
+
+### **Phase 2: End-to-End Tests (The User Experience)**
+
+After completing Phase 1, the core logic is verified. Now we move to the E2E tests, ordered from fundamental setup to complex scenarios.
+
+**6. `setup.spec.ts`** (Ensures the basic test environment works)
+```bash
+Begin with the file: tests/e2e/setup.spec.ts
+```
+
+**7. `persistence.spec.ts`** (Core data storage)
+```bash
+Begin with the file: tests/e2e/persistence.spec.ts
+```
+
+**8. `api-keys.spec.ts`** (Core configuration)
+```bash
+Begin with the file: tests/e2e/api-keys.spec.ts
+```
+
+**9. `settings.spec.ts`** (Core configuration)
+```bash
+Begin with the file: tests/e2e/settings.spec.ts
+```
+
+**10. `settings-modal.spec.ts`** (UI component interaction)
+```bash
+Begin with the file: tests/e2e/settings-modal.spec.ts
+```
+
+**11. `pipeline.spec.ts`** (The main "happy path" workflow)
+```bash
+Begin with the file: tests/e2e/pipeline.spec.ts
+```
+
+**12. `output.spec.ts`** (Verifying the end result of the pipeline)
+```bash
+Begin with the file: tests/e2e/output.spec.ts
+```
+
+**13. `error-handling.spec.ts`** (Resilience testing)
+```bash
+Begin with the file: tests/e2e/error-handling.spec.ts
+```
+
+**14. `cancellation.spec.ts`** (Resilience testing)
+```bash
+Begin with the file: tests/e2e/cancellation.spec.ts
+```
+
+**15. `pipeline-resilience.spec.ts`** (Resilience testing)
+```bash
+Begin with the file: tests/e2e/pipeline-resilience.spec.ts
+```
+
+**16. `providers.spec.ts`** (External service interaction)
+```bash
+Begin with the file: tests/e2e/providers.spec.ts
+```
+
+**17. `network.spec.ts`** (Edge case testing)
+```bash
+Begin with the file: tests/e2e/network.spec.ts
+```
+
+**18. `race-conditions.spec.ts`** (Advanced stress testing)
+```bash
+Begin with the file: tests/e2e/race-conditions.spec.ts
+```
+
+**19. `custom-prompt-editor.spec.ts`** (Advanced feature testing)
+```bash
+Begin with the file: tests/e2e/custom-prompt-editor.spec.ts
+```
+
+**20. `drone-failure-markers.spec.ts`** (UI state testing)
+```bash
+Begin with the file: tests/e2e/drone-failure-markers.spec.ts
+```
+
+**21. `edge-cases.spec.ts`**
+```bash
+Begin with the file: tests/e2e/edge-cases.spec.ts
+```
+
+**22. `combined-features.spec.ts`**
+```bash
+Begin with the file: tests/e2e/combined-features.spec.ts
+```
+
+**23. `integration.spec.ts`**
+```bash
+Begin with the file: tests/e2e/integration.spec.ts
+```
+
+**24. `text-processing.spec.ts`**
+```bash
+Begin with the file: tests/e2e/text-processing.spec.ts
+```
+
+**25. `mobile.spec.ts`** (Non-functional requirement)
+```bash
+Begin with the file: tests/e2e/mobile.spec.ts
+```
+
+**26. `performance.spec.ts`** (Non-functional requirement)
+```bash
+Begin with the file: tests/e2e/performance.spec.ts
+```
+
+**27. `security.spec.ts`** (Non-functional requirement)
+```bash
+Begin with the file: tests/e2e/security.spec.ts
+```
+
+**28. `accessibility.spec.ts`** (Non-functional requirement)
+```bash
+Begin with the file: tests/e2e/accessibility.spec.ts
+```
+
+**29. `debug.spec.ts`** (Utility testing, run last)
+```bash
+Begin with the file: tests/e2e/debug.spec.ts
+```
+
+Once you have completed this entire list, your test suite should be fully passing and robust.

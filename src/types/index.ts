@@ -18,7 +18,7 @@ export interface Stats {
 }
 
 export interface LoadingProgress {
-  phase: 'preparing' | 'launching' | 'processing' | 'finalizing';
+  phase: 'preparing' | 'launching' | 'processing' | 'finalizing' | 'cancelled';
   message: string;
   completedDrones?: number;
   totalDrones?: number;
@@ -41,12 +41,15 @@ export interface PipelineSettings {
   model: string;
   temperature: number;
   maxConcurrency: number;
-  customTargetTokens: number;
+  customTargetTokens: number | null;
   processingSpeed: string;
   recencyMode: boolean;
   recencyStrength: number;
   droneDensity?: number;
-  maxDrones: number;
+  maxDrones?: number;
+  // Add custom prompt fields
+  useCustomPrompt?: boolean;
+  customPrompt?: string;
 }
 
 export interface PipelineResult {

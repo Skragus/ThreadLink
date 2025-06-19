@@ -9,6 +9,8 @@ import TextEditor from './components/TextEditor';
 import APIKeysModal from './components/APIKeysModal';
 import { SettingsModal } from './components/SettingModal';
 import InfoPanel from './components/InfoPanel';
+import { ConfigurationOverrideModal } from './components/ConfigurationOverrideModal';
+import WelcomeBanner from './components/WelcomeBanner';
 
 // Import types
 import { 
@@ -31,9 +33,11 @@ import {
 // @ts-ignore - JavaScript modules without TypeScript declarations
 import { runCondensationPipeline } from '../src/pipeline/orchestrator.js';
 // @ts-ignore - JavaScript modules without TypeScript declarations
-import { getAPIKey, saveAPIKey, removeAPIKey } from '../src/lib/storage.js';
+import { getAPIKey, saveAPIKey, removeAPIKey, getCustomPrompt, saveCustomPrompt, getUseCustomPrompt, saveUseCustomPrompt, getSettings, saveSettings } from '../src/lib/storage.js';
 // @ts-ignore - JavaScript modules without TypeScript declarations
 import { MODEL_PROVIDERS } from '../src/lib/client-api.js';
+// @ts-ignore - JavaScript modules without TypeScript declarations
+import { calculateEstimatedDrones } from '../src/pipeline/config.js';
 
 function ThreadLink() {
   // Main app state
@@ -41,6 +45,7 @@ function ThreadLink() {
   const [outputText, setOutputText] = useState('');
   const [isProcessed, setIsProcessed] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
+  const [outputTokenCount, setOutputTokenCount] = useState(0);
   const [compressionRatio, setCompressionRatio] = useState('balanced');
   const [isLoading, setIsLoading] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -63,10 +68,19 @@ function ThreadLink() {
   const [processingSpeed, setProcessingSpeed] = useState('balanced');
   const [recencyMode, setRecencyMode] = useState(false);
   const [recencyStrength, setRecencyStrength] = useState(1);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [adv_temperature, setAdv_temperature] = useState(0.5);
+  const [showAdvanced, setShowAdvanced] = useState(false);  const [adv_temperature, setAdv_temperature] = useState(0.5);
   const [adv_droneDensity, setAdv_droneDensity] = useState(2);
   const [adv_maxDrones, setAdv_maxDrones] = useState(50);
+  // Custom prompt state
+  const [useCustomPrompt, setUseCustomPrompt] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
+
+  // Configuration override modal state
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideModalData, setOverrideModalData] = useState({ 
+    calculatedDrones: 0, 
+    maxDrones: 0 
+  });
 
   // API Keys state
   const [googleAPIKey, setGoogleAPIKey] = useState('');
@@ -77,7 +91,6 @@ function ThreadLink() {
   const [googleCacheEnabled, setGoogleCacheEnabled] = useState(false);
   const [openaiCacheEnabled, setOpenaiCacheEnabled] = useState(false);
   const [anthropicCacheEnabled, setAnthropicCacheEnabled] = useState(false);
-
   // Info Panel expandable sections state
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
     what: false,
@@ -90,24 +103,74 @@ function ThreadLink() {
     privacy: false
   });
 
+  // Welcome banner state
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+
   // Refs
   const errorRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
   const loadingStartTime = useRef<number>(0);
-
   // Processing Speed logic
-  const isAnthropicModel = model.includes('claude');
+  const isAnthropicModel = model.toLowerCase().includes('claude');
 
+  // Function to save current settings to localStorage
+  const saveCurrentSettings = () => {
+    const currentSettings = {
+      model,
+      temperature: adv_temperature,
+      processingSpeed,
+      recencyMode,
+      recencyStrength,
+      droneDensity: adv_droneDensity,
+      maxDrones: adv_maxDrones
+    };
+    saveSettings(currentSettings);
+  };
   // Initialize API keys from storage on mount
-  useEffect(() => {
-    const loadedGoogleKey = getAPIKey('google');
+  useEffect(() => {    const loadedGoogleKey = getAPIKey('google');
     const loadedOpenAIKey = getAPIKey('openai');
     const loadedAnthropicKey = getAPIKey('anthropic');
     
-    if (loadedGoogleKey) setGoogleAPIKey(loadedGoogleKey);
-    if (loadedOpenAIKey) setOpenaiAPIKey(loadedOpenAIKey);
-    if (loadedAnthropicKey) setAnthropicAPIKey(loadedAnthropicKey);
+    if (loadedGoogleKey) {
+      setGoogleAPIKey(loadedGoogleKey);
+      setGoogleCacheEnabled(true);
+    }
+    if (loadedOpenAIKey) {
+      setOpenaiAPIKey(loadedOpenAIKey);
+      setOpenaiCacheEnabled(true);
+    }
+    if (loadedAnthropicKey) {
+      setAnthropicAPIKey(loadedAnthropicKey);
+      setAnthropicCacheEnabled(true);
+    }
+    
+    // Load custom prompt settings
+    const loadedUseCustomPrompt = getUseCustomPrompt();
+    const loadedCustomPrompt = getCustomPrompt();
+    
+    if (loadedUseCustomPrompt) setUseCustomPrompt(loadedUseCustomPrompt);
+    if (loadedCustomPrompt) setCustomPrompt(loadedCustomPrompt);    // Load settings from localStorage
+    const savedSettings = getSettings();
+    if (savedSettings) {
+      if (savedSettings.model) setModel(savedSettings.model);
+      if (savedSettings.temperature !== undefined) setAdv_temperature(savedSettings.temperature);
+      if (savedSettings.processingSpeed) setProcessingSpeed(savedSettings.processingSpeed);
+      if (savedSettings.recencyMode !== undefined) setRecencyMode(savedSettings.recencyMode);
+      if (savedSettings.recencyStrength !== undefined) setRecencyStrength(savedSettings.recencyStrength);
+      if (savedSettings.droneDensity !== undefined) setAdv_droneDensity(savedSettings.droneDensity);
+      if (savedSettings.maxDrones !== undefined) setAdv_maxDrones(savedSettings.maxDrones);
+    }    // Check if this is a first-time visit and show welcome banner
+    // Do this check after API keys are loaded
+    setTimeout(() => {
+      const hasVisitedBefore = localStorage.getItem('threadlink_has_visited');
+      const hasAnyApiKeys = googleAPIKey || openaiAPIKey || anthropicAPIKey || 
+                           getAPIKey('google') || getAPIKey('openai') || getAPIKey('anthropic');
+      
+      if (!hasVisitedBefore && !hasAnyApiKeys) {
+        setShowWelcomeBanner(true);
+      }
+    }, 100);
   }, []);
 
   // Auto-reset processing speed when switching to Anthropic
@@ -129,14 +192,17 @@ function ThreadLink() {
   useEffect(() => {
     setTokenCount(estimateTokens(displayText));
   }, [displayText]);
-
   // Scroll to stats after processing
   useEffect(() => {
     if (isProcessed && stats) {
       const timer = setTimeout(() => {
         requestAnimationFrame(() => {
-          if (statsRef.current) {
-            statsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (statsRef.current && statsRef.current.scrollIntoView) {
+            try {
+              statsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (error) {
+              console.warn('Could not scroll to stats:', error);
+            }
           }
         });
       }, 50);
@@ -165,55 +231,160 @@ function ThreadLink() {
 
   const handleCompressionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setCompressionRatio(e.target.value);
-  };
-
-  const handleCancel = () => {
-    if (isCancelling) return;
+  };  const handleCancel = () => {
+    console.log('🛑 handleCancel called - checking if already cancelling');
+    if (isCancelling) {
+      console.log('⚠️ Already cancelling, ignoring redundant cancel request');
+      return;
+    }
     
+    console.log('🛑 Setting cancellation flags: isCancelling=true, cancelRef.current=true');
+    
+    // Set both state flags immediately
     setIsCancelling(true);
     cancelRef.current = true;
+    
+    // Set error message to provide user feedback
     setError('Processing was cancelled');
-  };
-
-  const saveAPIKeys = () => {
-    if (googleAPIKey) {
-      saveAPIKey('google', googleAPIKey);
-    } else {
-      removeAPIKey('google');
-    }
     
-    if (openaiAPIKey) {
-      saveAPIKey('openai', openaiAPIKey);
-    } else {
-      removeAPIKey('openai');
-    }
+    // Reset any progress indicators to avoid lingering progress states
+    setLoadingProgress({
+      phase: 'cancelled',
+      message: 'Processing was cancelled',
+      completedDrones: 0,
+      totalDrones: 0,
+      elapsedTime: 0,
+      progress: 0
+    });
     
-    if (anthropicAPIKey) {
-      saveAPIKey('anthropic', anthropicAPIKey);
-    } else {
-      removeAPIKey('anthropic');
+    console.log('🛑 Cancel state set - UI will update and orchestrator will detect cancelRef.current flag');
+    
+    // Log cancellation state for debugging
+    setTimeout(() => {
+      console.log(`🛑 Cancellation state after 100ms: isCancelling=${isCancelling}, cancelRef.current=${cancelRef.current}`);
+    }, 100);
+    
+    // Make sure the loading state is reset after a short delay
+    // This helps ensure the UI resets properly even if there's an issue with the orchestrator
+    setTimeout(() => {
+      if (isCancelling) {
+        console.log('🛑 Forcing loading state reset after delay');
+        setIsLoading(false);
+        setIsCancelling(false);
+      }
+    }, 5000);
+  };const saveAPIKeys = () => {
+    try {
+      // Save or remove API keys based on cache settings (respects user privacy choice)
+      if (googleAPIKey) {
+        saveAPIKey('google', googleAPIKey, googleCacheEnabled);
+      } else {
+        removeAPIKey('google');
+      }
+      
+      if (openaiAPIKey) {
+        saveAPIKey('openai', openaiAPIKey, openaiCacheEnabled);
+      } else {
+        removeAPIKey('openai');
+      }
+      
+      if (anthropicAPIKey) {
+        saveAPIKey('anthropic', anthropicAPIKey, anthropicCacheEnabled);
+      } else {
+        removeAPIKey('anthropic');
+      }
+    } catch (error: any) {
+      // Re-throw the error so the modal can catch it
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        throw error;
+      }
+      console.error("An unexpected error occurred while saving API keys:", error);
+      throw error;
     }
-  };
+      // Save custom prompt settings
+    try {
+      saveUseCustomPrompt(useCustomPrompt);
+      if (customPrompt) {
+        saveCustomPrompt(customPrompt);
+      }
+    } catch (error: any) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        throw error;
+      }
+      console.error("Error saving custom prompt settings:", error);
+      throw error;
+    }
 
-  const handleCondense = async () => {
+    // Hide welcome banner when user saves API keys
+    if (googleAPIKey || openaiAPIKey || anthropicAPIKey) {
+      setShowWelcomeBanner(false);
+      localStorage.setItem('threadlink_has_visited', 'true');
+    }
+  };const handleCondense = async () => {
+    console.log('🔄 handleCondense called with:', { inputText: inputText?.length, model, useCustomPrompt, customPrompt: customPrompt?.length });
+    
+    // Validation checks
     if (!inputText.trim()) {
+      console.log('❌ Validation failed: No input text');
       setError('Please paste some text to condense');
+      return;
+    }
+
+    // Check if custom prompt is enabled but empty
+    if (useCustomPrompt && (!customPrompt || !customPrompt.trim())) {
+      console.log('❌ Validation failed: Empty custom prompt');
+      setError('Custom prompt cannot be empty. Please configure your custom prompt or disable it in settings.');
       return;
     }
 
     const provider = MODEL_PROVIDERS[model];
     if (!provider) {
+      console.log('❌ Validation failed: Unknown model', model);
       setError(`Unknown model: ${model}`);
       return;
     }
 
     const apiKey = getAPIKey(provider);
     if (!apiKey) {
-      setError(`Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key`);
+      console.log('❌ Validation failed: No API key for provider', provider);
+      setError(`Please configure your API key to get started`);
       setShowAPIKeys(true);
       return;
     }
 
+    console.log('✅ Validation passed, calculating drones...');
+    
+    // Calculate the number of drones that would be created
+    const inputTokens = estimateTokens(inputText);
+    let calculatedDrones;
+    
+    if (recencyMode) {
+      // In recency mode, drone count is calculated differently
+      calculatedDrones = Math.ceil(inputTokens / 3000); // Example calculation
+    } else {
+      // Normal mode uses drone density
+      calculatedDrones = calculateEstimatedDrones(inputTokens, adv_droneDensity, null);
+    }
+
+    console.log('🤖 Drone calculation:', { inputTokens, calculatedDrones, maxDrones: adv_maxDrones, recencyMode });
+
+    // Check if we would exceed max drones
+    if (calculatedDrones > adv_maxDrones) {
+      console.log('⚠️ Drone count exceeds max, showing override modal');
+      // Show the override confirmation modal
+      setOverrideModalData({
+        calculatedDrones,
+        maxDrones: adv_maxDrones
+      });
+      setShowOverrideModal(true);
+      return; // Don't proceed until user confirms
+    }    console.log('🚀 Proceeding with condensation...');
+    // If no override needed, proceed directly
+    proceedWithCondensation();
+  };
+    
+  const proceedWithCondensation = async () => {
+    console.log('🚀 PROCEEDING WITH CONDENSATION - setIsLoading(true)');
     setIsLoading(true);
     setError('');
     setStats(null);
@@ -226,8 +397,10 @@ function ThreadLink() {
     
     const recencyStrengthValue = recencyMode ? 
       (recencyStrength === 0 ? 25 : recencyStrength === 1 ? 50 : 90) : 0;
-    
-    try {
+      try {
+      const provider = MODEL_PROVIDERS[model];
+      const apiKey = getAPIKey(provider);
+      
       const settings: PipelineSettings = {
         model: model,
         temperature: adv_temperature,
@@ -237,15 +410,21 @@ function ThreadLink() {
         recencyMode: recencyMode,
         recencyStrength: recencyStrengthValue,
         droneDensity: recencyMode ? undefined : adv_droneDensity,
-        maxDrones: adv_maxDrones
+        maxDrones: adv_maxDrones,
+        // Add custom prompt settings
+        useCustomPrompt: useCustomPrompt,
+        customPrompt: useCustomPrompt ? customPrompt : undefined
       };
 
+      console.log('🚀 Starting condensation pipeline...', { settings, apiKey: apiKey ? 'SET' : 'NOT_SET' });
+      
       const result: PipelineResult = await runCondensationPipeline({
         rawText: inputText,
         apiKey: apiKey,
         settings: settings,
         onProgress: (update: ProgressUpdate) => {
           const elapsedTime = (Date.now() - loadingStartTime.current) / 1000;
+          console.log('📊 Progress update:', update);
           setLoadingProgress({
             phase: update.phase || 'processing',
             message: update.message || 'Processing...',
@@ -255,21 +434,50 @@ function ThreadLink() {
             progress: update.progress
           });
         },
-        cancelled: () => cancelRef.current
+        cancelled: () => {
+          const isCancelled = cancelRef.current;
+          if (isCancelled) {
+            console.log('🛑 Cancellation check - returning TRUE - processing should stop');
+          }
+          return isCancelled;
+        }
       } as any);
 
-      if (result.success && result.contextCard) {
+      console.log('🏁 Pipeline completed:', { success: result.success, hasContextCard: !!result.contextCard, result });if (result.success && result.contextCard) {
         setOutputText(result.contextCard);
-        setStats({
+        setOutputTokenCount(estimateTokens(result.contextCard));
+        
+        // Create stats object with fallbacks to ensure it's always set
+        const defaultStats = {
           executionTime: result.executionTime || '0',
-          compressionRatio: result.sessionStats?.compressionRatio || result.stats?.compressionRatio || '0',
-          successfulDrones: result.sessionStats?.successfulDrones || result.stats?.successfulDrones || 0,
-          totalDrones: result.sessionStats?.totalDrones || result.stats?.totalDrones || 0,
-          initialTokens: result.stats?.initialTokens,
-          finalTokens: result.stats?.finalTokens || result.sessionStats?.finalContentTokens
-        });
+          compressionRatio: '1.0',
+          successfulDrones: 1,
+          totalDrones: 1,
+          initialTokens: estimateTokens(inputText),
+          finalTokens: estimateTokens(result.contextCard)
+        };
+        
+        // Merge with actual stats if available - ensure we ALWAYS have stats
+        const mergedStats = {
+          executionTime: result.executionTime || defaultStats.executionTime,
+          compressionRatio: result.sessionStats?.compressionRatio || result.stats?.compressionRatio || defaultStats.compressionRatio,
+          successfulDrones: result.sessionStats?.successfulDrones || result.stats?.successfulDrones || defaultStats.successfulDrones,
+          totalDrones: result.sessionStats?.totalDrones || result.stats?.totalDrones || defaultStats.totalDrones,
+          initialTokens: result.stats?.initialTokens || defaultStats.initialTokens,
+          finalTokens: result.stats?.finalTokens || result.sessionStats?.finalContentTokens || defaultStats.finalTokens
+        };
+        
+        // CRITICAL: Always set stats for successful processing
+        setStats(mergedStats);
         setIsProcessed(true);
-        console.log('✅ Processing complete:', result.stats);
+        console.log('✅ Processing complete - Stats guaranteed:', { 
+          hasSessionStats: !!result.sessionStats, 
+          hasStats: !!result.stats, 
+          mergedStats,
+          statsSet: true,
+          originalSessionStats: result.sessionStats,
+          originalStats: result.stats 
+        });
       } else {
         const errorInfo = getErrorDisplay(result.error || 'Processing failed', result.errorType);
         setError(errorInfo);
@@ -279,60 +487,106 @@ function ThreadLink() {
       console.error('❌ Caught an exception during processing:', err);
       const errorInfo = getErrorDisplay(
         err.message || 'An unexpected error occurred.',
-        'GENERAL_ERROR'
+        'UNKNOWN'
       );
       setError(errorInfo);
     } finally {
       setIsLoading(false);
       setIsCancelling(false);
-      cancelRef.current = false;
     }
   };
 
-  const handleCopy = async () => {
-    const textToCopy = isProcessed ? outputText : inputText;
-    await navigator.clipboard.writeText(textToCopy);
-    setIsCopied(true);
-    setTimeout(() => {
-      setIsCopied(false);
-    }, 2000);
+  // Add handlers for the override modal
+  const handleOverrideProceed = () => {
+    setShowOverrideModal(false);
+    proceedWithCondensation();
   };
 
+  const handleOverrideCancel = () => {
+    setShowOverrideModal(false);
+    setShowSettings(true); // Open settings so user can adjust
+  };  const handleCopy = async () => {
+    const textToCopy = isProcessed ? outputText : inputText;
+    
+    // Check if there's any text to copy
+    if (!textToCopy || textToCopy.trim() === '') {
+      setError('No content to copy.');
+      setTimeout(() => {
+        setError('');
+      }, 3000);
+      return;
+    }
+    
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setIsCopied(true);
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+      console.log('✅ Content copied to clipboard successfully');
+    } catch (error) {
+      console.error('❌ Failed to copy to clipboard:', error);
+      
+      // Provide different errors based on the specific clipboard error
+      let errorMessage = 'Failed to copy to clipboard. Please try again.';
+      
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'Clipboard permission denied. Check your browser settings.';
+        } else if (error.name === 'SecurityError') {
+          errorMessage = 'Clipboard access was blocked for security reasons.';
+        }
+      }
+      
+      setError(errorMessage);
+      setTimeout(() => {
+        setError('');
+      }, 3000);
+    }
+  };
   const handleReset = () => {
     setInputText('');
     setOutputText('');
+    setOutputTokenCount(0);
     setIsProcessed(false);
     setTokenCount(0);
     setError('');
     setStats(null);
     cancelRef.current = false;
   };
-
   const toggleSection = (section: keyof ExpandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }));
   };
-
+  // Welcome banner handlers
+  const handleDismissWelcomeBanner = () => {
+    setShowWelcomeBanner(false);
+    localStorage.setItem('threadlink_has_visited', 'true');
+  };
   const handleDeleteKey = (provider: 'google' | 'openai' | 'anthropic') => {
+    console.log(`🗑️ Deleting ${provider} API key - clearing input, disabling cache, removing from storage`);
+    
     switch (provider) {
       case 'google':
-        setGoogleAPIKey('');
-        setGoogleCacheEnabled(false);
-        removeAPIKey('google');
+        setGoogleAPIKey(''); // Clear the input field
+        setGoogleCacheEnabled(false); // Toggle cache off
+        removeAPIKey('google'); // Remove from browser storage
         break;
       case 'openai':
-        setOpenaiAPIKey('');
-        setOpenaiCacheEnabled(false);
-        removeAPIKey('openai');
+        setOpenaiAPIKey(''); // Clear the input field
+        setOpenaiCacheEnabled(false); // Toggle cache off
+        removeAPIKey('openai'); // Remove from browser storage
         break;
       case 'anthropic':
-        setAnthropicAPIKey('');
-        setAnthropicCacheEnabled(false);
-        removeAPIKey('anthropic');
+        setAnthropicAPIKey(''); // Clear the input field
+        setAnthropicCacheEnabled(false); // Toggle cache off
+        removeAPIKey('anthropic'); // Remove from browser storage
         break;
     }
+    
+    console.log(`✅ ${provider} API key deleted - input cleared, cache disabled, storage wiped`);
   };
 
   return (
@@ -361,8 +615,7 @@ function ThreadLink() {
         }
       `}</style>
       
-      <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">
-        <SettingsModal
+      <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">        <SettingsModal
           isOpen={showSettings}
           model={model}
           setModel={setModel}
@@ -380,7 +633,19 @@ function ThreadLink() {
           setAdvDroneDensity={setAdv_droneDensity}
           advMaxDrones={adv_maxDrones}
           setAdvMaxDrones={setAdv_maxDrones}
-          onClose={() => setShowSettings(false)}
+          // Add custom prompt props
+          useCustomPrompt={useCustomPrompt}
+          setUseCustomPrompt={setUseCustomPrompt}
+          customPrompt={customPrompt}
+          setCustomPrompt={setCustomPrompt}
+          // Pass current API key states for model filtering
+          googleAPIKey={googleAPIKey}
+          openaiAPIKey={openaiAPIKey}
+          anthropicAPIKey={anthropicAPIKey}
+          onClose={() => {
+            saveCurrentSettings();
+            setShowSettings(false);
+          }}
         />
 
         <APIKeysModal
@@ -393,58 +658,72 @@ function ThreadLink() {
           anthropicCacheEnabled={anthropicCacheEnabled}
           setGoogleAPIKey={setGoogleAPIKey}
           setOpenaiAPIKey={setOpenaiAPIKey}
-          setAnthropicAPIKey={setAnthropicAPIKey}
-          setGoogleCacheEnabled={setGoogleCacheEnabled}
+          setAnthropicAPIKey={setAnthropicAPIKey}          setGoogleCacheEnabled={setGoogleCacheEnabled}
           setOpenaiCacheEnabled={setOpenaiCacheEnabled}
           setAnthropicCacheEnabled={setAnthropicCacheEnabled}
-          onSave={() => {
-            saveAPIKeys();
-            setShowAPIKeys(false);
-          }}
+          onSave={saveAPIKeys} // Pass the function directly
           onClose={() => setShowAPIKeys(false)}
           onDeleteKey={handleDeleteKey}
-        />
-
-        <InfoPanel
+        />        <InfoPanel
           isOpen={showInfo}
           expandedSections={expandedSections}
           onToggleSection={toggleSection}
           onClose={() => setShowInfo(false)}
+        />        <ConfigurationOverrideModal
+          isOpen={showOverrideModal}
+          calculatedDrones={overrideModalData.calculatedDrones}
+          maxDrones={overrideModalData.maxDrones}
+          onProceed={handleOverrideProceed}
+          onCancel={handleOverrideCancel}
         />
 
-        <Header
-          onInfoClick={() => setShowInfo(true)}
-          onAPIKeysClick={() => setShowAPIKeys(true)}
-          onSettingsClick={() => setShowSettings(true)}
-        />
+        {/* Header Navigation */}
+        <header>
+          <Header
+            onInfoClick={() => setShowInfo(true)}
+            onAPIKeysClick={() => setShowAPIKeys(true)}
+            onSettingsClick={() => setShowSettings(true)}
+          />
+        </header>
 
-        <TextEditor
-          displayText={displayText}
-          isLoading={isLoading}
-          isProcessed={isProcessed}
-          error={error}
-          stats={stats}
-          loadingProgress={loadingProgress}
-          isCancelling={isCancelling}
-          errorRef={errorRef}
-          statsRef={statsRef}
-          outputTextareaRef={outputTextareaRef}
-          onTextChange={handleTextChange}
-          onCancel={handleCancel}
-        />
+        {/* Main Content Area */}
+        <main className="flex-grow flex flex-col">
+          <WelcomeBanner
+            isVisible={showWelcomeBanner}
+            onDismiss={handleDismissWelcomeBanner}
+          />
 
-        <Footer
-          tokenCount={tokenCount}
-          compressionRatio={compressionRatio}
-          onCompressionChange={handleCompressionChange}
-          inputText={inputText}
-          isProcessed={isProcessed}
-          isLoading={isLoading}
-          isCopied={isCopied}
-          onCondense={handleCondense}
-          onCopy={handleCopy}
-          onReset={handleReset}
-        />
+          <TextEditor
+            displayText={displayText}
+            isLoading={isLoading}
+            isProcessed={isProcessed}
+            error={error}
+            stats={stats}
+            loadingProgress={loadingProgress}
+            isCancelling={isCancelling}
+            errorRef={errorRef}
+            statsRef={statsRef}
+            outputTextareaRef={outputTextareaRef}
+            onTextChange={handleTextChange}
+            onCancel={handleCancel}
+          />
+        </main>
+
+        {/* Footer Controls */}
+        <footer>
+          <Footer
+            tokenCount={tokenCount}
+            outputTokenCount={outputTokenCount}
+            compressionRatio={compressionRatio}
+            onCompressionChange={handleCompressionChange}
+            isProcessed={isProcessed}
+            isLoading={isLoading}
+            isCopied={isCopied}
+            onCondense={handleCondense}
+            onCopy={handleCopy}
+            onReset={handleReset}
+          />
+        </footer>
       </div>
     </>
   );

@@ -27,3 +27,14 @@ info menu open section should scroll jump to it
 
 bolt badge covers scroll bar
 
+bolt badge not showing on netlify
+
+add more description of targetToken var in prompt editor
+
+improve boilerplate cleaner using sites from askweve extensions permissions
+
+go over tests with sonnet
+
+fix red squggles in input field
+
+make custom prompt toggle dark when off

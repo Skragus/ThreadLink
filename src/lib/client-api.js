@@ -3,19 +3,17 @@
  * Replaces the Node.js utils.js with direct REST API calls
  */
 
-// Model to provider mapping (same as original)
+// Model to provider mapping (only cheap, fast models for batch processing)
 export const MODEL_PROVIDERS = {
+    // Google models
+    "gemini-1.5-flash": "google",
+    
     // OpenAI models
-    "gpt-4o-mini": "openai",
-    "gpt-4.1-mini": "openai",
     "gpt-4.1-nano": "openai",
+    "gpt-4.1-mini": "openai",
     
     // Anthropic models
     "claude-3-5-haiku-20241022": "anthropic",
-    "claude-3-haiku-20240307": "anthropic",
-    
-    // Google models
-    "gemini-1.5-flash": "google",
 };
 
 // API endpoints
@@ -138,13 +136,13 @@ async function generateGoogleResponse(
     apiKey,
     temperature = 0.7,
     maxTokens = null // Google doesn't use max_tokens in the same way
-) {
-    const endpoint = API_ENDPOINTS.google.replace('{model}', model);
+) {    const endpoint = API_ENDPOINTS.google.replace('{model}', model);
     
-    const response = await fetch(`${endpoint}?key=${apiKey}`, {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
         },
         body: JSON.stringify({
             contents: [{
@@ -183,7 +181,7 @@ async function generateGoogleResponse(
 export async function generateResponse(
     systemInstructions,
     userPrompt,
-    model = "gpt-4o",
+    model = "gpt-4.1-nano",
     apiKey,
     temperature = 0.7,
     maxTokens = null
@@ -267,7 +265,7 @@ export function cleanAnthropicIntros(text, options = {}) {
             /^I'll condense [^:]*:\s*/i,
             /^I'll [^.]*\.\s*/i,
             /^I'll [^.]*\.\s*Let's [^:]*:\s*/i,
-            /^[🔬📊💡🚀📈📄🧪🎉💥⚠️✅❌⭐️🔍]+ [^:]*:\s*/i,
+            /^(?:🔬|📊|💡|🚀|📈|📄|🧪|🎉|💥|⚠️|✅|❌|⭐️|🔍)+ [^:]*:\s*/iu,
             /^[A-Z][a-z]+ [A-Z][^:]*Summary[^:]*:\s*/i,
             /^This is [^:]*:\s*/i,
             /^The following is [^:]*:\s*/i,
