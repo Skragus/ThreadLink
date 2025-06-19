@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import { 
   X, ChevronDown, ChevronRight, Sparkles, Copy, 
-  Shield, Package, Scale, Bot, Focus, Settings
+  Shield, Package, Scale, Bot, Focus, Settings, AlertTriangle
 } from 'lucide-react';
 import { ExpandedSections } from '../types';
 
@@ -127,7 +127,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                   <strong className="text-[var(--text-primary)]">Use it to:</strong>
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>Make a conversation with Mistral seamlessly continue inside GPT.</li>
+                  <li>Make a conversation with Mistral or Groq seamlessly continue inside GPT.</li>
                   <li>Distill a 400,000-token project history into a briefing you can actually read.</li>
                   <li>Archive the complete context of a feature build.</li>
                   <li>Turn any messy data dump into actionable intelligence.</li>
@@ -191,6 +191,15 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                       <p className="text-sm">Copy the selected text (<strong>Ctrl+C</strong> / <strong>Cmd+C</strong>), paste it into ThreadLink, and you're ready to condense.</p>
                     </div>
                   </div>
+                </div>
+                  <div className="!mt-6 pt-4 border-t border-[var(--divider)]">
+                    <h4 className="font-medium text-[var(--text-primary)] mb-2">Troubleshooting: Why did a drone fail?</h4>
+                    <p className="text-sm space-y-2">
+                        Sometimes, even with a clean copy, a specific chunk of text can be "problematic" for an AI model. This often happens with highly self-referential content (like chats *about* AI), complex code, or text that accidentally triggers a provider's safety filters. When this occurs, you may see a <code>[⚠ Drone failed...]</code> marker in your output.
+                    </p>
+                    <p className="text-sm mt-2">
+                        The most powerful solution is to adjust the <strong>Drone Density</strong> in the Advanced Settings. By increasing the density (e.g., from 2 to 5), you force ThreadLink to break the problematic text into smaller, more granular chunks. This makes each drone's task simpler and significantly reduces the chance of any single chunk causing a failure. It's a way to trade a bit of compression for a much higher chance of success on difficult content.
+                    </p>
                 </div>
               </div>
             )}
@@ -319,12 +328,19 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                       <li><strong>Speed:</strong> Fast</li>
                     </ul>
                   </div>
-                  
-                  <div className="bg-[var(--bg-primary)] border border-[var(--divider)] rounded p-3">
+                    <div className="bg-[var(--bg-primary)] border border-[var(--divider)] rounded p-3">
                     <h4 className="font-medium text-[var(--text-primary)] mb-2">Mistral</h4>
                     <ul className="list-disc list-inside ml-4 space-y-1 text-sm">
-                      <li><strong>Personality:</strong> Precise and ruthlessly concise. It adheres well to token limits and will aggressively cut text to meet its target. Ideal for summaries where brevity is key.</li>
-                      <li><strong>Speed:</strong> Slow</li>
+                      <li><strong>Personality:</strong> Precise and ruthlessly efficient. Adheres strictly to token limits and instructions, making it ideal for fine-tuning with the Advanced Settings.</li>
+                      <li><strong>Speed:</strong> Fast</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-[var(--bg-primary)] border border-[var(--divider)] rounded p-3">
+                    <h4 className="font-medium text-[var(--text-primary)] mb-2">Groq (Llama)</h4>
+                    <ul className="list-disc list-inside ml-4 space-y-1 text-sm">
+                      <li><strong>Personality:</strong> Extremely fast and responsive. Excellent for rapid processing of large amounts of text while providing general-purpose summaries.</li>
+                      <li><strong>Speed:</strong> Blazing fast</li>
                     </ul>
                   </div>
                 </div>
@@ -332,17 +348,13 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                 <div className="border-t border-[var(--divider)] pt-3 space-y-2">
                   <h4 className="font-medium text-[var(--text-primary)]">Processing Speed</h4>
                   <p className="text-sm">This setting controls how many drones are dispatched to work in parallel.</p>
-                  
-                  <div className="space-y-2">
+                    <div className="space-y-2">
                     <div className="ml-4">
-                      <p className="text-sm"><strong className="text-[var(--text-primary)]">Normal:</strong> The default, safe setting (e.g., 3 concurrent jobs). It's a balance of speed and reliability.</p>
+                      <p className="text-sm"><strong className="text-[var(--text-primary)]">Normal:</strong> The default, safe setting (5 concurrent jobs). It's a balance of speed and reliability.</p>
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm"><strong className="text-[var(--text-primary)]">Fast:</strong> A more aggressive setting (e.g., 6 concurrent jobs). It can significantly speed up processing on large sessions but increases the risk of hitting API rate limits.</p>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm"><strong className="text-[var(--text-primary)]">Mistral Integration:</strong> Mistral provides fast and efficient processing with good rate limits, supporting both normal and fast processing speeds.</p>
-                    </div>
+                      <p className="text-sm"><strong className="text-[var(--text-primary)]">Fast:</strong> A more aggressive setting (10 concurrent jobs). It can significantly speed up processing on large sessions but increases the risk of hitting API rate limits.</p>
+                    </div>          
                   </div>
                 </div>
               </div>
@@ -421,16 +433,14 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <h4 className="font-medium text-[var(--text-primary)]">LLM Temperature</h4>
-                    <p className="text-sm">
-                      Temperature controls the "randomness" or "creativity" of the drone's output. It's a value between 0.0 and 2.0.
-                    </p>
-                    <ul className="list-disc list-inside ml-4 space-y-2 text-sm">
+                    <h4 className="font-medium text-[var(--text-primary)]">LLM Temperature</h4>                    <p className="text-sm">
+                      Temperature controls the "randomness" or "creativity" of the drone's output. It's a value between 0.0 and 2.0. ThreadLink defaults to 0.7 for balanced readability and accuracy.
+                    </p><ul className="list-disc list-inside ml-4 space-y-2 text-sm">
                       <li><strong className="text-[var(--text-primary)]">Low Temperature (e.g., 0.2 - 0.5):</strong> The drone will be more focused, deterministic, and predictable. Its summaries will be more like a factual report, sticking very closely to the source text.</li>
-                      <li><strong className="text-[var(--text-primary)]">High Temperature (e.g., 0.8 - 1.2):</strong> The drone will take more creative risks. Its summaries may be more narrative, making interpretive leaps to connect ideas. This can result in a more readable, story-like output, but carries a higher risk of losing precision or introducing subtle inaccuracies.</li>
-                    </ul>
-                    <p className="text-sm italic">
-                      For most technical summarization, a lower temperature is recommended.
+                      <li><strong className="text-[var(--text-primary)]">Medium Temperature (e.g., 0.6 - 1.0):</strong> Balanced creativity and accuracy. Good for most use cases.</li>
+                      <li><strong className="text-[var(--text-primary)]">High Temperature (e.g., 1.1 - 2.0):</strong> The drone will take more creative risks. Its summaries may be more narrative, making interpretive leaps to connect ideas. This can result in a more readable, story-like output, but carries a higher risk of losing precision or introducing subtle inaccuracies.</li>
+                    </ul>                    <p className="text-sm italic">
+                      ThreadLink defaults to 0.7 which balances readability with accuracy for most technical content. Note: Mistral is automatically capped at 1.0 due to provider limitations.
                     </p>
                   </div>
                   
@@ -447,8 +457,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                       <strong>Note:</strong> This setting is disabled when Recency Mode is active. Recency Mode uses its own dynamic logic to vary the drone density automatically.
                     </p>
                   </div>
-                  
-                  <div className="border-t border-[var(--divider)] pt-3 space-y-2">
+                    <div className="border-t border-[var(--divider)] pt-3 space-y-2">
                     <h4 className="font-medium text-[var(--text-primary)]">Runaway Cost Protection (Max Drones)</h4>
                     <p className="text-sm">
                       This is a hard safety limit on the total number of drones a single job can create. Its primary purpose is to prevent accidental, runaway API costs when processing extremely large documents with a high Drone Density setting.
@@ -456,6 +465,22 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                     <p className="text-sm italic">
                       <strong className="text-[var(--text-primary)]">Recommendation:</strong> Only increase this limit if you are intentionally processing a massive session (e.g., 500k+ tokens) and have accepted the potential cost implications.
                     </p>
+                  </div>
+                  
+                  <div className="border-t border-[var(--divider)] pt-3 space-y-2">
+                    <h4 className="font-medium text-[var(--text-primary)]">Custom Prompt System (experimental)</h4>
+                    <p className="text-sm">
+                      This experimental feature allows you to override the default drone system prompt with your own instructions.
+                    </p>                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-3 mt-2">
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400 flex items-center gap-2">
+                        <AlertTriangle size={16} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                        <span><strong>Warning:</strong> Custom prompts fundamentally change how ThreadLink functions. This can lead to unpredictable results, cost overruns, or complete processing failures. Use only if you understand prompt engineering and accept the risks.</span>
+                      </p>
+                    </div>
+                    <ul className="list-disc list-inside ml-4 space-y-1 text-sm mt-2">
+                      <li><strong className="text-[var(--text-primary)]">TARGET_TOKENS (optional):</strong> Use <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs">{'{TARGET_TOKENS}'}</code> in your prompt to dynamically insert the calculated target output length. </li>
+                      <li><strong className="text-[var(--text-primary)]">Testing recommended:</strong> Always test custom prompts on small inputs before processing large sessions.</li>
+                    </ul>
                   </div>
                 </div>
               </div>

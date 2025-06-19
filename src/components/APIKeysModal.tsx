@@ -8,18 +8,22 @@ interface APIKeysModalProps {
   googleAPIKey: string;
   openaiAPIKey: string;
   mistralAPIKey: string;
+  groqAPIKey: string;
   googleCacheEnabled: boolean;
   openaiCacheEnabled: boolean;
   mistralCacheEnabled: boolean;
+  groqCacheEnabled: boolean;
   setGoogleAPIKey: (key: string) => void;
   setOpenaiAPIKey: (key: string) => void;
   setMistralAPIKey: (key: string) => void;
+  setGroqAPIKey: (key: string) => void;
   setGoogleCacheEnabled: (enabled: boolean) => void;
   setOpenaiCacheEnabled: (enabled: boolean) => void;
   setMistralCacheEnabled: (enabled: boolean) => void;
+  setGroqCacheEnabled: (enabled: boolean) => void;
   onSave?: () => void;
   onClose: () => void;
-  onDeleteKey: (provider: 'google' | 'openai' | 'mistral') => void;
+  onDeleteKey: (provider: 'google' | 'openai' | 'mistral' | 'groq') => void;
 }
 
 export const APIKeysModal: React.FC<APIKeysModalProps> = ({
@@ -27,15 +31,19 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
   googleAPIKey,
   openaiAPIKey,
   mistralAPIKey,
+  groqAPIKey,
   googleCacheEnabled,
   openaiCacheEnabled,
   mistralCacheEnabled,
+  groqCacheEnabled,
   setGoogleAPIKey,
   setOpenaiAPIKey,
   setMistralAPIKey,
+  setGroqAPIKey,
   setGoogleCacheEnabled,
   setOpenaiCacheEnabled,
   setMistralCacheEnabled,
+  setGroqCacheEnabled,
   onSave,
   onClose,
   onDeleteKey
@@ -45,6 +53,7 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
     google?: string;
     openai?: string;
     mistral?: string;
+    groq?: string;
   }>({});
   const [storageError, setStorageError] = useState<string>('');
   const handleSave = useCallback(async () => {
@@ -91,7 +100,6 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [isOpen, handleSave]); // Add handleSave to dependencies
-
   const validateKey = (provider: string, key: string): string | undefined => {
     if (!key) return undefined;
       switch (provider) {      case 'google':
@@ -102,18 +110,22 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
       case 'openai':
         if (!key.startsWith('sk-')) {
           return 'Invalid API key format - OpenAI keys must start with sk-';        }
+        break;      case 'mistral':
+        // Mistral keys are alphanumeric strings, typically 32 characters
+        if (!/^[a-zA-Z0-9]{20,40}$/.test(key)) {
+          return 'Invalid API key format - Mistral keys should be 20-40 alphanumeric characters';
+        }
         break;
-      case 'mistral':
-        if (!key.startsWith('sk-')) {
-          return 'Invalid API key format - Mistral keys must start with sk-';
+      case 'groq':
+        if (!key.startsWith('gsk_')) {
+          return 'Invalid API key format - Groq keys must start with gsk_';
         }
         break;}
     return undefined;
   };
 
-  if (!isOpen) return null;
-  const renderAPIKeySection = (
-    provider: 'google' | 'openai' | 'mistral',
+  if (!isOpen) return null;  const renderAPIKeySection = (
+    provider: 'google' | 'openai' | 'mistral' | 'groq',
     label: string,
     placeholder: string,
     value: string,
@@ -227,8 +239,7 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
             {storageError}
           </div>
         )}
-        
-        <div className="space-y-6" style={{ pointerEvents: 'none' }}>
+          <div className="space-y-6" style={{ pointerEvents: 'none' }}>
           {renderAPIKeySection(
             'google',
             'Google API Key',
@@ -250,13 +261,23 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
           )}          {renderAPIKeySection(
             'mistral',
             'Mistral API Key',
-            'sk-...',
+            'abcd1234...',
             mistralAPIKey,
             setMistralAPIKey,
             mistralCacheEnabled,
             setMistralCacheEnabled
           )}
-        </div>        <div className="flex gap-3 mt-6">
+
+          {renderAPIKeySection(
+            'groq',
+            'Groq API Key',
+            'gsk_...',
+            groqAPIKey,
+            setGroqAPIKey,
+            groqCacheEnabled,
+            setGroqCacheEnabled
+          )}
+        </div><div className="flex gap-3 mt-6">
           <button
             onClick={handleSave}
             className="flex-1 px-4 py-2 bg-[var(--highlight-blue)] text-white rounded-lg select-none cursor-pointer"

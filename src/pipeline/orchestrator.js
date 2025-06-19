@@ -188,7 +188,7 @@ async function processDroneBatch(
     sessionState = {}
 ) {    const {
         model = "gemini-1.5-flash",
-        temperature = 0.3,
+        temperature = 0.7,
         targetTokens = 500,
         retries = 2,
         cancelled,        apiKey,
@@ -357,10 +357,9 @@ async function processDroneBatch(
                     fatalError: true,
                     errorType: errorInfo.type
                 };
-            }
-
-            // Handle rate limits specially
+            }            // Handle rate limits specially
             if (errorInfo.type === 'RATE_LIMIT') {
+                // Always prefer API-provided retry-after header over our fixed backoffs
                 const waitTime = errorInfo.waitTime || modelConfig.rateLimitBackoff;
                 console.log(`🚦 Drone ${batchIndex + 1}: Rate limited, waiting ${waitTime}ms...`);
                 
@@ -377,7 +376,7 @@ async function processDroneBatch(
                     rateLimited: true,
                     waitTime: waitTime
                 };
-            }            // Special handling for browser fetch errors - includes test compatibility
+            }// Special handling for browser fetch errors - includes test compatibility
             if (errorInfo.type === 'NETWORK_ERROR' && (
                 (error instanceof TypeError && error.message.includes('fetch')) ||
                 (error.name === 'TypeError' && error.message.includes('fetch')) ||
@@ -630,7 +629,7 @@ async function processDronesWithConcurrency(
             batches[rateLimitedDrone.originalIndex],
             rateLimitedDrone.originalIndex,
             batches.length,
-            { ...droneOptions, retries: modelConfig.maxRetries, customPrompt },
+            { ...droneOptions, model, retries: modelConfig.maxRetries, customPrompt },
             sessionState
         );
 
@@ -912,9 +911,9 @@ export async function runCondensationPipeline(options = {}) {
         }
         
         return { success: false, error: 'Processing was cancelled' };
-    }const {
+    }    const {
         model = 'gemini-1.5-flash',
-        temperature = 0.3,
+        temperature = 0.7,
         maxConcurrency,
         customTargetTokens = null,
         processingSpeed = 'balanced',
@@ -1152,20 +1151,33 @@ export async function runCondensationPipeline(options = {}) {
         
         const contextCard = createContextCard(droneResults, sessionStats, finalDroneInputs);
         
-        // Check for total processing failure
+        // Check for total processing failure - still return context card with failure information
         if (sessionStats.successfulDrones === 0) {
-            progressTracker.setError(jobId, 'All drones failed - unable to process content');
+            const endTime = Date.now();
+            const totalTime = ((endTime - startTime) / 1000).toFixed(1);
+            
+            console.log(`\n❌ All drones failed in ${totalTime}s - returning failure context card`);
+            console.log(`📄 Failure Context Card contains failure traces for debugging`);
+            
+            progressTracker.setError(jobId, 'All drones failed - returning failure context card');
             
             return {
                 success: false,
+                contextCard, // Include the context card with failure traces
                 error: 'All drones failed - unable to process content',
                 errorType: 'PROCESSING_FAILURE',
+                droneResults,
+                sessionStats,
+                executionTime: totalTime,
                 stats: {
-                    totalDrones: sessionStats.estimatedDrones || droneResults.length,
+                    initialTokens,
+                    cleanedTokens,
+                    finalTokens: sessionStats.finalContentTokens,
+                    compressionRatio: sessionStats.compressionRatio,
+                    totalDrones: droneResults.length,
                     successfulDrones: 0,
-                    failedDrones: sessionStats.estimatedDrones || droneResults.length,
-                    compressionRatio: '0.0',
-                    executionTime: ((Date.now() - startTime) / 1000).toFixed(1)
+                    failedDrones: droneResults.length,
+                    executionTime: totalTime
                 }
             };
         }

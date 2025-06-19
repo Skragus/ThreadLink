@@ -32,6 +32,7 @@ interface SettingsModalProps {
   googleAPIKey: string;
   openaiAPIKey: string;
   mistralAPIKey: string;
+  groqAPIKey: string;
   onClose: () => void;
 }
 
@@ -52,15 +53,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   advDroneDensity,
   setAdvDroneDensity,
   advMaxDrones,
-  setAdvMaxDrones,
-  // Add custom prompt props
+  setAdvMaxDrones,  // Add custom prompt props
   useCustomPrompt,
   setUseCustomPrompt,
   customPrompt,
-  setCustomPrompt,  // Current API key states
+  setCustomPrompt,  // Current API key states  
   googleAPIKey,
   openaiAPIKey,
   mistralAPIKey,
+  groqAPIKey,
   onClose
 }) => {
   const [showPromptEditor, setShowPromptEditor] = useState(false);  // Get available providers based on both cached API keys AND current input values
@@ -69,12 +70,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     return {
       google: cached.google || !!googleAPIKey,
       openai: cached.openai || !!openaiAPIKey,
-      mistral: cached.mistral || !!mistralAPIKey
+      mistral: cached.mistral || !!mistralAPIKey,
+      groq: cached.groq || !!groqAPIKey
     };
-  }, [googleAPIKey, openaiAPIKey, mistralAPIKey]);// Check if the current model has its provider API key configured
+  }, [googleAPIKey, openaiAPIKey, mistralAPIKey, groqAPIKey]);// Check if the current model has its provider API key configured
   const currentModelProvider = MODEL_PROVIDERS[model] as keyof typeof availableProviders;
-  const isCurrentModelAvailable = currentModelProvider && availableProviders[currentModelProvider];
-  // All available models - only cheap, fast models for batch processing  
+  const isCurrentModelAvailable = currentModelProvider && availableProviders[currentModelProvider];  // All available models - only cheap, fast models for batch processing  
   const availableModels = useMemo(() => {
     return {
       google: [
@@ -86,6 +87,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       ],
       mistral: [
         { value: "mistral-small-latest", label: "Mistral Small" }
+      ],      groq: [
+        { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B (8k)" },
+        { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (128k)" }
       ]
     };
   }, []);
@@ -125,7 +129,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <AlertTriangle size={16} className="text-amber-500" />
                 <span className="text-sm text-amber-600">
                   No {currentModelProvider.charAt(0).toUpperCase() + currentModelProvider.slice(1)} API key configured for the selected model. 
-                  Please add your {currentModelProvider === 'openai' ? 'OpenAI' : currentModelProvider === 'mistral' ? 'Mistral' : 'Google'} API key to continue.
+                  Please add your {currentModelProvider === 'openai' ? 'OpenAI' : currentModelProvider === 'mistral' ? 'Mistral' : currentModelProvider === 'groq' ? 'Groq' : 'Google'} API key to continue.
                 </span>
               </div>
             </div>
@@ -158,6 +162,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </optgroup>
                 <optgroup label="Mistral">
                   {availableModels.mistral.map(modelOption => (
+                    <option key={modelOption.value} value={modelOption.value}>
+                      {modelOption.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Groq">
+                  {availableModels.groq.map(modelOption => (
                     <option key={modelOption.value} value={modelOption.value}>
                       {modelOption.label}
                     </option>
@@ -301,9 +312,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="group relative">
                         <div className="w-4 h-4 rounded-full border border-[var(--text-secondary)] flex items-center justify-center text-xs text-[var(--text-secondary)] cursor-help select-none">
                           i
-                        </div>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 select-none cursor-default">
-                          Controls creativity. 0.2 = deterministic, 1.0 = creative
+                        </div>                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 select-none cursor-default">
+                          Controls creativity. 0.2 = deterministic, 2.0 = highly creative
                         </div>
                       </div>
                     </div>
@@ -318,6 +328,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       className="w-24 px-3 py-1 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm cursor-text"
                     />
                   </div>
+                  
+                  {/* Mistral Temperature Warning */}
+                  {currentModelProvider === 'mistral' && advTemperature > 1.0 && (
+                    <div className="text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded p-2">
+                      <span className="font-medium">Note:</span> Mistral temperature will be capped at 1.0 due to provider limitations.
+                    </div>
+                  )}
 
                   {/* Drone Density */}
                   {!recencyMode && (
@@ -380,11 +397,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       />
                     </div>
 
-                    {/* Custom Prompt Toggle */}
-                    <div className="flex items-center justify-between">
+                    {/* Custom Prompt Toggle */}                    <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <label className="text-sm text-red-400 font-medium select-none cursor-default">
-                          Custom System Prompt
+                          Custom System Prompt <span className="text-xs text-red-400/70">(experimental)</span>
                         </label>
                         {useCustomPrompt && (
                           <AlertTriangle size={14} className="text-amber-500" />

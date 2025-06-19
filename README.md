@@ -15,9 +15,10 @@ Commercial LLMs are fundamentally stateless. Every session starts from zero, for
 ### 🛠 Features
 
 -   **Parallel Processing Pipeline:** Deploys multiple "summarizer drones" to process conversation chunks concurrently for speed and efficiency.
--   **BYOK (Bring Your Own Key):** Natively supports OpenAI, Google Gemini, and Mistral models.
+-   **BYOK (Bring Your Own Key):** Natively supports OpenAI, Google Gemini, Mistral, and Groq models with session-only API key storage for maximum privacy.
 -   **Zero-Trust Privacy Architecture:** All processing and API calls happen **entirely in the user's browser**. No data ever touches our servers, ensuring absolute privacy and security.
 -   **Live & Deployed:** Try it now at [**threadlink.xyz**](https://threadlink.xyz)
+-   **Production-Ready:** Robust error handling, rate limiting, partial failure resilience, and comprehensive testing ensure reliable operation at scale.
 
 ---
 
@@ -46,7 +47,7 @@ This project is built on a **100% client-side, serverless architecture** to guar
     * **TailwindCSS** for utility-first styling.
 
 * **API Integrations:**
-    * Direct, client-side integrations with **OpenAI, Google Gemini, and Mistral**.
+    * Direct, client-side integrations with **OpenAI, Google Gemini, Mistral, and Groq** with comprehensive rate limiting and retry logic.
 
 * **Testing, Tooling & Deployment:**
     * **Playwright** for comprehensive end-to-end testing across all major browsers.

@@ -54,10 +54,14 @@ export const MAX_FINAL_OUTPUT_TOKENS = Math.max(TARGET_CONTEXT_CARD_TOKENS, 6000
 export const DEFAULT_DRONE_OUTPUT_TOKEN_TARGET = Math.ceil(TARGET_CONTEXT_CARD_TOKENS / Math.ceil(10000 / 10000 * DRONES_PER_10K_TOKENS));
 export const MAX_RETRY_ATTEMPTS = 3;
 export const RETRY_BASE_DELAY_MS = 1000;
-export const DEFAULT_RATE_LIMIT_BACKOFF_MS = 60000;
-export const MISTRAL_RATE_LIMIT_BACKOFF_MS = 60000;
-export const GEMINI_RATE_LIMIT_BACKOFF_MS = 60000;
-export const GPT4_RATE_LIMIT_BACKOFF_MS = 60000;
+
+// Fast fallback values when no Retry-After header is provided
+export const FAST_RATE_LIMIT_FALLBACK_MS = 3000;      // 3 seconds - very aggressive fallback
+export const DEFAULT_RATE_LIMIT_BACKOFF_MS = 2000;    // 2 seconds - when no API guidance  
+export const MISTRAL_RATE_LIMIT_BACKOFF_MS = 2000;    // 2 seconds - very aggressive fallback
+export const GROQ_RATE_LIMIT_BACKOFF_MS = 1500;       // 1.5 seconds - extremely aggressive fallback when no retry-after header
+export const GEMINI_RATE_LIMIT_BACKOFF_MS = 2500;     // 2.5 seconds - aggressive for fast retry  
+export const GPT4_RATE_LIMIT_BACKOFF_MS = 3000;       // 3 seconds - more aggressive for OpenAI
 export const DEFAULT_CONSERVATIVE_CONCURRENCY = 5;
 export const DEFAULT_STANDARD_CONCURRENCY = 10;
 export const CONSOLE_SPECIAL_CHAR_THRESHOLD_PERCENT = 0.1;
@@ -103,13 +107,23 @@ Your condensed segment will join others to create a comprehensive context card f
 export const MODEL_CONFIGS = {
     'mistral-small-latest': { 
         safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
-        rateLimitBackoff: DEFAULT_RATE_LIMIT_BACKOFF_MS,  // 1 minute conservative wait
+        rateLimitBackoff: MISTRAL_RATE_LIMIT_BACKOFF_MS,  // 2s aggressive fallback - prefer API retry-after
         maxRetries: 3,
         aggressive: false
+    },    'llama-3.1-8b-instant': { 
+        safeConcurrency: 6,  // Reduced from 10 - more conservative for blazing fast model
+        rateLimitBackoff: GROQ_RATE_LIMIT_BACKOFF_MS,  // 20s fallback - prefer API retry-after header
+        maxRetries: 3,
+        aggressive: true  // Groq is very fast
+    },    'llama-3.3-70b-versatile': { 
+        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
+        rateLimitBackoff: GROQ_RATE_LIMIT_BACKOFF_MS,  // 20s fallback - prefer API retry-after header
+        maxRetries: 3,
+        aggressive: false  // Larger model, more conservative
     },
     'gemini-1.5-flash': {
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
-        rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 30 seconds
+        rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 15 seconds - much more reasonable
         maxRetries: 2,
         aggressive: true
     },
@@ -124,16 +138,15 @@ export const MODEL_CONFIGS = {
         rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,
         maxRetries: 3,
         aggressive: true
-    },
-    'gpt-4.1-nano': { 
+    },    'gpt-4.1-nano': { 
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
-        rateLimitBackoff: GPT4_RATE_LIMIT_BACKOFF_MS,  // 45 seconds
+        rateLimitBackoff: GPT4_RATE_LIMIT_BACKOFF_MS,  // 30 seconds - more reasonable
         maxRetries: 2,
         aggressive: true
     },
     'gpt-4.1-mini': { 
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
-        rateLimitBackoff: GPT4_RATE_LIMIT_BACKOFF_MS,  // 45 seconds
+        rateLimitBackoff: GPT4_RATE_LIMIT_BACKOFF_MS,  // 30 seconds - more reasonable
         maxRetries: 2,
         aggressive: true
     },
