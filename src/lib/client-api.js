@@ -307,10 +307,9 @@ export async function testProviderConnection(provider, apiKey) {
         const testPrompt = "Hello";
         const testSystem = "You are a helpful assistant. Respond with 'OK'.";
         
-        let result;
-        const testModels = {
+        let result;        const testModels = {
             openai: "gpt-3.5-turbo",
-            anthropic: "claude-3-haiku-20240307", 
+            anthropic: "claude-3-5-haiku-20241022", 
             google: "gemini-1.5-flash"
         };
         

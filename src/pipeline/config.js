@@ -107,30 +107,6 @@ export const MODEL_CONFIGS = {
         maxRetries: 3,
         aggressive: false
     },
-    'claude-3-5-sonnet': { 
-        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
-        rateLimitBackoff: CLAUDE_RATE_LIMIT_BACKOFF_MS,  // 1.5 minutes for expensive model
-        maxRetries: 2,
-        aggressive: false
-    },
-    'claude-3-5-sonnet-20241022': {
-        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY,
-        rateLimitBackoff: CLAUDE_RATE_LIMIT_BACKOFF_MS,
-        maxRetries: 2,
-        aggressive: false
-    },
-    'claude-3-haiku-20240307': {
-        safeConcurrency: DEFAULT_STANDARD_CONCURRENCY,
-        rateLimitBackoff: CLAUDE_RATE_LIMIT_BACKOFF_MS,
-        maxRetries: 3,
-        aggressive: true
-    },
-    'claude-3-opus-20240229': {
-        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY,
-        rateLimitBackoff: CLAUDE_RATE_LIMIT_BACKOFF_MS,
-        maxRetries: 2,
-        aggressive: false
-    },
     'gemini-1.5-flash': { 
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
         rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 30 seconds
