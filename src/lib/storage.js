@@ -3,6 +3,9 @@
  * Manages API keys and settings in localStorage
  */
 
+// Import MODEL_PROVIDERS to validate models
+import { MODEL_PROVIDERS } from './client-api.js';
+
 const STORAGE_KEYS = {
     OPENAI_KEY: 'threadlink_openai_api_key',
     ANTHROPIC_KEY: 'threadlink_anthropic_api_key',
@@ -248,7 +251,20 @@ export function saveSettings(settings) {
 export function getSettings() {
     try {
         const settings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-        return settings ? JSON.parse(settings) : getDefaultSettings();
+        if (settings) {
+            const parsedSettings = JSON.parse(settings);
+            
+            // Validate and fix invalid model references (hotfix for Claude removal)
+            if (parsedSettings.model && !(parsedSettings.model in MODEL_PROVIDERS)) {
+                console.warn(`Invalid model in settings: ${parsedSettings.model}. Resetting to default.`);
+                parsedSettings.model = 'gemini-1.5-flash';
+                // Save the corrected settings back to localStorage
+                saveSettings(parsedSettings);
+            }
+            
+            return parsedSettings;
+        }
+        return getDefaultSettings();
     } catch (error) {
         console.error('Failed to get settings:', error);
         return getDefaultSettings();
@@ -291,7 +307,16 @@ export function saveLastUsedModel(model) {
  */
 export function getLastUsedModel() {
     try {
-        return localStorage.getItem(STORAGE_KEYS.LAST_USED_MODEL);
+        const model = localStorage.getItem(STORAGE_KEYS.LAST_USED_MODEL);
+        
+        // Validate model exists in current MODEL_PROVIDERS (hotfix for Claude removal)
+        if (model && !(model in MODEL_PROVIDERS)) {
+            console.warn(`Invalid last used model: ${model}. Clearing stored value.`);
+            localStorage.removeItem(STORAGE_KEYS.LAST_USED_MODEL);
+            return null;
+        }
+        
+        return model;
     } catch (error) {
         console.error('Failed to get last used model:', error);
         return null;
