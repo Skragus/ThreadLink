@@ -34,40 +34,53 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   onCancel
 }) => {
   return (
-    <>      {/* Error Display */}
+    <>
+      {/* Error Display */}
       {error && (
-        <div ref={errorRef} className="mx-12 mt-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded text-red-400 text-sm select-none cursor-default">
+        <div ref={errorRef} className="mx-4 sm:mx-8 lg:mx-12 mt-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded text-red-400 text-sm select-none cursor-default">
           {error}
         </div>
-      )}{/* Stats Display */}
+      )}
+
+      {/* Stats Display */}
       {stats && (
         <div 
           ref={statsRef} 
-          className="mx-12 mt-4 p-3 bg-green-500 bg-opacity-10 border border-green-500 rounded text-green-400 text-sm select-none cursor-default"
+          className="mx-4 sm:mx-8 lg:mx-12 mt-4 p-3 bg-green-500 bg-opacity-10 border border-green-500 rounded text-green-400 text-sm select-none cursor-default"
         >
-          Processed in {stats.executionTime}s • {stats.compressionRatio}:1 compression • {stats.successfulDrones}/{stats.totalDrones} drones successful
+          <div className="hidden sm:block">
+            Processed in {stats.executionTime}s • {stats.compressionRatio}:1 compression • {stats.successfulDrones}/{stats.totalDrones} drones successful
+          </div>
+          <div className="sm:hidden">
+            <div>Processed in {stats.executionTime}s</div>
+            <div>{stats.compressionRatio}:1 compression</div>
+            <div>{stats.successfulDrones}/{stats.totalDrones} drones successful</div>
+          </div>
         </div>
-      )}      {/* Main content area */}      <div className="flex-grow flex flex-col justify-center px-12 py-4 relative resize-none">
+      )}
+
+      {/* Main content area */}
+      <div className="flex-grow flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-4 relative resize-none">
         <div className="relative w-full flex-grow">
           <textarea
             ref={outputTextareaRef}
-            className={`w-full h-full bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none ${isProcessed || isLoading ? 'cursor-default' : 'cursor-text'}`}
+            className={`w-full h-full bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-3 sm:p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none text-sm sm:text-base ${isProcessed || isLoading ? 'cursor-default' : 'cursor-text'}`}
             placeholder="Paste your AI conversation here..."
             value={displayText}
             onChange={onTextChange}
             readOnly={isProcessed || isLoading}
             spellCheck={false}
-          />          {/* Floating Badge */}
+          />          {/* Floating Badge - positioned to avoid scroll bars */}
           <a 
             href="https://bolt.new" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="absolute bottom-5 right-4 z-10"
+            className="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 z-10 pointer-events-auto"
           >            
             <img 
               src="/assets/bolt-badge.png"
               alt="Powered by Bolt.new" 
-              className="w-20 h-auto opacity-10 hover:opacity-50 transition-opacity"
+              className="w-16 sm:w-20 h-auto opacity-10 hover:opacity-50 transition-opacity drop-shadow-sm"
             />
           </a>
         </div>

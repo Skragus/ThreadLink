@@ -125,7 +125,7 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
         <label htmlFor={`${provider}-api-key`} className="text-sm text-[var(--text-secondary)] select-none cursor-default">
           {label}
         </label>        <div className="flex items-center space-x-2">
-          <span className="text-xs text-[var(--text-secondary)] select-none cursor-default" style={{ pointerEvents: 'none' }}>Save to Browser</span>          <button
+          <span className="text-xs text-[var(--text-secondary)] select-none cursor-default" style={{ pointerEvents: 'none' }}>Remember Key</span><button
             onClick={() => setCacheEnabled(!cacheEnabled)}
             title={`Toggle browser storage for ${label}`}
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors select-none cursor-pointer ${
@@ -211,11 +211,21 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
         }
       }}
     >      <div role="dialog" aria-labelledby="api-keys-title" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4" style={{ pointerEvents: 'auto' }}>
-        <h3 id="api-keys-title" className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">API Key Management</h3>
-          {storageError && (
+        <h3 id="api-keys-title" className="text-lg font-medium text-[var(--text-primary)] mb-2 select-none cursor-default">API Key Management</h3>
+        
+        {/* Privacy-first usage explanation */}
+        <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+          <p className="text-xs text-blue-300 select-none cursor-default">
+            <strong>Privacy-first usage:  </strong>
+            The keys never leave your browser.
+          </p>
+        </div>
+        
+        {storageError && (
           <div role="alert" aria-label="storage" className="mb-4 p-3 bg-red-500 text-white rounded" style={{ pointerEvents: 'auto' }}>
             {storageError}
-          </div>        )}
+          </div>
+        )}
         
         <div className="space-y-6" style={{ pointerEvents: 'none' }}>
           {renderAPIKeySection(

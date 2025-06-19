@@ -1,6 +1,6 @@
 // components/LoadingOverlay.tsx - Loading Overlay Component
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { LoadingProgress } from '../types';
 
@@ -14,20 +14,19 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   loadingProgress,
   isCancelling,
   onCancel
-}) => {  const progressBarRef = useRef<HTMLDivElement>(null);
-
-  // Update progress bar width
-  useEffect(() => {
-    if (progressBarRef.current) {
-      if (loadingProgress.totalDrones && loadingProgress.totalDrones > 0) {
-        const progressPercent = Math.min(100, ((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100);
-        progressBarRef.current.style.width = `${progressPercent}%`;
-      } else {
-        // Start with 0% width to prevent flash
-        progressBarRef.current.style.width = '0%';
-      }
+}) => {
+  // Calculate progress percentage directly for rendering
+  const progressPercent = React.useMemo(() => {
+    if (loadingProgress.totalDrones && loadingProgress.totalDrones > 0) {
+      return Math.min(100, ((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100);
     }
-  }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);return (
+    return 0;
+  }, [loadingProgress.completedDrones, loadingProgress.totalDrones]);
+
+  // Create style object for CSS custom property
+  const progressStyle = React.useMemo(() => ({
+    '--progress-width': `${progressPercent}%`
+  } as React.CSSProperties), [progressPercent]);return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-8 max-w-md w-full mx-4">
         <div className="flex flex-col items-center space-y-6">          {/* Loading Message */}
@@ -47,11 +46,10 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
               <div className="flex justify-between text-sm text-[var(--text-secondary)] mb-2">
                 <span>Progress: {loadingProgress.completedDrones || 0}/{loadingProgress.totalDrones} drones</span>
                 <span>{Math.round(((loadingProgress.completedDrones || 0) / loadingProgress.totalDrones) * 100)}%</span>
-              </div>              <div className="w-full bg-[var(--divider)] rounded-full h-2">
+              </div>              <div className="w-full bg-[var(--divider)] rounded-full h-2 progress-bar-container">
                 <div 
-                  ref={progressBarRef}
-                  className="bg-[var(--highlight-blue)] h-2 rounded-full transition-all duration-300 ease-out"
-                  style={{ width: '0%' }} /* Initialize with 0% width */
+                  className="bg-[var(--highlight-blue)] h-2 rounded-full transition-all duration-300 ease-out progress-bar"
+                  style={progressStyle}
                 />
               </div>
             </div>

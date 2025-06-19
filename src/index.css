@@ -9,6 +9,25 @@ body, * {
   user-select: none;
 }
 
+/* Mobile viewport and touch handling */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile safe areas */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
 :root {
   --bg-primary: #0D0D12;
   --box-violet: #393A6B;
@@ -21,8 +40,27 @@ body, * {
   --link-text: #A3B3F3;
 }
 
+/* Loading progress bar styles */
+.progress-bar {
+  --progress-width: 0%;
+  width: var(--progress-width);
+}
+
+.progress-bar-container {
+  position: relative;
+  overflow: hidden;
+}
+
 textarea {
   min-height: 200px;
+}
+
+/* Mobile textarea handling */
+@media (max-width: 640px) {
+  textarea {
+    min-height: 150px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
 }
 
 /* Hide number input spinners */
@@ -35,4 +73,11 @@ input[type=number]::-webkit-outer-spin-button {
 input[type=number] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+/* Mobile input handling */
+@media (max-width: 640px) {
+  input, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
 }

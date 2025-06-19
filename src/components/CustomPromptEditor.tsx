@@ -1,7 +1,7 @@
 // components/CustomPromptEditor.tsx - Custom Prompt Editor Component
 
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, ChevronLeft } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 // @ts-ignore - JavaScript modules without TypeScript declarations
 import { DEFAULT_DRONE_PROMPT } from '../pipeline/config.js';
 
@@ -33,35 +33,18 @@ export const CustomPromptEditor: React.FC<CustomPromptEditorProps> = ({
   const handleApplyAndClose = () => {
     onSave(promptText);
     onBack();
-  };
-
-  const handleBack = () => {
-    // Confirm if there are unsaved changes
-    if (promptText !== customPrompt) {
-      const confirmed = window.confirm('You have unsaved changes. Are you sure you want to go back?');
-      if (!confirmed) return;
-    }
+  };  const handleCancel = () => {
     onBack();
-  };  return (
+  };return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-[var(--card-bg)] border border-red-500/50 rounded-lg w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col">        {/* Header */}
         <div className="border-b border-red-500/30 p-3 sm:p-4 bg-red-950/20">
-          <div className="flex items-center justify-between mb-3">
-            <button
-              onClick={handleBack}
-              className="flex items-center space-x-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-            >
-              <ChevronLeft size={20} />
-              <span className="hidden sm:inline">Back</span>
-            </button>
-            <div className="flex-1 flex justify-center">
-              <div className="flex items-center space-x-1 sm:space-x-2 text-red-400">
-                <AlertTriangle size={16} className="sm:w-5 sm:h-5" />
-                <span className="font-bold text-xs sm:text-sm">WARNING: CORE LOGIC OVERRIDE</span>
-                <AlertTriangle size={16} className="sm:w-5 sm:h-5" />
-              </div>
+          <div className="flex items-center justify-center mb-3">
+            <div className="flex items-center space-x-1 sm:space-x-2 text-red-400">
+              <AlertTriangle size={16} className="sm:w-5 sm:h-5" />
+              <span className="font-bold text-xs sm:text-sm">WARNING: CORE LOGIC OVERRIDE</span>
+              <AlertTriangle size={16} className="sm:w-5 sm:h-5" />
             </div>
-            <div className="w-[100px]"></div> {/* Spacer to balance the back button */}
           </div>
           
           <div className="space-y-2">
@@ -96,12 +79,19 @@ export const CustomPromptEditor: React.FC<CustomPromptEditorProps> = ({
             <p className="text-xs text-red-300 pointer-events-none flex-1">
               By applying this custom prompt, you accept full responsibility for any unexpected behavior, increased costs, or processing failures.
             </p>
-            <button
-              onClick={handleApplyAndClose}
-              className="px-4 sm:px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors relative z-10 flex-shrink-0 w-full sm:w-auto"
-            >
-              Apply & Close
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">              <button
+                onClick={handleCancel}
+                className="px-4 sm:px-6 py-2 bg-[var(--text-secondary)] hover:bg-[var(--text-secondary)]/80 text-white rounded-lg font-medium transition-colors flex-shrink-0 w-full sm:w-auto"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApplyAndClose}
+                className="px-4 sm:px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors relative z-10 flex-shrink-0 w-full sm:w-auto"
+              >
+                Apply & Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

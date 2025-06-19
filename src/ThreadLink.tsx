@@ -342,9 +342,14 @@ function ThreadLink() {
       console.log('❌ Validation failed: Unknown model', model);
       setError(`Unknown model: ${model}`);
       return;
-    }
-
-    const apiKey = getAPIKey(provider);
+    }    // Check for API key - use in-memory key first, then fallback to stored key
+    const inMemoryApiKeys: { [key: string]: string } = {
+      'google': googleAPIKey,
+      'openai': openaiAPIKey,
+      'anthropic': anthropicAPIKey
+    };
+    
+    const apiKey = inMemoryApiKeys[provider] || getAPIKey(provider);
     if (!apiKey) {
       console.log('❌ Validation failed: No API key for provider', provider);
       setError(`Please configure your API key to get started`);
@@ -352,7 +357,7 @@ function ThreadLink() {
       return;
     }
 
-    console.log('✅ Validation passed, calculating drones...');
+    console.log('✅ Validation passed, using', inMemoryApiKeys[provider] ? 'in-memory' : 'stored', 'API key for', provider);
     
     // Calculate the number of drones that would be created
     const inputTokens = estimateTokens(inputText);
@@ -378,12 +383,13 @@ function ThreadLink() {
       });
       setShowOverrideModal(true);
       return; // Don't proceed until user confirms
-    }    console.log('🚀 Proceeding with condensation...');
+    }
+
+    console.log('🚀 Proceeding with condensation...');
     // If no override needed, proceed directly
     proceedWithCondensation();
   };
-    
-  const proceedWithCondensation = async () => {
+      const proceedWithCondensation = async () => {
     console.log('🚀 PROCEEDING WITH CONDENSATION - setIsLoading(true)');
     setIsLoading(true);
     setError('');
@@ -397,9 +403,18 @@ function ThreadLink() {
     
     const recencyStrengthValue = recencyMode ? 
       (recencyStrength === 0 ? 25 : recencyStrength === 1 ? 50 : 90) : 0;
-      try {
+      
+    try {
       const provider = MODEL_PROVIDERS[model];
-      const apiKey = getAPIKey(provider);
+      
+      // Use in-memory API key first, then fallback to stored key
+      const inMemoryApiKeys: { [key: string]: string } = {
+        'google': googleAPIKey,
+        'openai': openaiAPIKey,
+        'anthropic': anthropicAPIKey
+      };
+      
+      const apiKey = inMemoryApiKeys[provider] || getAPIKey(provider);
       
       const settings: PipelineSettings = {
         model: model,
@@ -416,7 +431,7 @@ function ThreadLink() {
         customPrompt: useCustomPrompt ? customPrompt : undefined
       };
 
-      console.log('🚀 Starting condensation pipeline...', { settings, apiKey: apiKey ? 'SET' : 'NOT_SET' });
+      console.log('🚀 Starting condensation pipeline...', { settings, apiKey: apiKey ? 'SET' : 'NOT_SET', usingInMemory: !!inMemoryApiKeys[provider] });
       
       const result: PipelineResult = await runCondensationPipeline({
         rawText: inputText,
@@ -684,10 +699,8 @@ function ThreadLink() {
             onAPIKeysClick={() => setShowAPIKeys(true)}
             onSettingsClick={() => setShowSettings(true)}
           />
-        </header>
-
-        {/* Main Content Area */}
-        <main className="flex-grow flex flex-col">
+        </header>        {/* Main Content Area */}
+        <main className="flex-grow flex flex-col pb-8 sm:pb-6">
           <WelcomeBanner
             isVisible={showWelcomeBanner}
             onDismiss={handleDismissWelcomeBanner}
