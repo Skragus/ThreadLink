@@ -645,7 +645,7 @@ function ThreadLink() {
         }
       `}</style>
       
-      <div className="min-h-screen flex flex-col bg-[var(--bg-primary)]">        <SettingsModal
+      <div className="h-screen flex flex-col bg-[var(--bg-primary)]">        <SettingsModal
           isOpen={showSettings}
           model={model}
           setModel={setModel}
@@ -715,7 +715,7 @@ function ThreadLink() {
             onSettingsClick={() => setShowSettings(true)}
           />
         </header>        {/* Main Content Area */}
-        <main className="flex-grow flex flex-col pb-8 sm:pb-6">
+        <main className="flex-grow flex flex-col pb-8 sm:pb-6 mobile-flex-fix">
           <WelcomeBanner
             isVisible={showWelcomeBanner}
             onDismiss={handleDismissWelcomeBanner}

@@ -58,8 +58,8 @@ export const TextEditor: React.FC<TextEditorProps> = ({
           </div>
         </div>
       )}      {/* Main content area */}
-      <div className="flex-grow flex flex-col justify-center px-3 sm:px-8 lg:px-12 py-2 sm:py-4 relative">
-        <div className="relative w-full flex-grow">
+      <div className="flex-grow flex flex-col justify-center px-3 sm:px-8 lg:px-12 py-2 sm:py-4 relative mobile-flex-fix">
+        <div className="relative w-full flex-grow mobile-flex-fix">
           <textarea
             ref={outputTextareaRef}
             className={`w-full h-full bg-[var(--card-bg)] border border-[var(--divider)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] rounded-lg p-3 sm:p-4 resize-none focus:border-[var(--highlight-blue)] focus:outline-none text-sm sm:text-base ${isProcessed || isLoading ? 'cursor-default' : 'cursor-text'}`}
