@@ -23,7 +23,7 @@ ThreadLink is a browser-based AI conversation condensation application built wit
 - **Privacy-First**: All processing happens in the browser; no data sent to external servers
 - **BYOK Model**: Users provide their own API keys for LLM providers
 - **Client-Side Pipeline**: Complete condensation pipeline runs in the browser
-- **Provider Agnostic**: Supports Google (Gemini), OpenAI (GPT), and Anthropic (Claude)
+- **Provider Agnostic**: Supports Google (Gemini), OpenAI (GPT), and Mistral
 
 
 ### Technology Stack
@@ -488,7 +488,7 @@ const MODEL_PROVIDERS = {
     "gemini-1.5-flash": "google",
     "gpt-4.1-nano": "openai",
     "gpt-4.1-mini": "openai",
-    "claude-3-5-haiku-20241022": "anthropic"
+    "mistral-small-latest": "mistral"
 };
 ```
 
@@ -589,7 +589,7 @@ export async function generateResponse(systemPrompt, userPrompt, model, apiKey, 
     switch (provider) {
         case 'google': return callGeminiAPI(/* ... */);
         case 'openai': return callOpenAIAPI(/* ... */);
-        case 'anthropic': return callAnthropicAPI(/* ... */);
+        case 'mistral': return callMistralAPI(/* ... */);
     }
 }
 ```
@@ -609,7 +609,7 @@ function getAPIKey(provider) {
 #### Provider-Specific Limits
 - **Google Gemini**: 10 concurrent requests, 60s backoff
 - **OpenAI GPT**: 5 concurrent requests, 60s backoff  
-- **Anthropic Claude**: 1 concurrent request, 300s backoff
+- **Mistral**: 5 concurrent requests, 60s backoff
 
 #### Adaptive Concurrency
 ```javascript
@@ -646,7 +646,7 @@ sessionState.onRateLimit = () => {
 // API Keys (optional)
 'threadlink_google_api_key': 'encrypted_key'
 'threadlink_openai_api_key': 'encrypted_key'
-'threadlink_anthropic_api_key': 'encrypted_key'
+'threadlink_mistral_api_key': 'encrypted_key'
 
 // Settings
 'threadlink_settings': {

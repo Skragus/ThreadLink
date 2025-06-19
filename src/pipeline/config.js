@@ -55,7 +55,7 @@ export const DEFAULT_DRONE_OUTPUT_TOKEN_TARGET = Math.ceil(TARGET_CONTEXT_CARD_T
 export const MAX_RETRY_ATTEMPTS = 3;
 export const RETRY_BASE_DELAY_MS = 1000;
 export const DEFAULT_RATE_LIMIT_BACKOFF_MS = 60000;
-export const CLAUDE_RATE_LIMIT_BACKOFF_MS = 300000;
+export const MISTRAL_RATE_LIMIT_BACKOFF_MS = 60000;
 export const GEMINI_RATE_LIMIT_BACKOFF_MS = 60000;
 export const GPT4_RATE_LIMIT_BACKOFF_MS = 60000;
 export const DEFAULT_CONSERVATIVE_CONCURRENCY = 5;
@@ -101,6 +101,12 @@ Your condensed segment will join others to create a comprehensive context card f
 
 // === MODEL CONFIGURATIONS ===
 export const MODEL_CONFIGS = {
+    'mistral-small-latest': { 
+        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY, 
+        rateLimitBackoff: DEFAULT_RATE_LIMIT_BACKOFF_MS,  // 1 minute conservative wait
+        maxRetries: 3,
+        aggressive: false
+    },
     'gemini-1.5-flash': {
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
         rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 30 seconds

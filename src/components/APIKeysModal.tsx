@@ -7,42 +7,44 @@ interface APIKeysModalProps {
   isOpen: boolean;
   googleAPIKey: string;
   openaiAPIKey: string;
-  anthropicAPIKey: string;
+  mistralAPIKey: string;
   googleCacheEnabled: boolean;
   openaiCacheEnabled: boolean;
-  anthropicCacheEnabled: boolean;
+  mistralCacheEnabled: boolean;
   setGoogleAPIKey: (key: string) => void;
   setOpenaiAPIKey: (key: string) => void;
-  setAnthropicAPIKey: (key: string) => void;
+  setMistralAPIKey: (key: string) => void;
   setGoogleCacheEnabled: (enabled: boolean) => void;
   setOpenaiCacheEnabled: (enabled: boolean) => void;
-  setAnthropicCacheEnabled: (enabled: boolean) => void;
+  setMistralCacheEnabled: (enabled: boolean) => void;
   onSave?: () => void;
   onClose: () => void;
-  onDeleteKey: (provider: 'google' | 'openai' | 'anthropic') => void;
+  onDeleteKey: (provider: 'google' | 'openai' | 'mistral') => void;
 }
 
 export const APIKeysModal: React.FC<APIKeysModalProps> = ({
   isOpen,
   googleAPIKey,
   openaiAPIKey,
-  anthropicAPIKey,
+  mistralAPIKey,
   googleCacheEnabled,
   openaiCacheEnabled,
-  anthropicCacheEnabled,
+  mistralCacheEnabled,
   setGoogleAPIKey,
   setOpenaiAPIKey,
-  setAnthropicAPIKey,
+  setMistralAPIKey,
   setGoogleCacheEnabled,
   setOpenaiCacheEnabled,
-  setAnthropicCacheEnabled,
+  setMistralCacheEnabled,
   onSave,
   onClose,
   onDeleteKey
-}) => {  const [validationErrors, setValidationErrors] = useState<{
+}) => {
+
+  const [validationErrors, setValidationErrors] = useState<{
     google?: string;
     openai?: string;
-    anthropic?: string;
+    mistral?: string;
   }>({});
   const [storageError, setStorageError] = useState<string>('');
   const handleSave = useCallback(async () => {
@@ -99,20 +101,19 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
         break;
       case 'openai':
         if (!key.startsWith('sk-')) {
-          return 'Invalid API key format - OpenAI keys must start with sk-';
-        }
+          return 'Invalid API key format - OpenAI keys must start with sk-';        }
         break;
-      case 'anthropic':
-        if (!key.startsWith('sk-ant-')) {
-          return 'Invalid API key format - Anthropic keys must start with sk-ant-';
-        }        break;    }
+      case 'mistral':
+        if (!key.startsWith('sk-')) {
+          return 'Invalid API key format - Mistral keys must start with sk-';
+        }
+        break;}
     return undefined;
   };
 
   if (!isOpen) return null;
-
   const renderAPIKeySection = (
-    provider: 'google' | 'openai' | 'anthropic',
+    provider: 'google' | 'openai' | 'mistral',
     label: string,
     placeholder: string,
     value: string,
@@ -246,16 +247,14 @@ export const APIKeysModal: React.FC<APIKeysModalProps> = ({
             setOpenaiAPIKey,
             openaiCacheEnabled,
             setOpenaiCacheEnabled
-          )}
-
-          {renderAPIKeySection(
-            'anthropic',
-            'Anthropic API Key',
-            'sk-ant-...',
-            anthropicAPIKey,
-            setAnthropicAPIKey,
-            anthropicCacheEnabled,
-            setAnthropicCacheEnabled
+          )}          {renderAPIKeySection(
+            'mistral',
+            'Mistral API Key',
+            'sk-...',
+            mistralAPIKey,
+            setMistralAPIKey,
+            mistralCacheEnabled,
+            setMistralCacheEnabled
           )}
         </div>        <div className="flex gap-3 mt-6">
           <button

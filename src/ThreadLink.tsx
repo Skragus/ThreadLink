@@ -81,16 +81,15 @@ function ThreadLink() {
     calculatedDrones: 0, 
     maxDrones: 0 
   });
-
   // API Keys state
   const [googleAPIKey, setGoogleAPIKey] = useState('');
   const [openaiAPIKey, setOpenaiAPIKey] = useState('');
-  const [anthropicAPIKey, setAnthropicAPIKey] = useState('');
+  const [mistralAPIKey, setMistralAPIKey] = useState('');
   
   // Cache toggle states
   const [googleCacheEnabled, setGoogleCacheEnabled] = useState(false);
   const [openaiCacheEnabled, setOpenaiCacheEnabled] = useState(false);
-  const [anthropicCacheEnabled, setAnthropicCacheEnabled] = useState(false);
+  const [mistralCacheEnabled, setMistralCacheEnabled] = useState(false);
   // Info Panel expandable sections state
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
     what: false,
@@ -108,11 +107,8 @@ function ThreadLink() {
 
   // Refs
   const errorRef = useRef<HTMLDivElement>(null);
-  const statsRef = useRef<HTMLDivElement>(null);
-  const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const statsRef = useRef<HTMLDivElement>(null);  const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
   const loadingStartTime = useRef<number>(0);
-  // Processing Speed logic
-  const isAnthropicModel = model.toLowerCase().includes('claude');
 
   // Function to save current settings to localStorage
   const saveCurrentSettings = () => {
@@ -128,9 +124,8 @@ function ThreadLink() {
     saveSettings(currentSettings);
   };
   // Initialize API keys from storage on mount
-  useEffect(() => {    const loadedGoogleKey = getAPIKey('google');
-    const loadedOpenAIKey = getAPIKey('openai');
-    const loadedAnthropicKey = getAPIKey('anthropic');
+  useEffect(() => {    const loadedGoogleKey = getAPIKey('google');    const loadedOpenAIKey = getAPIKey('openai');
+    const loadedMistralKey = getAPIKey('mistral');
     
     if (loadedGoogleKey) {
       setGoogleAPIKey(loadedGoogleKey);
@@ -140,9 +135,9 @@ function ThreadLink() {
       setOpenaiAPIKey(loadedOpenAIKey);
       setOpenaiCacheEnabled(true);
     }
-    if (loadedAnthropicKey) {
-      setAnthropicAPIKey(loadedAnthropicKey);
-      setAnthropicCacheEnabled(true);
+    if (loadedMistralKey) {
+      setMistralAPIKey(loadedMistralKey);
+      setMistralCacheEnabled(true);
     }
     
     // Load custom prompt settings
@@ -163,25 +158,16 @@ function ThreadLink() {
     }    // Check if this is a first-time visit and show welcome banner
     // Do this check after API keys are loaded
     setTimeout(() => {
-      const hasVisitedBefore = localStorage.getItem('threadlink_has_visited');
-      const hasAnyApiKeys = googleAPIKey || openaiAPIKey || anthropicAPIKey || 
-                           getAPIKey('google') || getAPIKey('openai') || getAPIKey('anthropic');
+      const hasVisitedBefore = localStorage.getItem('threadlink_has_visited');      const hasAnyApiKeys = googleAPIKey || openaiAPIKey || mistralAPIKey || 
+                           getAPIKey('google') || getAPIKey('openai') || getAPIKey('mistral');
       
       if (!hasVisitedBefore && !hasAnyApiKeys) {
         setShowWelcomeBanner(true);
       }
     }, 100);
   }, []);
-
-  // Auto-reset processing speed when switching to Anthropic
-  useEffect(() => {
-    if (isAnthropicModel && processingSpeed === 'fast') {
-      setProcessingSpeed('balanced');
-    }
-  }, [model, isAnthropicModel, processingSpeed]);
-
+  // Processing speed logic - all models now support fast processing
   const calculateConcurrency = () => {
-    if (isAnthropicModel) return 1;
     if (processingSpeed === 'fast') return 6;
     return 3;
   };
@@ -287,11 +273,10 @@ function ThreadLink() {
       } else {
         removeAPIKey('openai');
       }
-      
-      if (anthropicAPIKey) {
-        saveAPIKey('anthropic', anthropicAPIKey, anthropicCacheEnabled);
+        if (mistralAPIKey) {
+        saveAPIKey('mistral', mistralAPIKey, mistralCacheEnabled);
       } else {
-        removeAPIKey('anthropic');
+        removeAPIKey('mistral');
       }
     } catch (error: any) {
       // Re-throw the error so the modal can catch it
@@ -313,10 +298,8 @@ function ThreadLink() {
       }
       console.error("Error saving custom prompt settings:", error);
       throw error;
-    }
-
-    // Hide welcome banner when user saves API keys
-    if (googleAPIKey || openaiAPIKey || anthropicAPIKey) {
+    }    // Hide welcome banner when user saves API keys
+    if (googleAPIKey || openaiAPIKey || mistralAPIKey) {
       setShowWelcomeBanner(false);
       localStorage.setItem('threadlink_has_visited', 'true');
     }
@@ -346,7 +329,7 @@ function ThreadLink() {
     const inMemoryApiKeys: { [key: string]: string } = {
       'google': googleAPIKey,
       'openai': openaiAPIKey,
-      'anthropic': anthropicAPIKey
+      'mistral': mistralAPIKey
     };
     
     const apiKey = inMemoryApiKeys[provider] || getAPIKey(provider);
@@ -406,12 +389,11 @@ function ThreadLink() {
       
     try {
       const provider = MODEL_PROVIDERS[model];
-      
-      // Use in-memory API key first, then fallback to stored key
+        // Use in-memory API key first, then fallback to stored key
       const inMemoryApiKeys: { [key: string]: string } = {
         'google': googleAPIKey,
         'openai': openaiAPIKey,
-        'anthropic': anthropicAPIKey
+        'mistral': mistralAPIKey
       };
       
       const apiKey = inMemoryApiKeys[provider] || getAPIKey(provider);
@@ -595,7 +577,7 @@ function ThreadLink() {
     setShowWelcomeBanner(false);
     localStorage.setItem('threadlink_has_visited', 'true');
   };
-  const handleDeleteKey = (provider: 'google' | 'openai' | 'anthropic') => {
+  const handleDeleteKey = (provider: 'google' | 'openai' | 'mistral') => {
     console.log(`🗑️ Deleting ${provider} API key - clearing input, disabling cache, removing from storage`);
     
     switch (provider) {
@@ -603,16 +585,15 @@ function ThreadLink() {
         setGoogleAPIKey(''); // Clear the input field
         setGoogleCacheEnabled(false); // Toggle cache off
         removeAPIKey('google'); // Remove from browser storage
-        break;
-      case 'openai':
+        break;      case 'openai':
         setOpenaiAPIKey(''); // Clear the input field
         setOpenaiCacheEnabled(false); // Toggle cache off
         removeAPIKey('openai'); // Remove from browser storage
         break;
-      case 'anthropic':
-        setAnthropicAPIKey(''); // Clear the input field
-        setAnthropicCacheEnabled(false); // Toggle cache off
-        removeAPIKey('anthropic'); // Remove from browser storage
+      case 'mistral':
+        setMistralAPIKey(''); // Clear the input field
+        setMistralCacheEnabled(false); // Toggle cache off
+        removeAPIKey('mistral'); // Remove from browser storage
         break;
     }
     
@@ -645,7 +626,8 @@ function ThreadLink() {
         }
       `}</style>
       
-      <div className="h-screen flex flex-col bg-[var(--bg-primary)]">        <SettingsModal
+      <div className="h-screen flex flex-col bg-[var(--bg-primary)]">
+        <SettingsModal
           isOpen={showSettings}
           model={model}
           setModel={setModel}
@@ -666,12 +648,11 @@ function ThreadLink() {
           // Add custom prompt props
           useCustomPrompt={useCustomPrompt}
           setUseCustomPrompt={setUseCustomPrompt}
-          customPrompt={customPrompt}
-          setCustomPrompt={setCustomPrompt}
+          customPrompt={customPrompt}          setCustomPrompt={setCustomPrompt}
           // Pass current API key states for model filtering
           googleAPIKey={googleAPIKey}
           openaiAPIKey={openaiAPIKey}
-          anthropicAPIKey={anthropicAPIKey}
+          mistralAPIKey={mistralAPIKey}
           onClose={() => {
             saveCurrentSettings();
             setShowSettings(false);
@@ -682,19 +663,20 @@ function ThreadLink() {
           isOpen={showAPIKeys}
           googleAPIKey={googleAPIKey}
           openaiAPIKey={openaiAPIKey}
-          anthropicAPIKey={anthropicAPIKey}
+          mistralAPIKey={mistralAPIKey}
           googleCacheEnabled={googleCacheEnabled}
           openaiCacheEnabled={openaiCacheEnabled}
-          anthropicCacheEnabled={anthropicCacheEnabled}
+          mistralCacheEnabled={mistralCacheEnabled}
           setGoogleAPIKey={setGoogleAPIKey}
           setOpenaiAPIKey={setOpenaiAPIKey}
-          setAnthropicAPIKey={setAnthropicAPIKey}          setGoogleCacheEnabled={setGoogleCacheEnabled}
+          setMistralAPIKey={setMistralAPIKey}
+          setGoogleCacheEnabled={setGoogleCacheEnabled}
           setOpenaiCacheEnabled={setOpenaiCacheEnabled}
-          setAnthropicCacheEnabled={setAnthropicCacheEnabled}
+          setMistralCacheEnabled={setMistralCacheEnabled}
           onSave={saveAPIKeys} // Pass the function directly
           onClose={() => setShowAPIKeys(false)}
           onDeleteKey={handleDeleteKey}
-        />        <InfoPanel
+        /><InfoPanel
           isOpen={showInfo}
           expandedSections={expandedSections}
           onToggleSection={toggleSection}

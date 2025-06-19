@@ -127,7 +127,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                   <strong className="text-[var(--text-primary)]">Use it to:</strong>
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>Make a conversation with Claude seamlessly continue inside GPT.</li>
+                  <li>Make a conversation with Mistral seamlessly continue inside GPT.</li>
                   <li>Distill a 400,000-token project history into a briefing you can actually read.</li>
                   <li>Archive the complete context of a feature build.</li>
                   <li>Turn any messy data dump into actionable intelligence.</li>
@@ -321,7 +321,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                   </div>
                   
                   <div className="bg-[var(--bg-primary)] border border-[var(--divider)] rounded p-3">
-                    <h4 className="font-medium text-[var(--text-primary)] mb-2">Anthropic Claude</h4>
+                    <h4 className="font-medium text-[var(--text-primary)] mb-2">Mistral</h4>
                     <ul className="list-disc list-inside ml-4 space-y-1 text-sm">
                       <li><strong>Personality:</strong> Precise and ruthlessly concise. It adheres well to token limits and will aggressively cut text to meet its target. Ideal for summaries where brevity is key.</li>
                       <li><strong>Speed:</strong> Slow</li>
@@ -341,7 +341,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                       <p className="text-sm"><strong className="text-[var(--text-primary)]">Fast:</strong> A more aggressive setting (e.g., 6 concurrent jobs). It can significantly speed up processing on large sessions but increases the risk of hitting API rate limits.</p>
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm"><strong className="text-[var(--text-primary)]">A Note on Anthropic:</strong> Claude's API has very strict rate limits. To ensure your job completes successfully, ThreadLink automatically disables the "Fast" setting and processes jobs one at a time.</p>
+                      <p className="text-sm"><strong className="text-[var(--text-primary)]">Mistral Integration:</strong> Mistral provides fast and efficient processing with good rate limits, supporting both normal and fast processing speeds.</p>
                     </div>
                   </div>
                 </div>

@@ -9,13 +9,16 @@ export const MODEL_PROVIDERS = {
     "gemini-1.5-flash": "google",    
     // OpenAI models
     "gpt-4.1-nano": "openai",
-    "gpt-4.1-mini": "openai"
+    "gpt-4.1-mini": "openai",
+    
+    // Mistral models
+    "mistral-small-latest": "mistral"
 };
 
 // API endpoints
 const API_ENDPOINTS = {
     openai: 'https://api.openai.com/v1/chat/completions',
-    anthropic: 'https://api.anthropic.com/v1/messages',
+    mistral: 'https://api.mistral.ai/v1/chat/completions',
     google: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 };
 
@@ -83,9 +86,9 @@ async function generateOpenAIResponse(
 }
 
 /**
- * Generate response using Anthropic API
+ * Generate response using Mistral API
  */
-async function generateAnthropicResponse(
+async function generateMistralResponse(
     systemInstructions,
     userPrompt,
     model,
@@ -93,33 +96,33 @@ async function generateAnthropicResponse(
     temperature = 0.5,
     maxTokens = 4096
 ) {
-    const response = await fetch(API_ENDPOINTS.anthropic, {
+    const response = await fetch(API_ENDPOINTS.mistral, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01'
+            'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
             model,
-            max_tokens: maxTokens,
+            messages: [
+                { role: "system", content: systemInstructions },
+                { role: "user", content: userPrompt }
+            ],
             temperature,
-            system: systemInstructions,
-            messages: [{ role: "user", content: userPrompt }]
+            max_tokens: maxTokens
         })
     });
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
-        const err = new Error(error.error?.message || `Anthropic API error: ${response.status}`);
+        const err = new Error(error.error?.message || `Mistral API error: ${response.status}`);
         err.status = response.status;
         err.response = response;
-        err.headers = Object.fromEntries(response.headers.entries());
         throw err;
     }
 
     const data = await response.json();
-    return data.content[0]?.text || "";
+    return data.choices[0]?.message?.content || "";
 }
 
 /**
@@ -193,15 +196,13 @@ export async function generateResponse(
     
     try {
         const provider = getProviderForModel(model);
-        console.log(`🚀 Generating response with ${model} via ${provider}`);
-
-        switch (provider) {
+        console.log(`🚀 Generating response with ${model} via ${provider}`);        switch (provider) {
             case "openai":
                 return await generateOpenAIResponse(
                     systemInstructions, userPrompt, model, apiKey, temperature, maxTokens
                 );
-            case "anthropic":
-                return await generateAnthropicResponse(
+            case "mistral":
+                return await generateMistralResponse(
                     systemInstructions, userPrompt, model, apiKey, temperature, maxTokens
                 );
             case "google":
@@ -303,10 +304,9 @@ export async function testProviderConnection(provider, apiKey) {
         const testPrompt = "Hello";
         const testSystem = "You are a helpful assistant. Respond with 'OK'.";
         
-        let result;
-        const testModels = {
+        let result;        const testModels = {
             openai: "gpt-3.5-turbo",
-            anthropic: "claude-3-haiku-20240307", 
+            mistral: "mistral-small-latest", 
             google: "gemini-1.5-flash"
         };
         

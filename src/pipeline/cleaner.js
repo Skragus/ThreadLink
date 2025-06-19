@@ -60,7 +60,7 @@ export function cleanAiChatContent(content) {
         /^ChatGPT can make mistakes.*$/gim,
         /^Claude cannot.*outside.*conversation.*$/gim,
 
-        // Claude-specific UI elements and instructions
+        // Claude and Mistral-specific UI elements and instructions
         /Smart, efficient model for everyday use Learn more/gim,
         /No content added yet/gim,
         /Add images, PDFs, docs, spreadsheets, and more to summarize, analyze, and query content with Claude\./gim,
@@ -75,7 +75,7 @@ export function cleanAiChatContent(content) {
         content = content.replace(pattern, '');
     }
 
-    // Smart removal of Claude UI buttons (Edit/Retry/Content)
+    // Smart removal of AI assistant UI buttons (Edit/Retry/Content)
     // Only remove if they appear as standalone capitalized words on their own lines
     const editMatches = content.match(/\nEdit\s*$/gm) || [];
     const editCount = editMatches.length;
@@ -105,7 +105,7 @@ export function cleanAiChatContent(content) {
     }
 
     // Only clean up speaker labels when they appear redundantly
-    content = content.replace(/^(Claude|ChatGPT|Gemini|GPT-4|GPT-3\.5):\s*/gm, '**Assistant:** ');
+    content = content.replace(/^(Claude|ChatGPT|Gemini|GPT-4|GPT-3\.5|Mistral):\s*/gm, '**Assistant:** ');
     content = content.replace(/^(Human|User|You):\s*/gm, '**Human:** ');
     content = content.replace(/^(Assistant|AI):\s*/gm, '**Assistant:** ');
 

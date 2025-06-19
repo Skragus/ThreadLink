@@ -28,11 +28,10 @@ interface SettingsModalProps {
   useCustomPrompt: boolean;
   setUseCustomPrompt: (_enabled: boolean) => void;
   customPrompt: string;
-  setCustomPrompt: (_prompt: string) => void;
-  // Current API key states (for checking availability)
+  setCustomPrompt: (_prompt: string) => void;  // Current API key states (for checking availability)
   googleAPIKey: string;
   openaiAPIKey: string;
-  anthropicAPIKey: string;
+  mistralAPIKey: string;
   onClose: () => void;
 }
 
@@ -58,11 +57,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useCustomPrompt,
   setUseCustomPrompt,
   customPrompt,
-  setCustomPrompt,
-  // Current API key states
+  setCustomPrompt,  // Current API key states
   googleAPIKey,
   openaiAPIKey,
-  anthropicAPIKey,
+  mistralAPIKey,
   onClose
 }) => {
   const [showPromptEditor, setShowPromptEditor] = useState(false);  // Get available providers based on both cached API keys AND current input values
@@ -71,12 +69,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     return {
       google: cached.google || !!googleAPIKey,
       openai: cached.openai || !!openaiAPIKey,
-      anthropic: cached.anthropic || !!anthropicAPIKey
+      mistral: cached.mistral || !!mistralAPIKey
     };
-  }, [googleAPIKey, openaiAPIKey, anthropicAPIKey]);  // Check if the current model has its provider API key configured
+  }, [googleAPIKey, openaiAPIKey, mistralAPIKey]);// Check if the current model has its provider API key configured
   const currentModelProvider = MODEL_PROVIDERS[model] as keyof typeof availableProviders;
   const isCurrentModelAvailable = currentModelProvider && availableProviders[currentModelProvider];
-
   // All available models - only cheap, fast models for batch processing  
   const availableModels = useMemo(() => {
     return {
@@ -86,13 +83,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       openai: [
         { value: "gpt-4.1-nano", label: "GPT-4.1 Nano" },
         { value: "gpt-4.1-mini", label: "GPT-4.1 Mini" }
+      ],
+      mistral: [
+        { value: "mistral-small-latest", label: "Mistral Small" }
       ]
     };
   }, []);
-  if (!isOpen) return null;
-
-  const isAnthropicModel = model.toLowerCase().includes('claude');
-  const showProcessingSpeed = !isAnthropicModel;
+  if (!isOpen) return null;  const showProcessingSpeed = true; // All models now support processing speed controls
 
   const handleCustomPromptToggle = () => {
     if (!useCustomPrompt) {
@@ -128,7 +125,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <AlertTriangle size={16} className="text-amber-500" />
                 <span className="text-sm text-amber-600">
                   No {currentModelProvider.charAt(0).toUpperCase() + currentModelProvider.slice(1)} API key configured for the selected model. 
-                  Please add your {currentModelProvider === 'openai' ? 'OpenAI' : currentModelProvider === 'anthropic' ? 'Anthropic' : 'Google'} API key to continue.
+                  Please add your {currentModelProvider === 'openai' ? 'OpenAI' : currentModelProvider === 'mistral' ? 'Mistral' : 'Google'} API key to continue.
                 </span>
               </div>
             </div>
@@ -154,6 +151,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   ))}                </optgroup>
                 <optgroup label="OpenAI">
                   {availableModels.openai.map(modelOption => (
+                    <option key={modelOption.value} value={modelOption.value}>
+                      {modelOption.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Mistral">
+                  {availableModels.mistral.map(modelOption => (
                     <option key={modelOption.value} value={modelOption.value}>
                       {modelOption.label}
                     </option>
