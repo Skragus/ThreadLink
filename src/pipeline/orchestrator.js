@@ -528,10 +528,15 @@ async function processDronesWithConcurrency(
                 // Store the result directly without adding any test prefix
                 results[i] = result.result && typeof result.result === 'string' 
                     ? result.result
-                    : "";
-                completed++;
+                    : "";                completed++;
                 if (onProgress) {
-                    onProgress(completed, batches.length, rateLimitedDrones.length);
+                    onProgress({
+                        phase: 'processing',
+                        message: `Processing drones... ${completed}/${batches.length} complete`,
+                        completedDrones: completed,
+                        totalDrones: batches.length,
+                        progress: Math.round((completed / batches.length) * 100)
+                    });
                 }
                 
                 // Always save progress to localStorage for browser storage tests
@@ -613,9 +618,14 @@ async function processDronesWithConcurrency(
         const waitTime = rateLimitedDrone.waitTime || modelConfig.rateLimitBackoff;
         
         console.log(`⏳ Waiting ${Math.round(waitTime/1000)}s before retrying rate-limited drone ${rateLimitedDrone.batchIndex + 1}...`);
-        
-        if (onProgress) {
-            onProgress(completed, batches.length, rateLimitedDrones.length, `Waiting for rate limit reset...`);
+          if (onProgress) {
+            onProgress({
+                phase: 'processing',
+                message: `Waiting for rate limit reset... ${completed}/${batches.length} complete`,
+                completedDrones: completed,
+                totalDrones: batches.length,
+                progress: Math.round((completed / batches.length) * 100)
+            });
         }
         
         await sleep(waitTime);
@@ -649,10 +659,14 @@ async function processDronesWithConcurrency(
             }
             failedDrones.push(retryResult);
             console.error(`💥 Rate-limited drone ${rateLimitedDrone.batchIndex + 1} failed permanently`);
-        }
-
-        if (onProgress) {
-            onProgress(completed, batches.length, 0);
+        }        if (onProgress) {
+            onProgress({
+                phase: 'processing',
+                message: `Processing complete: ${completed}/${batches.length} drones successful`,
+                completedDrones: completed,
+                totalDrones: batches.length,
+                progress: 100
+            });
         }
     }
 
