@@ -121,12 +121,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           }
         }}
       >
-        <div role="dialog" aria-labelledby="settings-title" aria-modal="true" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">          <h3 id="settings-title" className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">Settings</h3>
-            {/* Warning when the selected model doesn't have an API key configured */}
+        <div role="dialog" aria-labelledby="settings-title" aria-modal="true" className="bg-[var(--card-bg)] border border-[var(--divider)] rounded-lg p-6 max-w-md w-full mx-4">          <h3 id="settings-title" className="text-lg font-medium text-[var(--text-primary)] mb-4 select-none cursor-default">Settings</h3>            {/* Warning when the selected model doesn't have an API key configured */}
           {!isCurrentModelAvailable && currentModelProvider && (
             <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
               <div className="flex items-center space-x-2">
-                <AlertTriangle size={16} className="text-amber-500" />
+                <AlertTriangle size={20} className="text-amber-500" />
                 <span className="text-sm text-amber-600">
                   No {currentModelProvider.charAt(0).toUpperCase() + currentModelProvider.slice(1)} API key configured for the selected model. 
                   Please add your {currentModelProvider === 'openai' ? 'OpenAI' : currentModelProvider === 'mistral' ? 'Mistral' : currentModelProvider === 'groq' ? 'Groq' : 'Google'} API key to continue.

@@ -190,7 +190,24 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                       <h4 className="font-medium text-[var(--text-primary)]">Copy and Paste</h4>
                       <p className="text-sm">Copy the selected text (<strong>Ctrl+C</strong> / <strong>Cmd+C</strong>), paste it into ThreadLink, and you're ready to condense.</p>
                     </div>
-                  </div>
+                  </div>                </div>
+                
+                <div className="!mt-6 pt-4 border-t border-[var(--divider)]">
+                  <h4 className="font-medium text-[var(--text-primary)] mb-2 flex items-center space-x-2">
+                    <Settings size={16} className="text-[var(--highlight-blue)]" />
+                    <span>Setting Up Your API Keys (BYOK)</span>
+                  </h4>                  <p className="text-sm mb-3">
+                    ThreadLink uses a <strong>Bring Your Own Key (BYOK)</strong> approach. You provide your own API keys from AI providers, which means:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
+                    <li><strong className="text-[var(--text-primary)]">Privacy:</strong> Your conversations never pass through our servers</li>
+                    <li><strong className="text-[var(--text-primary)]">Control:</strong> You pay providers directly at their rates</li>
+                    <li><strong className="text-[var(--text-primary)]">Flexibility:</strong> Use any combination of Google, OpenAI, Mistral, or Groq</li>
+                    <li><strong className="text-[var(--text-primary)]">Cost-Effective:</strong> ThreadLink only uses fast, cheap models. Even the most expensive (Llama 3.3 70B) costs just $0.60/$0.80 per million tokens</li>
+                  </ul>
+                  <p className="text-sm mt-3">
+                    Click the <strong>API Keys</strong> button in the top navigation to configure your keys. ThreadLink supports all major providers, and you only need keys for the models you want to use. Keys are stored securely in your browser and can be optionally cached for convenience.
+                  </p>
                 </div>
                   <div className="!mt-6 pt-4 border-t border-[var(--divider)]">
                     <h4 className="font-medium text-[var(--text-primary)] mb-2">Troubleshooting: Why did a drone fail?</h4>
@@ -339,7 +356,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                   <div className="bg-[var(--bg-primary)] border border-[var(--divider)] rounded p-3">
                     <h4 className="font-medium text-[var(--text-primary)] mb-2">Groq (Llama)</h4>
                     <ul className="list-disc list-inside ml-4 space-y-1 text-sm">
-                      <li><strong>Personality:</strong> Extremely fast and responsive. Excellent for rapid processing of large amounts of text while providing general-purpose summaries.</li>
+                      <li><strong>Personality:</strong> Extremely fast and responsive. Structured, sharp, and no-nonsense. Your go-to for clean, fast, high-volume condensing.</li>
                       <li><strong>Speed:</strong> Blazing fast</li>
                     </ul>
                   </div>
@@ -400,13 +417,18 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                 <p className="font-medium text-[var(--text-primary)]">The Result:</p>
                 <p>
                   Your context card begins with a high-level overview of earlier discussion, gradually increasing in detail as it approaches the present. This creates a natural narrative flow that mirrors how human memory works – general impressions of the past, vivid details of the present.
-                </p>
-                <p className="font-medium text-[var(--text-primary)]">Recency Strength Settings:</p>
+                </p>                <p className="font-medium text-[var(--text-primary)]">Recency Strength Settings:</p>
                 <ul className="space-y-2 ml-4">
                   <li><strong className="text-[var(--text-primary)]">Subtle:</strong> Gentle gradient. Maintains more detail throughout.</li>
                   <li><strong className="text-[var(--text-primary)]">Balanced:</strong> Standard temporal weighting. Ideal for most projects.</li>
                   <li><strong className="text-[var(--text-primary)]">Strong:</strong> Aggressive recency bias. Heavily focuses on latest developments.</li>
                 </ul>
+                
+                <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded">
+                  <p className="text-sm text-amber-600">
+                    <strong>Note:</strong> Recency Mode is less effective on small inputs since there are fewer drones to redistribute between temporal bands. For maximum benefit, use with longer conversations that generate 10+ drones.
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -439,7 +461,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                       <li><strong className="text-[var(--text-primary)]">Medium Temperature (e.g., 0.6 - 1.0):</strong> Balanced creativity and accuracy. Good for most use cases.</li>
                       <li><strong className="text-[var(--text-primary)]">High Temperature (e.g., 1.1 - 1.2):</strong> The drone will take more creative risks while maintaining clarity. Values above 1.2 are capped to ensure coherent condensation output.</li>
                     </ul>                    <p className="text-sm italic">
-                      ThreadLink defaults to 0.7 which balances readability with accuracy for most technical content. Note: Mistral is automatically capped at 1.0 due to provider limitations.
+                      ThreadLink defaults to 0.7 which balances readability with accuracy for most technical content. 
                     </p>
                   </div>
                   
@@ -459,7 +481,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                     <div className="border-t border-[var(--divider)] pt-3 space-y-2">
                     <h4 className="font-medium text-[var(--text-primary)]">Runaway Cost Protection (Max Drones)</h4>
                     <p className="text-sm">
-                      This is a hard safety limit on the total number of drones a single job can create. Its primary purpose is to prevent accidental, runaway API costs when processing extremely large documents with a high Drone Density setting.
+                      This is a hard safety limit on the total number of drones a single job can create. Its primary purpose is to prevent accidental, runaway API costs when processing extremely large documents with a high Drone Density setting. (hard limit of 200 drones per job)
                     </p>
                     <p className="text-sm italic">
                       <strong className="text-[var(--text-primary)]">Recommendation:</strong> Only increase this limit if you are intentionally processing a massive session (e.g., 500k+ tokens) and have accepted the potential cost implications.
