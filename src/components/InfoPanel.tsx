@@ -432,13 +432,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                 </p>
                 
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-[var(--text-primary)]">LLM Temperature</h4>                    <p className="text-sm">
-                      Temperature controls the "randomness" or "creativity" of the drone's output. It's a value between 0.0 and 2.0. ThreadLink defaults to 0.7 for balanced readability and accuracy.
+                  <div className="space-y-2">                    <h4 className="font-medium text-[var(--text-primary)]">LLM Temperature</h4>                    <p className="text-sm">
+                      Temperature controls the "randomness" or "creativity" of the drone's output. It's a value between 0.0 and 1.2 (optimized for condensation quality). ThreadLink defaults to 0.7 for balanced readability and accuracy.
                     </p><ul className="list-disc list-inside ml-4 space-y-2 text-sm">
                       <li><strong className="text-[var(--text-primary)]">Low Temperature (e.g., 0.2 - 0.5):</strong> The drone will be more focused, deterministic, and predictable. Its summaries will be more like a factual report, sticking very closely to the source text.</li>
                       <li><strong className="text-[var(--text-primary)]">Medium Temperature (e.g., 0.6 - 1.0):</strong> Balanced creativity and accuracy. Good for most use cases.</li>
-                      <li><strong className="text-[var(--text-primary)]">High Temperature (e.g., 1.1 - 2.0):</strong> The drone will take more creative risks. Its summaries may be more narrative, making interpretive leaps to connect ideas. This can result in a more readable, story-like output, but carries a higher risk of losing precision or introducing subtle inaccuracies.</li>
+                      <li><strong className="text-[var(--text-primary)]">High Temperature (e.g., 1.1 - 1.2):</strong> The drone will take more creative risks while maintaining clarity. Values above 1.2 are capped to ensure coherent condensation output.</li>
                     </ul>                    <p className="text-sm italic">
                       ThreadLink defaults to 0.7 which balances readability with accuracy for most technical content. Note: Mistral is automatically capped at 1.0 due to provider limitations.
                     </p>
@@ -448,10 +447,10 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                     <h4 className="font-medium text-[var(--text-primary)]">Drone Density</h4>
                     <p className="text-sm">
                       This setting controls the "resolution" of the condensation process by defining how many drones are assigned per 10,000 tokens of source text.
-                    </p>
-                    <ul className="list-disc list-inside ml-4 space-y-2 text-sm">
+                    </p>                    <ul className="list-disc list-inside ml-4 space-y-2 text-sm">
                       <li><strong className="text-[var(--text-primary)]">Low Density (e.g., 1-2):</strong> Each drone gets a large chunk of text. This is cheaper and results in a more high-level, thematic summary.</li>
-                      <li><strong className="text-[var(--text-primary)]">High Density (e.g., 4-5):</strong> Each drone gets a smaller, more focused chunk. This is more expensive but results in a more detailed and granular context card.</li>
+                      <li><strong className="text-[var(--text-primary)]">Medium Density (e.g., 3-5):</strong> Balanced granularity with reasonable costs. Good for most content types.</li>
+                      <li><strong className="text-[var(--text-primary)]">High Density (e.g., 6-10):</strong> Each drone gets a smaller, more focused chunk. This is more expensive but results in a more detailed and granular context card. Values above 10 are capped to prevent excessive costs.</li>
                     </ul>
                     <p className="text-sm italic">
                       <strong>Note:</strong> This setting is disabled when Recency Mode is active. Recency Mode uses its own dynamic logic to vary the drone density automatically.

@@ -206,7 +206,7 @@ export const DRONE_IDEAL_TARGET_TOKENS = 4500
 export const TARGET_CONTEXT_CARD_TOKENS = 8000
 
 // Processing parameters
-export const DRONES_PER_10K_TOKENS = 10
+export const DRONES_PER_10K_TOKENS = 2
 export const DEFAULT_DRONE_PROMPT = "..."
 ```
 
@@ -514,16 +514,16 @@ const MODEL_PROVIDERS = {
 
 ### Advanced Settings
 
-#### LLM Temperature (0.0 - 2.0)
+#### LLM Temperature (0.0 - 1.2)
 - **0.0-0.3**: Deterministic, focused output
-- **0.4-0.6**: Balanced creativity and consistency
+- **0.4-0.6**: Balanced creativity and consistency  
 - **0.7-1.0**: High creativity and variation
-- **1.1-2.0**: Experimental, highly creative (Note: Mistral capped at 1.0)
+- **1.1-1.2**: Highly creative but capped for optimal condensation quality (Note: Mistral capped at 1.0)
 
-#### Drone Density (1-20 drones per 10k tokens)
-- **1-5**: Broad overview, low granularity
-- **6-10**: Standard detail level
-- **11-20**: High granularity, expensive processing
+#### Drone Density (1-10 drones per 10k tokens)
+- **1-3**: Broad overview, low granularity, cost-effective
+- **4-6**: Standard detail level, balanced approach
+- **7-10**: High granularity, expensive processing (capped to prevent excessive costs)
 
 #### Processing Speed
 - **Balanced**: 5 concurrent requests, standard processing speed
