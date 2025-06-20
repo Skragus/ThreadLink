@@ -324,7 +324,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       max="2"
                       step="0.1"
                       value={advTemperature}
-                      onChange={(e) => setAdvTemperature(parseFloat(e.target.value))}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        if (value > 2.0) {
+                          setAdvTemperature(2.0);
+                          // TODO: Show toast notification "Temperature capped at 2.0"
+                        } else if (value < 0) {
+                          setAdvTemperature(0);
+                          // TODO: Show toast notification "Temperature minimum is 0"
+                        } else {
+                          setAdvTemperature(value);
+                        }
+                      }}
                       className="w-24 px-3 py-1 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm cursor-text"
                     />
                   </div>
@@ -359,7 +370,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         max="20"
                         step="1"
                         value={advDroneDensity}
-                        onChange={(e) => setAdvDroneDensity(parseInt(e.target.value))}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (value > 20) {
+                            setAdvDroneDensity(20);
+                            // TODO: Show toast notification "Drone density capped at 20"
+                          } else if (value < 1) {
+                            setAdvDroneDensity(1);
+                            // TODO: Show toast notification "Drone density minimum is 1"
+                          } else {
+                            setAdvDroneDensity(value);
+                          }
+                        }}
                         className="w-24 px-3 py-1 bg-[var(--bg-primary)] border border-[var(--divider)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[var(--highlight-blue)] text-sm cursor-text"
                       />
                     </div>
@@ -392,7 +414,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         max="200"
                         step="10"
                         value={advMaxDrones}
-                        onChange={(e) => setAdvMaxDrones(parseInt(e.target.value))}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (value > 200) {
+                            setAdvMaxDrones(200);
+                            // TODO: Show toast notification "Max drones capped at 200"
+                          } else if (value < 10) {
+                            setAdvMaxDrones(10);
+                            // TODO: Show toast notification "Max drones minimum is 10"
+                          } else {
+                            setAdvMaxDrones(value);
+                          }
+                        }}
                         className="w-24 px-3 py-1 bg-[var(--bg-primary)] border border-red-500/30 rounded text-[var(--text-primary)] focus:outline-none focus:border-red-500/50 text-sm cursor-text"
                       />
                     </div>

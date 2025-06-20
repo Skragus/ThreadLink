@@ -60,6 +60,12 @@ async function generateOpenAIResponse(
     temperature = 0.7,
     maxTokens = 4096
 ) {
+    // Cap temperature at 2.0 for safety
+    const cappedTemperature = Math.min(Math.max(temperature, 0), 2.0);
+    if (temperature !== cappedTemperature) {
+        console.log(`🔧 OpenAI temperature capped: ${temperature} → ${cappedTemperature}`);
+    }
+    
     // Ensure maxTokens is not null - use reasonable default for OpenAI
     const effectiveMaxTokens = maxTokens ?? 4096;
     if (maxTokens === null) {
@@ -78,7 +84,7 @@ async function generateOpenAIResponse(
                 { role: "system", content: systemInstructions },
                 { role: "user", content: userPrompt }
             ],
-            temperature,
+            temperature: cappedTemperature,
             max_tokens: effectiveMaxTokens
         })
     });
@@ -156,6 +162,12 @@ async function generateGroqResponse(
     temperature = 0.7,
     maxTokens = 4096
 ) {
+    // Cap temperature at 2.0 for safety
+    const cappedTemperature = Math.min(Math.max(temperature, 0), 2.0);
+    if (temperature !== cappedTemperature) {
+        console.log(`🔧 Groq temperature capped: ${temperature} → ${cappedTemperature}`);
+    }
+    
     // Ensure maxTokens is not null - use reasonable default for Groq
     const effectiveMaxTokens = maxTokens ?? 4096;
     if (maxTokens === null) {
@@ -174,7 +186,7 @@ async function generateGroqResponse(
                 { role: "system", content: systemInstructions },
                 { role: "user", content: userPrompt }
             ],
-            temperature,
+            temperature: cappedTemperature,
             max_tokens: effectiveMaxTokens
         })
     });
@@ -204,9 +216,15 @@ async function generateGoogleResponse(
 ) {
     const endpoint = API_ENDPOINTS.google.replace('{model}', model);
     
+    // Cap temperature at 2.0 for safety
+    const cappedTemperature = Math.min(Math.max(temperature, 0), 2.0);
+    if (temperature !== cappedTemperature) {
+        console.log(`🔧 Google temperature capped: ${temperature} → ${cappedTemperature}`);
+    }
+    
     // Google uses maxOutputTokens in generationConfig if token limiting is needed
     const generationConfig = {
-        temperature,
+        temperature: cappedTemperature,
         candidateCount: 1
     };
     
