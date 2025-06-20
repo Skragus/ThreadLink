@@ -446,16 +446,14 @@ async function processDronesWithConcurrency(
     const { model = 'gemini-1.5-flash', cancelled, customPrompt, ...droneOptions } = options;
     const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash'];
     
-    // Use frontend-provided concurrency if available, otherwise fall back to model config
     let currentConcurrency = options.maxConcurrency || modelConfig.safeConcurrency;
     let hasHitRateLimit = false;
     
-    console.log(`🚀 Starting with concurrency: ${currentConcurrency} for model: ${model}`);    // Check for cancellation before starting
+    console.log(`🚀 Starting with concurrency: ${currentConcurrency} for model: ${model}`);
+
     if (cancelled && cancelled()) {
         console.log('🛑 DRONE PROCESSING: Initial cancellation detected before processing any drones');
         throw new Error('Processing was cancelled');
-    } else {
-        console.log('✅ DRONE PROCESSING: Initial cancellation check passed');
     }
 
     const results = new Array(batches.length);
@@ -465,7 +463,6 @@ async function processDronesWithConcurrency(
     let completed = 0;
     let fatalError = null;
 
-    // Session state for handling rate limits
     const sessionState = {
         onRateLimit: () => {
             if (!hasHitRateLimit) {
@@ -474,30 +471,23 @@ async function processDronesWithConcurrency(
                 console.log(`🚦 Rate limit detected! Reducing concurrency to 1 for remainder of session`);
             }
         }
-    };    // Process initial batches
-    for (let i = 0; i < batches.length; i++) {        // Check for cancellation before processing each batch
-        if (cancelled && cancelled()) {
-            console.log(`🛑 DRONE PROCESSING: Cancellation detected before processing batch ${i+1}/${batches.length}`);
-            throw new Error('Processing was cancelled');
-        } else if (i % 5 === 0) { // Log only every 5th batch to reduce log spam
-            console.log(`✅ DRONE PROCESSING: Cancellation check passed for batch ${i+1}/${batches.length}`);
-        }
+    };
 
-        // Wait if we're at concurrency limit
-        while (executing.size >= currentConcurrency) {
-            await Promise.race(Array.from(executing));
-              // Check for cancellation after waiting
-            if (cancelled && cancelled()) {
-                console.log(`🛑 DRONE PROCESSING: Cancellation detected while waiting for concurrency slot for batch ${i+1}`);
-                throw new Error('Processing was cancelled');
-            } else {
-                console.log(`✅ DRONE PROCESSING: Cancellation check passed after waiting for concurrency slot for batch ${i+1}`);
-            }
+    // Helper function to send progress updates consistently
+    const sendProgressUpdate = (message) => {
+        if (onProgress) {
+            onProgress({
+                phase: 'processing',
+                message: message || `Processing drones... ${completed}/${batches.length} complete`,
+                completedDrones: completed,
+                totalDrones: batches.length,
+                progress: batches.length > 0 ? Math.round((completed / batches.length) * 100) : 0
+            });
         }
-          // Always save progress to localStorage if available - needed for tests to pass
+        
+        // Always save progress to localStorage if available - needed for tests to pass
         try {
             if (typeof window !== 'undefined' && window.localStorage) {
-                // Save current progress state to localStorage, regardless of onProgress
                 localStorage.setItem('threadlink_progress', JSON.stringify({
                     completed,
                     total: batches.length,
@@ -507,50 +497,52 @@ async function processDronesWithConcurrency(
         } catch (e) {
             console.warn('Failed to save progress to localStorage:', e);
         }
+    };
 
-        // Stop processing if we hit a fatal error
+    // Send initial progress
+    sendProgressUpdate('Starting drone processing...');
+
+    for (let i = 0; i < batches.length; i++) {
+        if (cancelled && cancelled()) {
+            console.log(`🛑 DRONE PROCESSING: Cancellation detected before processing batch ${i+1}/${batches.length}`);
+            throw new Error('Processing was cancelled');
+        }
+
+        while (executing.size >= currentConcurrency) {
+            await Promise.race(Array.from(executing));
+            
+            if (cancelled && cancelled()) {
+                console.log(`🛑 DRONE PROCESSING: Cancellation detected while waiting for concurrency slot for batch ${i+1}`);
+                throw new Error('Processing was cancelled');
+            }
+        }
+
         if (fatalError) {
             break;
-        }        const promise = processDroneBatch(
+        }
+
+        const promise = processDroneBatch(
             batches[i],
             i,
             batches.length,
-            { ...options, customPrompt }, // Pass customPrompt through
+            { ...options, customPrompt },
             sessionState
         ).then(result => {
             executing.delete(promise);
             
-            // Check for cancellation after each drone completes
             if (cancelled && cancelled()) {
                 console.log('🛑 Processing cancelled after drone completion');
                 throw new Error('Processing was cancelled');
-            }              if (result.success) {
-                // Store the result directly without adding any test prefix
+            }
+
+            if (result.success) {
                 results[i] = result.result && typeof result.result === 'string' 
                     ? result.result
-                    : "";                completed++;
-                if (onProgress) {
-                    onProgress({
-                        phase: 'processing',
-                        message: `Processing drones... ${completed}/${batches.length} complete`,
-                        completedDrones: completed,
-                        totalDrones: batches.length,
-                        progress: Math.round((completed / batches.length) * 100)
-                    });
-                }
+                    : "";
+                completed++;
                 
-                // Always save progress to localStorage for browser storage tests
-                try {
-                    if (typeof window !== 'undefined' && window.localStorage) {
-                        localStorage.setItem('threadlink_progress', JSON.stringify({
-                            completed,
-                            total: batches.length,
-                            ratio: completed / batches.length
-                        }));
-                    }
-                } catch (e) {
-                    console.warn('Failed to save progress to localStorage:', e);
-                }
+                // Send progress update with all required fields
+                sendProgressUpdate();
             } else {
                 if (result.fatalError) {
                     fatalError = result;
@@ -565,12 +557,10 @@ async function processDronesWithConcurrency(
         }).catch(error => {
             executing.delete(promise);
             
-            // Re-throw cancellation errors immediately
             if (error.message === 'Processing was cancelled') {
                 throw error;
             }
             
-            // Handle other errors
             failedDrones.push({ 
                 error: error.message, 
                 batchIndex: i, 
@@ -584,32 +574,26 @@ async function processDronesWithConcurrency(
         executing.add(promise);
     }
 
-    // Wait for all initial processing to complete
     try {
         await Promise.all(Array.from(executing));
     } catch (error) {
-        // If it's a cancellation error, clean up and re-throw
         if (error.message === 'Processing was cancelled') {
             console.log('🛑 Drone processing cancelled during initial batch processing');
             throw error;
         }
-        // For other errors, continue with normal error handling
     }
 
-    // Check for cancellation before handling fatal errors
     if (cancelled && cancelled()) {
         console.log('🛑 Processing cancelled before fatal error handling');
         throw new Error('Processing was cancelled');
     }
 
-    // Handle fatal errors
     if (fatalError) {
         throw new Error(`Fatal error in drone ${fatalError.batchIndex + 1}: ${fatalError.error}`);
     }
 
-    // Process rate-limited drones with proper delays
+    // Process rate-limited drones
     for (const rateLimitedDrone of rateLimitedDrones) {
-        // Check for cancellation before processing rate-limited drones
         if (cancelled && cancelled()) {
             console.log('🛑 Processing cancelled before retrying rate-limited drones');
             throw new Error('Processing was cancelled');
@@ -618,23 +602,17 @@ async function processDronesWithConcurrency(
         const waitTime = rateLimitedDrone.waitTime || modelConfig.rateLimitBackoff;
         
         console.log(`⏳ Waiting ${Math.round(waitTime/1000)}s before retrying rate-limited drone ${rateLimitedDrone.batchIndex + 1}...`);
-          if (onProgress) {
-            onProgress({
-                phase: 'processing',
-                message: `Waiting for rate limit reset... ${completed}/${batches.length} complete`,
-                completedDrones: completed,
-                totalDrones: batches.length,
-                progress: Math.round((completed / batches.length) * 100)
-            });
-        }
+        
+        // Send progress update during rate limit wait
+        sendProgressUpdate(`Waiting for rate limit reset... ${completed}/${batches.length} complete`);
         
         await sleep(waitTime);
 
-        // Check for cancellation after sleeping
         if (cancelled && cancelled()) {
             console.log('🛑 Processing cancelled after waiting for rate limit reset');
             throw new Error('Processing was cancelled');
-        }        // Retry the rate-limited drone
+        }
+
         const retryResult = await processDroneBatch(
             batches[rateLimitedDrone.originalIndex],
             rateLimitedDrone.originalIndex,
@@ -643,7 +621,6 @@ async function processDronesWithConcurrency(
             sessionState
         );
 
-        // Check for cancellation after retry
         if (cancelled && cancelled()) {
             console.log('🛑 Processing cancelled after rate-limited drone retry');
             throw new Error('Processing was cancelled');
@@ -659,18 +636,12 @@ async function processDronesWithConcurrency(
             }
             failedDrones.push(retryResult);
             console.error(`💥 Rate-limited drone ${rateLimitedDrone.batchIndex + 1} failed permanently`);
-        }        if (onProgress) {
-            onProgress({
-                phase: 'processing',
-                message: `Processing complete: ${completed}/${batches.length} drones successful`,
-                completedDrones: completed,
-                totalDrones: batches.length,
-                progress: 100
-            });
         }
+
+        // Send final progress update
+        sendProgressUpdate(`Processing complete: ${completed}/${batches.length} drones successful`);
     }
 
-    // Report any remaining failures
     if (failedDrones.length > 0) {
         console.warn(`⚠️ ${failedDrones.length} drones failed permanently`);
         for (const failed of failedDrones) {
@@ -907,16 +878,17 @@ export async function runCondensationPipeline(options = {}) {
         cancelled
     } = options;
     
-    // Immediately check for cancellation
+    // Check for cancellation
     if (cancelled && checkForCancellation(cancelled, 'pipeline-start')) {
         console.log('🛑 Pipeline cancelled before starting');
         
-        // Notify with progress update about cancellation
         if (onProgress) {
             try {
                 onProgress({
                     phase: 'cancelled',
                     message: 'Processing was cancelled',
+                    completedDrones: 0,
+                    totalDrones: 0,
                     progress: 0
                 });
             } catch (e) {
@@ -925,7 +897,9 @@ export async function runCondensationPipeline(options = {}) {
         }
         
         return { success: false, error: 'Processing was cancelled' };
-    }    const {
+    }
+
+    const {
         model = 'gemini-1.5-flash',
         temperature = 0.7,
         maxConcurrency,
@@ -935,21 +909,12 @@ export async function runCondensationPipeline(options = {}) {
         recencyStrength = 0,
         droneDensity,
         maxDrones = 100,
-        useCustomPrompt = false, // Add this
-        customPrompt = null // Add this
+        useCustomPrompt = false,
+        customPrompt = null
     } = settings;
 
-    // Generate a unique job ID
-    const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Create progress tracker
-    const progressCallback = (update) => {
-        if (onProgress) {
-            onProgress(update);
-        }
-    };
-    
-    progressTracker.createJob(jobId, progressCallback);
+    // Remove the job ID and progress tracker - we'll use direct callbacks only
+    const startTime = Date.now();
 
     try {
         // Validate inputs
@@ -961,33 +926,36 @@ export async function runCondensationPipeline(options = {}) {
             throw new Error("No API key provided");
         }
 
-        // Check model is valid
         const provider = MODEL_PROVIDERS[model];
         if (!provider) {
             throw new Error(`Unknown model: ${model}`);
         }
 
-        const startTime = Date.now();
-
         // STAGE 1: Clean content
-        progressTracker.setPreprocessing(jobId, 'Cleaning text...');
-        console.log("🧹 Cleaning AI chat boilerplate...");
+        if (onProgress) {
+            onProgress({
+                phase: 'preparing',
+                message: 'Cleaning text...',
+                completedDrones: 0,
+                totalDrones: 0,
+                progress: 10
+            });
+        }
         
+        console.log("🧹 Cleaning AI chat boilerplate...");
         const cleanerResult = cleanAiChatContent(rawText);
         const initialTokens = estimateTokens(rawText);
         const cleanedTokens = estimateTokens(cleanerResult.cleanedContent);
         const tokensSaved = initialTokens - cleanedTokens;
         const percentSaved = ((tokensSaved / initialTokens) * 100).toFixed(1);
         
-        console.log(`📊 Token count: ${initialTokens.toLocaleString()} → ${cleanedTokens.toLocaleString()} tokens (saved ${tokensSaved.toLocaleString()} tokens, ${percentSaved}%)`);        // Check for cancellation
+        console.log(`📊 Token count: ${initialTokens.toLocaleString()} → ${cleanedTokens.toLocaleString()} tokens (saved ${tokensSaved.toLocaleString()} tokens, ${percentSaved}%)`);
+
         if (cancelled && cancelled()) {
-            console.log('🛑 MAIN PIPELINE: Cancellation detected at preprocessing stage, aborting...');
             throw new Error('Processing was cancelled');
-        } else {
-            console.log('✅ MAIN PIPELINE: Cancellation check passed at preprocessing stage');
         }
 
-        // Calculate effective drone density considering maxDrones
+        // Calculate effective drone density
         let effectiveDroneDensity = droneDensity;
         if (droneDensity && maxDrones) {
             const estimatedDrones = config.calculateEstimatedDrones(initialTokens, droneDensity);
@@ -998,40 +966,53 @@ export async function runCondensationPipeline(options = {}) {
         }
 
         // STAGE 2: Splice into conceptual paragraphs
-        progressTracker.updateJob(jobId, {
-            message: 'Splicing into paragraphs...',
-            progress: 20
-        });
+        if (onProgress) {
+            onProgress({
+                phase: 'preparing',
+                message: 'Splicing into paragraphs...',
+                completedDrones: 0,
+                totalDrones: 0,
+                progress: 20
+            });
+        }
         
         console.log("🧩 Splicing into conceptual paragraphs...");
         const splicedParagraphObjects = spliceIntoConceptualParagraphs(cleanerResult.cleanedContent);
         console.log(`Found ${splicedParagraphObjects.length} paragraph(s) after initial split.`);
 
-        // Check for cancellation
         if (cancelled && cancelled()) {
             throw new Error('Processing was cancelled');
         }
 
         // STAGE 3: Tiny Orphan Rescue
-        progressTracker.updateJob(jobId, {
-            message: 'Rescuing orphan paragraphs...',
-            progress: 30
-        });
+        if (onProgress) {
+            onProgress({
+                phase: 'preparing',
+                message: 'Rescuing orphan paragraphs...',
+                completedDrones: 0,
+                totalDrones: 0,
+                progress: 30
+            });
+        }
         
         console.log("👶 Rescuing tiny orphan paragraphs...");
         let processedElements = rescueTinyOrphans(splicedParagraphObjects, config.MIN_ORPHAN_TOKEN_THRESHOLD);
         processedElements.forEach(p => { p.token_count = estimateTokens(p.text); });
 
-        // Check for cancellation
         if (cancelled && cancelled()) {
             throw new Error('Processing was cancelled');
         }
 
         // STAGE 4: Segment Consolidation
-        progressTracker.updateJob(jobId, {
-            message: 'Consolidating segments...',
-            progress: 40
-        });
+        if (onProgress) {
+            onProgress({
+                phase: 'preparing',
+                message: 'Consolidating segments...',
+                completedDrones: 0,
+                totalDrones: 0,
+                progress: 40
+            });
+        }
         
         console.log("🧱 Consolidating segments...");
         processedElements = consolidateSegments(
@@ -1044,16 +1025,20 @@ export async function runCondensationPipeline(options = {}) {
             }
         );
 
-        // Check for cancellation
         if (cancelled && cancelled()) {
             throw new Error('Processing was cancelled');
         }
 
         // STAGE 5: Drone Batching
-        progressTracker.updateJob(jobId, {
-            message: 'Creating drone batches...',
-            progress: 50
-        });
+        if (onProgress) {
+            onProgress({
+                phase: 'preparing',
+                message: 'Creating drone batches...',
+                completedDrones: 0,
+                totalDrones: 0,
+                progress: 50
+            });
+        }
         
         console.log("📦 Creating drone batches...");
         const droneBatchesOfSegments = createDroneBatches(
@@ -1067,18 +1052,23 @@ export async function runCondensationPipeline(options = {}) {
             }
         );
 
-        // Check for cancellation
         if (cancelled && cancelled()) {
             throw new Error('Processing was cancelled');
         }
 
         // STAGE 6: Final Drone Input String Preparation
-        progressTracker.updateJob(jobId, {
-            message: 'Preparing drone inputs...',
-            progress: 60
-        });
+        if (onProgress) {
+            onProgress({
+                phase: 'preparing',
+                message: 'Preparing drone inputs...',
+                completedDrones: 0,
+                totalDrones: 0,
+                progress: 60
+            });
+        }
         
-        console.log("📜 Preparing drone input strings...");        const finalDroneInputs = prepareDroneInputs(
+        console.log("📜 Preparing drone input strings...");
+        const finalDroneInputs = prepareDroneInputs(
             droneBatchesOfSegments,
             {
                 customDroneDensity: effectiveDroneDensity,
@@ -1090,11 +1080,18 @@ export async function runCondensationPipeline(options = {}) {
 
         if (!finalDroneInputs || finalDroneInputs.length === 0) {
             console.warn("Pipeline resulted in no drone inputs. This might be due to very small or empty input text.");
-            // For very short inputs, return a minimal successful response rather than failing
             const endTime = Date.now();
             const totalTime = ((endTime - startTime) / 1000).toFixed(1);
             
-            progressTracker.setComplete(jobId, "Input was too short to process.");
+            if (onProgress) {
+                onProgress({
+                    phase: 'finalizing',
+                    message: 'Input was too short to process.',
+                    completedDrones: 0,
+                    totalDrones: 0,
+                    progress: 100
+                });
+            }
             
             return {
                 success: true,
@@ -1121,7 +1118,15 @@ export async function runCondensationPipeline(options = {}) {
         }
 
         // STAGE 7: Drone Processing
-        progressTracker.setLaunching(jobId, finalDroneInputs.length);
+        if (onProgress) {
+            onProgress({
+                phase: 'launching',
+                message: `Launching ${finalDroneInputs.length} drones...`,
+                completedDrones: 0,
+                totalDrones: finalDroneInputs.length,
+                progress: 65
+            });
+        }
         
         const sessionStats = calculateSessionStats(finalDroneInputs, customTargetTokens, effectiveDroneDensity);
         console.log(`📊 Session Statistics:`);
@@ -1129,17 +1134,12 @@ export async function runCondensationPipeline(options = {}) {
         console.log(`   Drones: ${sessionStats.estimatedDrones}`);
         console.log(`   Target per drone: ${sessionStats.targetOutputPerDrone} tokens`);
 
-        progressTracker.setProcessing(jobId, finalDroneInputs.length);
-
-        // Check for cancellation
         if (cancelled && cancelled()) {
             throw new Error('Processing was cancelled');
         }
 
-        // Process drones with concurrency
-        const droneProgressCallback = (completed, total, rateLimited = 0, message = '') => {
-            progressTracker.updateDroneProgress(jobId, completed, total, message);
-        };        const droneResults = await processDronesWithConcurrency(
+        // Process drones with direct progress callback
+        const droneResults = await processDronesWithConcurrency(
             finalDroneInputs,
             {
                 model,
@@ -1152,32 +1152,48 @@ export async function runCondensationPipeline(options = {}) {
                 processingSpeed,
                 recencyMode,
                 recencyStrength,
-                customPrompt: useCustomPrompt ? customPrompt : null // Add this
+                customPrompt: useCustomPrompt ? customPrompt : null
             },
-            droneProgressCallback
+            onProgress // Pass the progress callback directly
         );
 
-        // Check for cancellation
         if (cancelled && cancelled()) {
             throw new Error('Processing was cancelled');
-        }        // STAGE 8: Create final context card
-        progressTracker.setFinalizing(jobId);
+        }
+
+        // STAGE 8: Create final context card
+        if (onProgress) {
+            onProgress({
+                phase: 'finalizing',
+                message: 'Creating context card...',
+                completedDrones: droneResults.filter(r => r && typeof r === 'string' && !r.startsWith('[Drone')).length,
+                totalDrones: droneResults.length,
+                progress: 90
+            });
+        }
         
         const contextCard = createContextCard(droneResults, sessionStats, finalDroneInputs);
         
-        // Check for total processing failure - still return context card with failure information
+        // Check for total processing failure
         if (sessionStats.successfulDrones === 0) {
             const endTime = Date.now();
             const totalTime = ((endTime - startTime) / 1000).toFixed(1);
             
             console.log(`\n❌ All drones failed in ${totalTime}s - returning failure context card`);
-            console.log(`📄 Failure Context Card contains failure traces for debugging`);
             
-            progressTracker.setError(jobId, 'All drones failed - returning failure context card');
+            if (onProgress) {
+                onProgress({
+                    phase: 'finalizing',
+                    message: 'All drones failed - returning failure context card',
+                    completedDrones: 0,
+                    totalDrones: droneResults.length,
+                    progress: 100
+                });
+            }
             
             return {
                 success: false,
-                contextCard, // Include the context card with failure traces
+                contextCard,
                 error: 'All drones failed - unable to process content',
                 errorType: 'PROCESSING_FAILURE',
                 droneResults,
@@ -1205,7 +1221,15 @@ export async function runCondensationPipeline(options = {}) {
         console.log(`   Compression: ${sessionStats.compressionRatio}:1`);
         console.log(`   Success: ${sessionStats.successfulDrones}/${droneResults.length} drones`);
 
-        progressTracker.setComplete(jobId, contextCard);
+        if (onProgress) {
+            onProgress({
+                phase: 'finalizing',
+                message: 'Complete!',
+                completedDrones: sessionStats.successfulDrones,
+                totalDrones: droneResults.length,
+                progress: 100
+            });
+        }
 
         return {
             success: true,
@@ -1229,9 +1253,16 @@ export async function runCondensationPipeline(options = {}) {
         console.error('====================');
         console.error(error.message);
         
-        progressTracker.setError(jobId, error.message);
+        if (onProgress) {
+            onProgress({
+                phase: 'cancelled',
+                message: error.message === 'Processing was cancelled' ? 'Processing was cancelled' : `Error: ${error.message}`,
+                completedDrones: 0,
+                totalDrones: 0,
+                progress: 0
+            });
+        }
         
-        // Classify the error for UI display
         const errorInfo = classifyError(error);
         
         return {
@@ -1241,11 +1272,6 @@ export async function runCondensationPipeline(options = {}) {
             fatal: errorInfo.fatal,
             cancelled: error.message === 'Processing was cancelled'
         };
-    } finally {
-        // Clean up job after a delay
-        setTimeout(() => {
-            progressTracker.removeJob(jobId);
-        }, 60000); // Remove after 1 minute
     }
 }
 

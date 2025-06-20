@@ -210,9 +210,7 @@ export class ProgressTracker {
         jobsToRemove.forEach(jobId => this.removeJob(jobId));
         
         return jobsToRemove.length;
-    }
-
-    /**
+    }    /**
      * Notify listener of job update
      * @private
      */
@@ -224,11 +222,44 @@ export class ProgressTracker {
             // Use setTimeout to avoid blocking
             setTimeout(() => {
                 try {
-                    listener({...job}); // Pass a copy to prevent external modifications
+                    // Convert internal status to progress update format
+                    const progressUpdate = {
+                        phase: this._statusToPhase(job.status),
+                        message: job.message,
+                        completedDrones: job.completedDrones,
+                        totalDrones: job.totalDrones,
+                        progress: job.progress
+                    };
+                    
+                    listener(progressUpdate);
                 } catch (error) {
                     console.error(`Error in progress listener for job ${jobId}:`, error);
                 }
             }, 0);
+        }
+    }
+
+    /**
+     * Convert internal status to phase for UI compatibility
+     * @private
+     */
+    _statusToPhase(status) {
+        switch (status) {
+            case 'created':
+            case 'preprocessing':
+                return 'preparing';
+            case 'launching':
+                return 'launching';
+            case 'processing':
+                return 'processing';
+            case 'finalizing':
+                return 'finalizing';
+            case 'cancelled':
+                return 'cancelled';
+            case 'error':
+                return 'cancelled'; // Treat errors as cancelled for UI purposes
+            default:
+                return 'preparing';
         }
     }
 
