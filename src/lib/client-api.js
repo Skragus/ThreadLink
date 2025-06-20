@@ -59,9 +59,8 @@ async function generateOpenAIResponse(
     apiKey,
     temperature = 0.7,
     maxTokens = 4096
-) {
-    // Cap temperature at 2.0 for safety
-    const cappedTemperature = Math.min(Math.max(temperature, 0), 2.0);
+) {    // Cap temperature at 1.2 for optimal condensation quality
+    const cappedTemperature = Math.min(Math.max(temperature, 0), 1.2);
     if (temperature !== cappedTemperature) {
         console.log(`🔧 OpenAI temperature capped: ${temperature} → ${cappedTemperature}`);
     }
@@ -161,9 +160,8 @@ async function generateGroqResponse(
     apiKey,
     temperature = 0.7,
     maxTokens = 4096
-) {
-    // Cap temperature at 2.0 for safety
-    const cappedTemperature = Math.min(Math.max(temperature, 0), 2.0);
+) {    // Cap temperature at 1.2 for optimal condensation quality
+    const cappedTemperature = Math.min(Math.max(temperature, 0), 1.2);
     if (temperature !== cappedTemperature) {
         console.log(`🔧 Groq temperature capped: ${temperature} → ${cappedTemperature}`);
     }
@@ -215,9 +213,8 @@ async function generateGoogleResponse(
     maxTokens = null // Google doesn't use max_tokens in the same way - uses maxOutputTokens in generationConfig if needed
 ) {
     const endpoint = API_ENDPOINTS.google.replace('{model}', model);
-    
-    // Cap temperature at 2.0 for safety
-    const cappedTemperature = Math.min(Math.max(temperature, 0), 2.0);
+      // Cap temperature at 1.2 for optimal condensation quality
+    const cappedTemperature = Math.min(Math.max(temperature, 0), 1.2);
     if (temperature !== cappedTemperature) {
         console.log(`🔧 Google temperature capped: ${temperature} → ${cappedTemperature}`);
     }

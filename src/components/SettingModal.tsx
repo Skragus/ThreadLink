@@ -313,7 +313,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div className="w-4 h-4 rounded-full border border-[var(--text-secondary)] flex items-center justify-center text-xs text-[var(--text-secondary)] cursor-help select-none">
                           i
                         </div>                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 select-none cursor-default">
-                          Controls creativity. 0.2 = deterministic, 2.0 = highly creative
+                          Controls creativity. 0.2 = deterministic, 1.2 = highly creative (optimal for condensation)
                         </div>
                       </div>
                     </div>
@@ -321,14 +321,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       id="adv-temperature"
                       type="number"
                       min="0"
-                      max="2"
+                      max="1.2"
                       step="0.1"
                       value={advTemperature}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (value > 2.0) {
-                          setAdvTemperature(2.0);
-                          // TODO: Show toast notification "Temperature capped at 2.0"
+                      onChange={(e) => {                        const value = parseFloat(e.target.value);
+                        if (value > 1.2) {
+                          setAdvTemperature(1.2);
+                          // TODO: Show toast notification "Temperature capped at 1.2 for optimal condensation quality"
                         } else if (value < 0) {
                           setAdvTemperature(0);
                           // TODO: Show toast notification "Temperature minimum is 0"
@@ -367,14 +366,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         id="adv-drone-density"
                         type="number"
                         min="1"
-                        max="20"
+                        max="10"
                         step="1"
                         value={advDroneDensity}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value);
-                          if (value > 20) {
-                            setAdvDroneDensity(20);
-                            // TODO: Show toast notification "Drone density capped at 20"
+                        onChange={(e) => {                          const value = parseInt(e.target.value);
+                          if (value > 10) {
+                            setAdvDroneDensity(10);
+                            // TODO: Show toast notification "Drone density capped at 10 to prevent excessive costs"
                           } else if (value < 1) {
                             setAdvDroneDensity(1);
                             // TODO: Show toast notification "Drone density minimum is 1"
