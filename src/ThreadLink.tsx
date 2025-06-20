@@ -466,11 +466,12 @@ function ThreadLink() {
         };
         
         // Merge with actual stats if available - ensure we ALWAYS have stats
+        // For drone counts, use the actual values (including 0) before falling back to defaults
         const mergedStats = {
           executionTime: result.executionTime || defaultStats.executionTime,
           compressionRatio: result.sessionStats?.compressionRatio || result.stats?.compressionRatio || defaultStats.compressionRatio,
-          successfulDrones: result.sessionStats?.successfulDrones || result.stats?.successfulDrones || defaultStats.successfulDrones,
-          totalDrones: result.sessionStats?.totalDrones || result.stats?.totalDrones || defaultStats.totalDrones,
+          successfulDrones: result.sessionStats?.successfulDrones !== undefined ? result.sessionStats.successfulDrones : (result.stats?.successfulDrones !== undefined ? result.stats.successfulDrones : defaultStats.successfulDrones),
+          totalDrones: result.sessionStats?.totalDrones !== undefined ? result.sessionStats.totalDrones : (result.stats?.totalDrones !== undefined ? result.stats.totalDrones : defaultStats.totalDrones),
           initialTokens: result.stats?.initialTokens || defaultStats.initialTokens,
           finalTokens: result.stats?.finalTokens || result.sessionStats?.finalContentTokens || defaultStats.finalTokens
         };
