@@ -58,8 +58,8 @@ This project is built on a **100% client-side, serverless architecture** to guar
 
 ### 🧪 Demo
 
-[Link to Live Demo / GIF] (coming soon)
-
+[Demo video
+](https://youtu.be/WNVgECm5cVc?si=yFYXMJxF6GBB0DAY)
 ---
 
 ### 🧠 Author
