@@ -43,8 +43,8 @@ export const RECENT_CONVERSATION_MIN_TOKENS = 600;
 
 // === QUALITY CONTROL SETTINGS ===
 export const QUALITY_MIN_TOKEN_ABSOLUTE = 25;           // Absolute minimum tokens for quality check
-export const QUALITY_MIN_TOKEN_PERCENTAGE = 0.1;       // Minimum percentage of target tokens
-export const QUALITY_MIN_CHAR_COUNT = 50;               // Minimum character count for quality
+export const QUALITY_MIN_TOKEN_PERCENTAGE = 0.01;       // Minimum percentage of target tokens
+export const QUALITY_MIN_CHAR_COUNT = 25;               // Minimum character count for quality
 
 // === OUTPUT SAFETY SETTINGS ===
 export const MAX_OUTPUT_TOKENS_SAFETY = 2048;           // Hard limit safety net for output tokens
@@ -74,7 +74,7 @@ export const PROCESSING_SPEED_BALANCED = 'balanced';
 export const RECENCY_STRENGTH_OFF = 0;
 export const RECENCY_STRENGTH_SUBTLE = 25;
 export const RECENCY_STRENGTH_BALANCED = 50;
-export const RECENCY_STRENGTH_STRONG = 100;
+export const RECENCY_STRENGTH_STRONG = 90;
 
 // Text separators and formatting
 export const CONSOLIDATION_SEPARATOR = '\n\n';

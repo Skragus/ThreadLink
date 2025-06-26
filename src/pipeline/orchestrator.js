@@ -955,16 +955,6 @@ export async function runCondensationPipeline(options = {}) {
             throw new Error('Processing was cancelled');
         }
 
-        // Calculate effective drone density
-        let effectiveDroneDensity = droneDensity;
-        if (droneDensity && maxDrones) {
-            const estimatedDrones = config.calculateEstimatedDrones(initialTokens, droneDensity);
-            if (estimatedDrones > maxDrones) {
-                effectiveDroneDensity = (maxDrones * 10000) / initialTokens;
-                console.log(`🎯 Drone density override: ${droneDensity} → ${effectiveDroneDensity.toFixed(2)}`);
-            }
-        }
-
         // STAGE 2: Splice into conceptual paragraphs
         if (onProgress) {
             onProgress({
@@ -1018,7 +1008,7 @@ export async function runCondensationPipeline(options = {}) {
         processedElements = consolidateSegments(
             processedElements,
             {
-                customDroneDensity: effectiveDroneDensity,
+                customDroneDensity: droneDensity,
                 totalInputTokens: initialTokens,
                 recencyMode: recencyMode,
                 recencyStrength: recencyStrength
@@ -1044,7 +1034,7 @@ export async function runCondensationPipeline(options = {}) {
         const droneBatchesOfSegments = createDroneBatches(
             processedElements,
             {
-                customDroneDensity: effectiveDroneDensity,
+                customDroneDensity: droneDensity,
                 customMaxDrones: maxDrones,
                 totalInputTokens: initialTokens,
                 recencyMode: recencyMode,
@@ -1071,7 +1061,7 @@ export async function runCondensationPipeline(options = {}) {
         const finalDroneInputs = prepareDroneInputs(
             droneBatchesOfSegments,
             {
-                customDroneDensity: effectiveDroneDensity,
+                customDroneDensity: droneDensity,
                 totalInputTokens: initialTokens,
                 recencyMode: recencyMode,
                 recencyStrength: recencyStrength
@@ -1128,7 +1118,7 @@ export async function runCondensationPipeline(options = {}) {
             });
         }
         
-        const sessionStats = calculateSessionStats(finalDroneInputs, customTargetTokens, effectiveDroneDensity);
+        const sessionStats = calculateSessionStats(finalDroneInputs, customTargetTokens, droneDensity);
         console.log(`📊 Session Statistics:`);
         console.log(`   Input tokens: ${sessionStats.totalInputTokens.toLocaleString()}`);
         console.log(`   Drones: ${sessionStats.estimatedDrones}`);

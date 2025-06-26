@@ -326,7 +326,7 @@ export function createDroneBatches(consolidatedSegments, customSettings = {}) {
     } = customSettings;
     
     const maxDrones = customMaxDrones;
-    
+
     // --- 3. RECENCY MODE: TEMPORAL BANDING ---
     if (recencyMode && recencyStrength > 0) {
         console.log(`\n🕐 RECENCY MODE ACTIVE: strength=${recencyStrength}`);
@@ -480,17 +480,24 @@ export function createDroneBatches(consolidatedSegments, customSettings = {}) {
         batches.push(currentBatch);
     }
     
-    // --- 6. CHECK AND ENFORCE MAX DRONES LIMIT ---
+    // --- 6. ENFORCE DENSITY-BASED DRONE COUNT ---
     let finalBatches = batches;
-    
-    if (maxDrones && batches.length > maxDrones) {
-        console.log(`⚠️ Initial batch count (${batches.length}) exceeds maxDrones limit (${maxDrones}). Reconsolidating...`);
-        finalBatches = consolidateBatchesToLimit(batches, consolidatedSegments, maxDrones);
+    if (customDroneDensity && totalInputTokens > 0) {
+        const densityTarget = config.calculateEstimatedDrones(totalInputTokens, customDroneDensity, maxDrones);
+        if (finalBatches.length > densityTarget) {
+            console.log(`🔄 Reducing batches from ${finalBatches.length} to density target ${densityTarget}`);
+            finalBatches = consolidateBatchesToLimit(finalBatches, consolidatedSegments, densityTarget);
+        }
+    }
+    // --- 7. CHECK AND ENFORCE MAX DRONES LIMIT ---
+    if (maxDrones && finalBatches.length > maxDrones) {
+        console.log(`⚠️ Final batch count (${finalBatches.length}) exceeds maxDrones limit (${maxDrones}). Reconsolidating...`);
+        finalBatches = consolidateBatchesToLimit(finalBatches, consolidatedSegments, maxDrones);
     }
     
     console.log(`✅ Final batch count: ${finalBatches.length}${maxDrones ? ` (maxDrones: ${maxDrones})` : ''}`);
     
-    // --- 7. FINALIZATION ---
+    // --- 8. FINALIZATION ---
     return finalBatches.map((batch, index) => ({
         batch_id: `drone_batch_${String(index + 1).padStart(3, '0')}`,
         ...batch

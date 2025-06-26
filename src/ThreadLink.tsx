@@ -28,6 +28,7 @@ import {
   calculateTargetTokens, 
   getErrorDisplay 
 } from './utils/textProcessing';
+import { createSafeLoadingProgress, validateProgressUpdate } from './utils/progressNormalizer';
 
 // Import browser-based modules
 // @ts-ignore - JavaScript modules without TypeScript declarations
@@ -51,11 +52,15 @@ function ThreadLink() {
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState('');
   const [stats, setStats] = useState<Stats | null>(null);
-  
-  // Loading progress state
+    // Loading progress state
   const [loadingProgress, setLoadingProgress] = useState<LoadingProgress>({
     phase: 'preparing',
-    message: 'Preparing drone batches'
+    message: 'Preparing processing pipeline...',
+    completedDrones: 0,
+    totalDrones: 0,
+    elapsedTime: 0,
+    progress: 0,
+    isReady: false
   });
   const [isCancelling, setIsCancelling] = useState(false);
   const cancelRef = useRef<boolean>(false);
@@ -236,16 +241,14 @@ function ThreadLink() {
     
     // Set error message to provide user feedback
     setError('Processing was cancelled');
-    
-    // Reset any progress indicators to avoid lingering progress states
-    setLoadingProgress({
+      // Reset any progress indicators to avoid lingering progress states
+    setLoadingProgress(createSafeLoadingProgress({
       phase: 'cancelled',
       message: 'Processing was cancelled',
       completedDrones: 0,
       totalDrones: 0,
-      elapsedTime: 0,
       progress: 0
-    });
+    }, 0));
     
     console.log('🛑 Cancel state set - UI will update and orchestrator will detect cancelRef.current flag');
     
@@ -429,18 +432,17 @@ function ThreadLink() {
       const result: PipelineResult = await runCondensationPipeline({
         rawText: inputText,
         apiKey: apiKey,
-        settings: settings,
-        onProgress: (update: ProgressUpdate) => {
+        settings: settings,        onProgress: (update: ProgressUpdate) => {
           const elapsedTime = (Date.now() - loadingStartTime.current) / 1000;
           console.log('📊 Progress update:', update);
-          setLoadingProgress({
-            phase: update.phase || 'processing',
-            message: update.message || 'Processing...',
-            completedDrones: update.completedDrones,
-            totalDrones: update.totalDrones,
-            elapsedTime: elapsedTime,
-            progress: update.progress
-          });
+          
+          // Use the progress normalizer to create safe, validated progress state
+          const normalizedProgress = createSafeLoadingProgress(
+            validateProgressUpdate(update),
+            elapsedTime
+          );
+          
+          setLoadingProgress(normalizedProgress);
         },
         cancelled: () => {
           const isCancelled = cancelRef.current;

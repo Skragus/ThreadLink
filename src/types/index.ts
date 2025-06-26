@@ -1,7 +1,7 @@
 // types/index.ts - Shared TypeScript Types
 
 export interface ProgressUpdate {
-  phase?: 'preparing' | 'launching' | 'processing' | 'finalizing';
+  phase?: 'preparing' | 'launching' | 'processing' | 'finalizing' | 'cancelled';
   message?: string;
   completedDrones?: number;
   totalDrones?: number;
@@ -20,10 +20,11 @@ export interface Stats {
 export interface LoadingProgress {
   phase: 'preparing' | 'launching' | 'processing' | 'finalizing' | 'cancelled';
   message: string;
-  completedDrones?: number;
-  totalDrones?: number;
-  elapsedTime?: number;
-  progress?: number;
+  completedDrones: number;
+  totalDrones: number;
+  elapsedTime: number;
+  progress: number;
+  isReady: boolean; // Indicates if modal should be shown
 }
 
 export interface ExpandedSections {
