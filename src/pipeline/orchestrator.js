@@ -253,10 +253,7 @@ async function processDroneBatch(
     const systemPrompt = createDroneSystemPrompt(targetTokens, customPrompt);
     const userPrompt = textContent
 
-    // DEBUG: Log test environment detection
-    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
-        console.log(`🧪 TEST DEBUG: Drone ${batchIndex + 1} starting with retries=${retries}, model=${model}`);
-    }
+    // Test environment detection (debug logging removed for production)
 
     // Retry loop with intelligent error handling
     for (let attempt = 1; attempt <= retries + 1; attempt++) {
@@ -267,10 +264,7 @@ async function processDroneBatch(
         }
 
         try {
-            // DEBUG: Log attempt details in test environment
-            if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
-                console.log(`🧪 TEST DEBUG: Drone ${batchIndex + 1} attempt ${attempt}/${retries + 1}`);
-            }
+            // Test environment detection (debug logging removed for production)
 
             const result = await generateResponse(
                 systemPrompt,
@@ -281,10 +275,7 @@ async function processDroneBatch(
                 null
             );
 
-            // DEBUG: Log successful response in test environment
-            if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
-                console.log(`🧪 TEST DEBUG: Drone ${batchIndex + 1} got result: ${typeof result}, length: ${result?.length || 'N/A'}`);
-            }
+            // Test environment detection (debug logging removed for production)
 
             // Check for cancellation after generating response
             if (cancelled && cancelled()) {
@@ -333,15 +324,7 @@ async function processDroneBatch(
                 throw error;
             }
 
-            // DEBUG: Log error details in test environment
-            if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
-                console.log(`🧪 TEST DEBUG: Drone ${batchIndex + 1} attempt ${attempt} error:`, {
-                    message: error.message,
-                    name: error.name,
-                    type: typeof error,
-                    isTypeError: error instanceof TypeError
-                });
-            }
+            // Test environment detection (debug logging removed for production)
 
             console.error(`❌ Drone ${batchIndex + 1}: Attempt ${attempt} failed:`, error.message);
             
@@ -835,15 +818,6 @@ Compression Ratio: ${sessionStats.compressionRatio}:1 | Drones: ${successfulDron
 }
 
 /**
- * Main pipeline orchestrator function
- * @param {Object} options - Configuration options
- * @param {string} options.rawText - The raw text to process
- * @param {Object} options.settings - Processing settings
- * @param {string} options.apiKey - API key for the selected model
- * @param {Function} options.onProgress - Progress callback function
- * @returns {Promise<{success: boolean, contextCard: string, stats: Object}>}
- */
-/**
  * Helper function to consistently check for cancellation
  * and provide detailed logging
  * @param {Function} cancelFn The cancellation check function
@@ -867,6 +841,95 @@ function checkForCancellation(cancelFn, context) {
         console.log(`⚠️ Error checking cancellation at [${context}]:`, e);
         return false;
     }
+}
+
+/**
+ * Validate and normalize pipeline settings
+ * @param {Object} settings - Raw settings object
+ * @returns {Object} Validated and normalized settings
+ */
+function validateAndNormalizeSettings(settings = {}) {
+    const normalized = {};
+    
+    // Model validation
+    normalized.model = settings.model || 'gemini-1.5-flash';
+    if (!MODEL_PROVIDERS[normalized.model]) {
+        console.warn(`⚠️ Unknown model: ${normalized.model}, falling back to default`);
+        normalized.model = 'gemini-1.5-flash';
+    }
+    
+    // Temperature validation
+    normalized.temperature = settings.temperature ?? 0.7;
+    if (typeof normalized.temperature !== 'number' || normalized.temperature < 0 || normalized.temperature > 1.2) {
+        console.warn(`⚠️ Invalid temperature: ${normalized.temperature}, clamping to valid range`);
+        normalized.temperature = Math.max(0, Math.min(1.2, normalized.temperature || 0.7));
+    }
+    
+    // Processing speed validation
+    normalized.processingSpeed = settings.processingSpeed || 'balanced';
+    if (!['fast', 'balanced'].includes(normalized.processingSpeed)) {
+        console.warn(`⚠️ Invalid processing speed: ${normalized.processingSpeed}, falling back to 'balanced'`);
+        normalized.processingSpeed = 'balanced';
+    }
+    
+    // Max concurrency calculation with fallback to original 5/10 logic
+    if (settings.maxConcurrency && typeof settings.maxConcurrency === 'number' && settings.maxConcurrency > 0) {
+        normalized.maxConcurrency = Math.min(20, Math.max(1, Math.floor(settings.maxConcurrency)));
+    } else {
+        // Preserve original simple 5/10 concurrency logic based on processing speed
+        if (normalized.processingSpeed === 'fast') {
+            normalized.maxConcurrency = 10;
+        } else {
+            normalized.maxConcurrency = 5;
+        }
+    }
+    
+    // Custom target tokens validation
+    normalized.customTargetTokens = settings.customTargetTokens;
+    if (normalized.customTargetTokens !== null && normalized.customTargetTokens !== undefined) {
+        if (typeof normalized.customTargetTokens !== 'number' || normalized.customTargetTokens < 100) {
+            console.warn(`⚠️ Invalid custom target tokens: ${normalized.customTargetTokens}, setting to null`);
+            normalized.customTargetTokens = null;
+        }
+    }
+    
+    // Recency mode validation
+    normalized.recencyMode = Boolean(settings.recencyMode);
+    
+    // Recency strength validation
+    normalized.recencyStrength = settings.recencyStrength ?? 0;
+    if (typeof normalized.recencyStrength !== 'number' || normalized.recencyStrength < 0 || normalized.recencyStrength > 2) {
+        console.warn(`⚠️ Invalid recency strength: ${normalized.recencyStrength}, clamping to valid range`);
+        normalized.recencyStrength = Math.max(0, Math.min(2, normalized.recencyStrength || 0));
+    }
+    
+    // Drone density validation
+    normalized.droneDensity = settings.droneDensity;
+    if (normalized.droneDensity !== null && normalized.droneDensity !== undefined) {
+        if (typeof normalized.droneDensity !== 'number' || normalized.droneDensity < 1 || normalized.droneDensity > 10) {
+            console.warn(`⚠️ Invalid drone density: ${normalized.droneDensity}, clamping to valid range`);
+            normalized.droneDensity = Math.max(1, Math.min(10, normalized.droneDensity || config.DRONES_PER_10K_TOKENS));
+        }
+    }
+    
+    // Max drones validation
+    normalized.maxDrones = settings.maxDrones ?? 100;
+    if (typeof normalized.maxDrones !== 'number' || normalized.maxDrones < 10 || normalized.maxDrones > 200) {
+        console.warn(`⚠️ Invalid max drones: ${normalized.maxDrones}, clamping to valid range`);
+        normalized.maxDrones = Math.max(10, Math.min(200, normalized.maxDrones || 100));
+    }
+    
+    // Custom prompt validation
+    normalized.useCustomPrompt = Boolean(settings.useCustomPrompt);
+    normalized.customPrompt = settings.customPrompt || null;
+    
+    if (normalized.useCustomPrompt && (!normalized.customPrompt || typeof normalized.customPrompt !== 'string' || normalized.customPrompt.trim().length === 0)) {
+        console.warn(`⚠️ Custom prompt enabled but empty, disabling custom prompt`);
+        normalized.useCustomPrompt = false;
+        normalized.customPrompt = null;
+    }
+    
+    return normalized;
 }
 
 export async function runCondensationPipeline(options = {}) {
@@ -899,19 +962,23 @@ export async function runCondensationPipeline(options = {}) {
         return { success: false, error: 'Processing was cancelled' };
     }
 
+    // Validate and normalize all settings
+    const validatedSettings = validateAndNormalizeSettings(settings);
     const {
-        model = 'gemini-1.5-flash',
-        temperature = 0.7,
+        model,
+        temperature,
         maxConcurrency,
-        customTargetTokens = null,
-        processingSpeed = 'balanced',
-        recencyMode = false,
-        recencyStrength = 0,
+        customTargetTokens,
+        processingSpeed,
+        recencyMode,
+        recencyStrength,
         droneDensity,
-        maxDrones = 100,
-        useCustomPrompt = false,
-        customPrompt = null
-    } = settings;
+        maxDrones,
+        useCustomPrompt,
+        customPrompt
+    } = validatedSettings;
+
+    console.log('📋 Validated settings:', validatedSettings);
 
     // Remove the job ID and progress tracker - we'll use direct callbacks only
     const startTime = Date.now();
@@ -1275,5 +1342,6 @@ export {
     sleep,
     parseRateLimitHeaders,
     isCatastrophicFailure,
-    createDroneSystemPrompt
+    createDroneSystemPrompt,
+    validateAndNormalizeSettings
 };

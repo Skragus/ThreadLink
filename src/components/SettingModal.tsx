@@ -323,13 +323,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       max="1.2"
                       step="0.1"
                       value={advTemperature}
-                      onChange={(e) => {                        const value = parseFloat(e.target.value);
-                        if (value > 1.2) {
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        // Validate and clamp temperature values
+                        if (isNaN(value)) {
+                          setAdvTemperature(0.7); // Reset to default if invalid
+                        } else if (value > 1.2) {
                           setAdvTemperature(1.2);
-                          // TODO: Show toast notification "Temperature capped at 1.2 for optimal condensation quality"
+                          console.warn('Temperature capped at 1.2 for optimal condensation quality');
                         } else if (value < 0) {
                           setAdvTemperature(0);
-                          // TODO: Show toast notification "Temperature minimum is 0"
+                          console.warn('Temperature minimum is 0');
                         } else {
                           setAdvTemperature(value);
                         }
@@ -368,13 +372,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         max="10"
                         step="1"
                         value={advDroneDensity}
-                        onChange={(e) => {                          const value = parseInt(e.target.value);
-                          if (value > 10) {
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          // Validate and clamp drone density values
+                          if (isNaN(value)) {
+                            setAdvDroneDensity(2); // Reset to default if invalid
+                          } else if (value > 10) {
                             setAdvDroneDensity(10);
-                            // TODO: Show toast notification "Drone density capped at 10 to prevent excessive costs"
+                            console.warn('Drone density capped at 10 to prevent excessive costs');
                           } else if (value < 1) {
                             setAdvDroneDensity(1);
-                            // TODO: Show toast notification "Drone density minimum is 1"
+                            console.warn('Drone density minimum is 1');
                           } else {
                             setAdvDroneDensity(value);
                           }
@@ -413,12 +421,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         value={advMaxDrones}
                         onChange={(e) => {
                           const value = parseInt(e.target.value);
-                          if (value > 200) {
+                          // Validate and clamp max drones values
+                          if (isNaN(value)) {
+                            setAdvMaxDrones(100); // Reset to default if invalid
+                          } else if (value > 200) {
                             setAdvMaxDrones(200);
-                            // TODO: Show toast notification "Max drones capped at 200"
+                            console.warn('Max drones capped at 200');
                           } else if (value < 10) {
                             setAdvMaxDrones(10);
-                            // TODO: Show toast notification "Max drones minimum is 10"
+                            console.warn('Max drones minimum is 10');
                           } else {
                             setAdvMaxDrones(value);
                           }
