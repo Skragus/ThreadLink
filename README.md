@@ -1,77 +1,109 @@
-# 🧵 Threadlink
+# Threadlink
 
-**A portable memory layer for the stateless world of LLMs.**
+**Portable context infrastructure for stateless LLM systems.**
 
-Threadlink transforms long, chaotic AI chat transcripts into dense, structured, and portable context cards, solving the critical problem of conversation amnesia.
+Threadlink transforms long AI chat sessions into dense, structured context cards that can be reused across platforms. It addresses a core limitation of commercial LLMs: conversation state does not persist between sessions.
 
----
-
-### 🎯 Why It Matters
-
-Commercial LLMs are fundamentally stateless. Every session starts from zero, forcing users to repeat context and lose valuable narrative flow. Threadlink fixes this by creating an **external, portable memory layer**, enabling true continuity and stateful interaction across any platform or session.
+Built for the Bolt.new 2025 Hackathon.
 
 ---
 
-### 🛠 Features
+## Problem
 
--   **Parallel Processing Pipeline:** Deploys multiple "summarizer drones" to process conversation chunks concurrently for speed and efficiency.
--   **BYOK (Bring Your Own Key):** Natively supports OpenAI, Google Gemini, Mistral, and Groq models with session-only API key storage for maximum privacy.
--   **Zero-Trust Privacy Architecture:** All processing and API calls happen **entirely in the user's browser**. No data ever touches our servers, ensuring absolute privacy and security.
--   **Live & Deployed:** Try it now at [**threadlink.xyz**](https://threadlink.xyz)
--   **Production-Ready:** Robust error handling, rate limiting, partial failure resilience, and comprehensive testing ensure reliable operation at scale.
+LLMs are stateless by design. Every new session begins without prior context. For users working on long-running ideas, research threads, or multi-session projects, this creates friction:
 
----
+- Repeating context manually  
+- Losing narrative continuity  
+- Fragmented workflows across platforms  
 
-### ⚙️ How It Works
-
-1.  **Semantic Chunking:** The input conversation is split into token-aware, sequential chunks.
-2.  **Parallel Drone Summarization:** Each chunk is assigned to a drone (an independent LLM instance) that summarizes it based on a core set of instructions.
-3.  **Resilient Stitching:** The outputs from all drones are stitched together in the correct order. Any drone failures are explicitly marked, preserving the integrity of the output.
-4.  **Context Card Generation:** The final, dense summary is presented as a portable context card, ready to be used anywhere.
+Threadlink introduces an external memory layer by compressing full conversations into portable context artifacts that can be dropped into any new session.
 
 ---
 
-### 🛠️ Architecture & Tech Stack
+## What It Does
 
-This project is built on a **100% client-side, serverless architecture** to guarantee user privacy and eliminate backend infrastructure.
-
-* **Core Summarization Pipeline:** A custom-built, multi-stage processing engine written in TypeScript/JavaScript, featuring:
-    * A content **Cleaner** to clean some boilerplate.
-    * A semantic **Splicer** to deconstruct conversations.
-    * A parallel **Batcher** to prepare chunks for concurrent processing.
-    * A resilient **Orchestrator** to manage the drone fleet, handle errors, and stitch the final output.
-
-* **Front-End:**
-    * **Bolt.new + React** for the user interface.
-    * **Vite** for a high-performance build process.
-    * **TailwindCSS** for utility-first styling.
-
-* **API Integrations:**
-    * Direct, client-side integrations with **OpenAI, Google Gemini, Mistral, and Groq** with comprehensive rate limiting and retry logic.
-
-* **Testing, Tooling & Deployment:**
-    * **Playwright** for comprehensive end-to-end testing across all major browsers.
-    * **Jest & Vitest** for unit and integration testing.
-    * **Netlify** for continuous deployment.
+- Converts large chat transcripts into structured, dense summaries  
+- Preserves chronological and conceptual flow  
+- Generates reusable “context cards” for cross-session continuity  
+- Runs entirely client-side using user-provided API keys  
 
 ---
 
-### 🧪 Demo
+## Design Principles
 
-[Demo video
-](https://youtu.be/WNVgECm5cVc?si=yFYXMJxF6GBB0DAY)
+### Client-Side Only
+All processing happens in the browser. No transcripts are stored, proxied, or logged by any server.
+
+### BYOK (Bring Your Own Key)
+Supports OpenAI, Gemini, Mistral, and Groq. API keys are session-scoped and never persisted.
+
+### Failure-Tolerant Pipeline
+Chunk-level failures are surfaced explicitly. Partial results are preserved instead of discarded.
+
+### Vendor-Agnostic
+Threadlink is infrastructure-oriented and not tied to a single LLM ecosystem.
+
 ---
 
-### 🧠 Author
+## How It Works
+
+1. **Token-Aware Chunking**  
+   The conversation is segmented into sequential, size-bounded chunks.
+
+2. **Parallel Summarization**  
+   Independent LLM instances process chunks concurrently to reduce latency.
+
+3. **Deterministic Stitching**  
+   Outputs are reassembled in order, with explicit markers for failed segments if applicable.
+
+4. **Context Card Emission**  
+   The final artifact is compact, portable, and reusable across sessions and platforms.
+
+---
+
+## Architecture
+
+Threadlink is implemented as a fully client-side, serverless application.
+
+### Core Pipeline (TypeScript)
+
+- **Cleaner** – Removes platform boilerplate  
+- **Splicer** – Chunk segmentation engine  
+- **Batcher** – Prepares chunks for concurrent processing  
+- **Orchestrator** – Concurrency control, retry logic, and failure handling  
+
+### Frontend
+
+- React (Bolt.new scaffold)  
+- Vite  
+- TailwindCSS  
+
+### Testing
+
+- Playwright (end-to-end testing)  
+- Jest / Vitest (unit and integration testing)  
+
+### Deployment
+
+- Netlify  
+
+---
+
+## Live Demo
+
+https://threadlink.xyz  
+Demo video: https://youtu.be/WNVgECm5cVc?si=yFYXMJxF6GBB0DAY
+
+---
+
+## Why This Project Matters
+
+Most tools build on top of LLMs.
+
+Threadlink addresses the structural weakness between sessions. As LLM workflows become longer and more complex, context portability becomes infrastructure — not convenience.
+
+---
+
+## Author
 
 https://github.com/skragus
-
----
-
-### 🏁 Hackathon Entry
-
-This project was built for the **Bolt.new 2025 Hackathon**. It targets the following categories by design:
-
--   🧠 **Most Useful Tool:** It solves a universal, daily pain point for anyone who uses LLMs seriously, directly improving workflow efficiency.
--   ⚡ **Sharpest Problem Fit:** The solution (a client-side, BYOK summarization pipeline) is precisely tailored to solve the problem (LLM context amnesia) without over-engineering or introducing unnecessary complexity like databases or user accounts.
--   🎯 **"We Didn't Know We Needed This":** While many focus on building on top of LLMs, Threadlink addresses the meta-problem of *state management between them*, a subtle but critical piece of missing infrastructure for power users.
