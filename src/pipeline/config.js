@@ -121,22 +121,10 @@ export const MODEL_CONFIGS = {
         maxRetries: 3,
         aggressive: false  // Larger model, more conservative
     },
-    'gemini-1.5-flash-latest': {
+    'gemini-2.5-flash-lite': {
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
-        rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 15 seconds - much more reasonable
-        maxRetries: 2,
-        aggressive: true
-    },
-    'gemini-1.5-pro': {
-        safeConcurrency: DEFAULT_CONSERVATIVE_CONCURRENCY,
         rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,
         maxRetries: 2,
-        aggressive: false
-    },
-    'gemini-pro': {
-        safeConcurrency: DEFAULT_STANDARD_CONCURRENCY,
-        rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,
-        maxRetries: 3,
         aggressive: true
     },    'gpt-4.1-nano': { 
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 

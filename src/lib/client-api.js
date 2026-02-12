@@ -6,7 +6,7 @@
 // Model to provider mapping (only cheap, fast models for batch processing)
 export const MODEL_PROVIDERS = {
     // Google models
-    "gemini-1.5-flash-latest": "google",    
+    "gemini-2.5-flash-lite": "google",    
     // OpenAI models
     "gpt-4.1-nano": "openai",
     "gpt-4.1-mini": "openai",
@@ -402,7 +402,7 @@ export async function testProviderConnection(provider, apiKey) {
             openai: "gpt-3.5-turbo",
             mistral: "mistral-small-latest",
             groq: "llama-3.1-8b-instant",
-            google: "gemini-1.5-flash-latest"
+            google: "gemini-2.5-flash-lite"
         };
         
         const model = testModels[provider];

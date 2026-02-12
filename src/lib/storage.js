@@ -257,7 +257,7 @@ export function getSettings() {
             // Validate and fix invalid model references (hotfix for Claude removal)
             if (parsedSettings.model && !(parsedSettings.model in MODEL_PROVIDERS)) {
                 console.warn(`Invalid model in settings: ${parsedSettings.model}. Resetting to default.`);
-                parsedSettings.model = 'gemini-1.5-flash-latest';
+                parsedSettings.model = 'gemini-2.5-flash-lite';
                 // Save the corrected settings back to localStorage
                 saveSettings(parsedSettings);
             }
@@ -276,7 +276,7 @@ export function getSettings() {
  * @returns {Object} Default settings
  */
 export function getDefaultSettings() {    return {
-        model: 'gemini-1.5-flash-latest',
+        model: 'gemini-2.5-flash-lite',
         temperature: 0.7,
         processingSpeed: 'balanced',
         recencyMode: false,

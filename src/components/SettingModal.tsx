@@ -79,7 +79,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const availableModels = useMemo(() => {
     return {
       google: [
-        { value: "gemini-1.5-flash-latest", label: "Gemini 1.5 Flash" }
+        { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" }
       ],
       openai: [
         { value: "gpt-4.1-nano", label: "GPT-4.1 Nano" },
