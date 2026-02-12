@@ -187,7 +187,7 @@ async function processDroneBatch(
     options = {},
     sessionState = {}
 ) {    const {
-        model = "gemini-1.5-flash",
+        model = "gemini-1.5-flash-latest",
         temperature = 0.7,
         targetTokens = 500,
         retries = 2,
@@ -195,7 +195,7 @@ async function processDroneBatch(
         customPrompt // Add this
     } = options;
     
-    const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash'];
+    const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash-latest'];
     
     // Check for cancellation - enhanced logging
     if (cancelled && checkForCancellation(cancelled, `drone-${batchIndex + 1}-before-processing`)) {
@@ -426,8 +426,8 @@ async function processDronesWithConcurrency(
     options = {},
     onProgress = null
 ) {
-    const { model = 'gemini-1.5-flash', cancelled, customPrompt, ...droneOptions } = options;
-    const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash'];
+    const { model = 'gemini-1.5-flash-latest', cancelled, customPrompt, ...droneOptions } = options;
+    const modelConfig = config.MODEL_CONFIGS[model] || config.MODEL_CONFIGS['gemini-1.5-flash-latest'];
     
     let currentConcurrency = options.maxConcurrency || modelConfig.safeConcurrency;
     let hasHitRateLimit = false;
@@ -852,10 +852,10 @@ function validateAndNormalizeSettings(settings = {}) {
     const normalized = {};
     
     // Model validation
-    normalized.model = settings.model || 'gemini-1.5-flash';
+    normalized.model = settings.model || 'gemini-1.5-flash-latest';
     if (!MODEL_PROVIDERS[normalized.model]) {
         console.warn(`⚠️ Unknown model: ${normalized.model}, falling back to default`);
-        normalized.model = 'gemini-1.5-flash';
+        normalized.model = 'gemini-1.5-flash-latest';
     }
     
     // Temperature validation

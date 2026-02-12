@@ -121,7 +121,7 @@ export const MODEL_CONFIGS = {
         maxRetries: 3,
         aggressive: false  // Larger model, more conservative
     },
-    'gemini-1.5-flash': {
+    'gemini-1.5-flash-latest': {
         safeConcurrency: DEFAULT_STANDARD_CONCURRENCY, 
         rateLimitBackoff: GEMINI_RATE_LIMIT_BACKOFF_MS,  // 15 seconds - much more reasonable
         maxRetries: 2,

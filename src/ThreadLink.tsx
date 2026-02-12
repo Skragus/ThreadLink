@@ -66,7 +66,7 @@ function ThreadLink() {
   const cancelRef = useRef<boolean>(false);
 
   // Settings
-  const [model, setModel] = useState('gemini-1.5-flash');
+  const [model, setModel] = useState('gemini-1.5-flash-latest');
   const [showSettings, setShowSettings] = useState(false);
   const [showAPIKeys, setShowAPIKeys] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
